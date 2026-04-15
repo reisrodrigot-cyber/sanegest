@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 
 const MateriaisPage = () => {
   const { ordens, loading } = useOrdensServico();
-  const pendentes = ordens.filter(os => os.status === 'VERMELHO');
+  const pendentes = ordens.filter(os => os.liberado);
 
   if (loading) {
     return (

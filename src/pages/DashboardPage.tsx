@@ -1,17 +1,22 @@
-import { MOCK_OS, OBRA_NOME } from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Link } from 'react-router-dom';
 import { ROLE_LABELS } from '@/types/sanegest';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useOrdensServico } from '@/hooks/useOrdensServico';
+import { Loader2 } from 'lucide-react';
+
+const OBRA_NOME = 'SES Japaratinga';
 
 const DashboardPage = () => {
   const { user } = useAuth();
-  const vermelhas = MOCK_OS.filter(os => os.status === 'VERMELHO').length;
-  const amarelas = MOCK_OS.filter(os => os.status === 'AMARELO').length;
-  const verdes = MOCK_OS.filter(os => os.status === 'VERDE').length;
-  const total = MOCK_OS.length;
+  const { ordens, loading } = useOrdensServico();
+
+  const vermelhas = ordens.filter(os => os.status === 'VERMELHO').length;
+  const amarelas = ordens.filter(os => os.status === 'AMARELO').length;
+  const verdes = ordens.filter(os => os.status === 'VERDE').length;
+  const total = ordens.length;
   const avanco = total > 0 ? Math.round((verdes / total) * 100) : 0;
 
   const chartData = [
@@ -20,7 +25,17 @@ const DashboardPage = () => {
     { name: 'Verde', value: verdes, color: 'hsl(142, 71%, 35%)' },
   ];
 
-  const recentOS = MOCK_OS.slice(0, 5);
+  const recentOS = ordens.slice(0, 5);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-muted-foreground" size={32} />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -49,50 +64,54 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Chart */}
-        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-1">Avanço Físico</h2>
-          <p className="text-sm text-muted-foreground mb-4">{avanco}% concluído</p>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {chartData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+      {total === 0 ? (
+        <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
+          Nenhuma OS cadastrada. <Link to="/importar" className="text-secondary hover:underline">Importe o Planilhão</Link> para começar.
         </div>
+      ) : (
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h2 className="text-lg font-semibold text-foreground mb-1">Avanço Físico</h2>
+            <p className="text-sm text-muted-foreground mb-4">{avanco}% concluído</p>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                    {chartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-        {/* Recent OS */}
-        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">OS Recentes</h2>
-            <Link to="/ordens" className="text-sm text-secondary hover:underline">Ver todas</Link>
-          </div>
-          <div className="space-y-3">
-            {recentOS.map(os => (
-              <Link
-                key={os.id}
-                to={`/ordens/${os.id}`}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <div>
-                  <p className="font-medium text-foreground">{os.trecho}</p>
-                  <p className="text-xs text-muted-foreground">{os.bacia} • {os.comprimento_previsto}m</p>
-                </div>
-                <StatusBadge status={os.status} size="sm" />
-              </Link>
-            ))}
+          <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">OS Recentes</h2>
+              <Link to="/ordens" className="text-sm text-secondary hover:underline">Ver todas</Link>
+            </div>
+            <div className="space-y-3">
+              {recentOS.map(os => (
+                <Link
+                  key={os.id}
+                  to={`/ordens/${os.id}`}
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div>
+                    <p className="font-medium text-foreground">{os.trecho}</p>
+                    <p className="text-xs text-muted-foreground">{os.bacia} • {os.comprimento_previsto}m</p>
+                  </div>
+                  <StatusBadge status={os.status} size="sm" />
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </AppLayout>
   );
 };

@@ -1,10 +1,21 @@
-import { MOCK_OS } from '@/data/mockData';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { useState } from 'react';
+import { useOrdensServico } from '@/hooks/useOrdensServico';
+import { Loader2 } from 'lucide-react';
 
 const MateriaisPage = () => {
-  const pendentes = MOCK_OS.filter(os => os.status === 'VERMELHO');
+  const { ordens, loading } = useOrdensServico();
+  const pendentes = ordens.filter(os => os.status === 'VERMELHO');
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-muted-foreground" size={24} />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -17,7 +28,7 @@ const MateriaisPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-foreground">{os.trecho}</p>
-                <p className="text-xs text-muted-foreground">{os.bacia} • Areia: {os.areia} • Brita: {os.brita}</p>
+                <p className="text-xs text-muted-foreground">{os.bacia} • Areia: {os.areia ?? '—'} • Brita: {os.brita ?? '—'}</p>
               </div>
               <StatusBadge status={os.status} size="sm" />
             </div>

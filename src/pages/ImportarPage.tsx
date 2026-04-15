@@ -63,7 +63,7 @@ function parseExcel(data: ArrayBuffer): ParsedOS[] {
     const row = rows[i];
     if (!row || row.length < 2) continue;
     const trecho = toStr(row[1]); // Column B
-    if (!trecho.startsWith('TR-')) continue;
+    if (!trecho) continue; // any non-empty value in column B is valid
 
     result.push({
       trecho,
@@ -118,7 +118,7 @@ const ImportarPage = () => {
       const buffer = await f.arrayBuffer();
       const data = parseExcel(buffer);
       if (data.length === 0) {
-        toast.error('Nenhum trecho válido encontrado (coluna B com "TR-").');
+        toast.error('Nenhum trecho válido encontrado (coluna B preenchida a partir da linha 22).');
         setParsing(false);
         return;
       }
@@ -186,7 +186,7 @@ const ImportarPage = () => {
           </li>
           <li className="flex items-start gap-2">
             <span className="font-semibold text-primary min-w-[20px]">3.</span>
-            Linhas válidas são identificadas pela coluna B começando com <strong>"TR-"</strong>
+            Linhas válidas são identificadas pela coluna B <strong>preenchida</strong> (qualquer valor)
           </li>
           <li className="flex items-start gap-2">
             <span className="font-semibold text-primary min-w-[20px]">4.</span>

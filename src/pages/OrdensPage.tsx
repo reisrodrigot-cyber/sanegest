@@ -9,10 +9,14 @@ import { useOrdensServico } from '@/hooks/useOrdensServico';
 const OrdensPage = () => {
   const { ordens, loading } = useOrdensServico();
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'TODOS'>('TODOS');
+  const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [search, setSearch] = useState('');
+
+  const bacias = [...new Set(ordens.map(os => os.bacia).filter(Boolean))].sort();
 
   const filtered = ordens.filter(os => {
     if (statusFilter !== 'TODOS' && os.status !== statusFilter) return false;
+    if (baciaFilter !== 'TODAS' && os.bacia !== baciaFilter) return false;
     if (search && !os.trecho.toLowerCase().includes(search.toLowerCase()) && !os.bacia.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });

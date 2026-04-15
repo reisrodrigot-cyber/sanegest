@@ -49,21 +49,29 @@ function toStr(val: unknown): string {
 
 function parseExcel(data: ArrayBuffer): ParsedOS[] {
   const wb = XLSX.read(data, { type: 'array' });
-  const sheetName = wb.SheetNames.find(n => n.toUpperCase().includes('PLANILH'));
+  // Try to find the sheet: match "PLANILHÃO", "PLANILHAO", or any name containing "PLANILH"
+  let sheetName = wb.SheetNames.find(n => n.toUpperCase().includes('PLANILH'));
+  // Fallback: use first sheet if only one exists
+  if (!sheetName && wb.SheetNames.length === 1) {
+    sheetName = wb.SheetNames[0];
+  }
   if (!sheetName) {
-    throw new Error('Aba "PLANILHÃO" não encontrada no arquivo.');
+    throw new Error(`Aba "PLANILHÃO" não encontrada. Abas disponíveis: ${wb.SheetNames.join(', ')}`);
   }
   const ws = wb.Sheets[sheetName];
-  // Convert to array of arrays (0-indexed rows)
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
+  const seen = new Set<string>();
   const result: ParsedOS[] = [];
   // Data starts at row 22 (index 21)
   for (let i = 21; i < rows.length; i++) {
     const row = rows[i];
     if (!row || row.length < 2) continue;
     const trecho = toStr(row[1]); // Column B
-    if (!trecho) continue; // any non-empty value in column B is valid
+    if (!trecho) continue;
+    // Deduplicate: keep first occurrence only
+    if (seen.has(trecho)) continue;
+    seen.add(trecho);
 
     result.push({
       trecho,
@@ -98,7 +106,7 @@ function parseExcel(data: ArrayBuffer): ParsedOS[] {
   return result;
 }
 
-const BATCH_SIZE = 500;
+const BATCH_SIZE = 50;
 
 const ImportarPage = () => {
   const navigate = useNavigate();
@@ -117,14 +125,16 @@ const ImportarPage = () => {
     try {
       const buffer = await f.arrayBuffer();
       const data = parseExcel(buffer);
+      console.log(`Planilhão: ${data.length} trechos únicos identificados`);
       if (data.length === 0) {
         toast.error('Nenhum trecho válido encontrado (coluna B preenchida a partir da linha 22).');
         setParsing(false);
         return;
       }
       setParsedData(data);
-      toast.success(`${data.length} trechos identificados.`);
+      toast.success(`${data.length} trechos únicos identificados.`);
     } catch (err: any) {
+      console.error('Parse error:', err);
       toast.error(err.message || 'Erro ao ler o arquivo.');
     } finally {
       setParsing(false);

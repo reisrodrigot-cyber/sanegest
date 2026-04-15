@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Loader2, Send } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
@@ -26,15 +26,129 @@ const DataRow = ({ label, previsto, real }: { label: string; previsto: unknown; 
   </div>
 );
 
+const EditableRow = ({ label, previstoValue, realValue, previstoField, realField, onChange }: {
+  label: string;
+  previstoValue: string;
+  realValue: string;
+  previstoField: string;
+  realField: string;
+  onChange: (field: string, val: string) => void;
+}) => (
+  <div className="grid grid-cols-3 gap-2 py-2 border-b border-border last:border-0 items-center">
+    <span className="text-sm text-muted-foreground">{label}</span>
+    <input
+      value={previstoValue}
+      onChange={e => onChange(previstoField, e.target.value)}
+      className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-full"
+    />
+    <input
+      value={realValue}
+      onChange={e => onChange(realField, e.target.value)}
+      className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-full"
+    />
+  </div>
+);
+
 const OSDetailPage = () => {
   const { id } = useParams();
   const { os, estacas, loading } = useOrdemServico(id);
   const { user } = useAuth();
   const [liberando, setLiberando] = useState(false);
   const [selectedEncarregado, setSelectedEncarregado] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editFields, setEditFields] = useState<Record<string, string>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [validando, setValidando] = useState(false);
 
   const encarregados = MOCK_USERS.filter(u => u.role === 'encarregado');
   const isSalaTecnica = user?.role === 'sala_tecnica';
+
+  const startEditing = () => {
+    if (!os) return;
+    setEditFields({
+      comprimento_previsto: os.comprimento_previsto != null ? String(os.comprimento_previsto) : '',
+      comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
+      prof_media_prevista: os.prof_media_prevista != null ? String(os.prof_media_prevista) : '',
+      prof_media_real: os.prof_media_real != null ? String(os.prof_media_real) : '',
+      dn: os.dn != null ? String(os.dn) : '',
+      largura_vala: os.largura_vala != null ? String(os.largura_vala) : '',
+      prof_montante: os.prof_montante != null ? String(os.prof_montante) : '',
+      prof_jusante: os.prof_jusante != null ? String(os.prof_jusante) : '',
+      pav_previsto: os.pav_previsto ?? '',
+      pav_real: os.pav_real ?? '',
+      largura_pav_prevista: os.largura_pav_prevista != null ? String(os.largura_pav_prevista) : '',
+      largura_pav_real: os.largura_pav_real != null ? String(os.largura_pav_real) : '',
+      pav_m2_previsto: os.pav_m2_previsto != null ? String(os.pav_m2_previsto) : '',
+      pav_m2_real: os.pav_m2_real != null ? String(os.pav_m2_real) : '',
+      ligacoes_previstas: os.ligacoes_previstas != null ? String(os.ligacoes_previstas) : '',
+      ligacoes_real: os.ligacoes_real != null ? String(os.ligacoes_real) : '',
+      areia: os.areia ?? '',
+      brita: os.brita ?? '',
+      prazo_previsto: os.prazo_previsto != null ? String(os.prazo_previsto) : '',
+      bms: os.bms ?? '',
+      executor: os.executor ?? '',
+    });
+    setEditing(true);
+  };
+
+  const updateEditField = (field: string, val: string) => {
+    setEditFields(prev => ({ ...prev, [field]: val }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!os) return;
+    setSavingEdit(true);
+    const toNum = (v: string) => v ? Number(v) : null;
+    const toInt = (v: string) => v ? parseInt(v) : null;
+    const update: any = {
+      comprimento_previsto: toNum(editFields.comprimento_previsto),
+      comprimento_real: toNum(editFields.comprimento_real),
+      prof_media_prevista: toNum(editFields.prof_media_prevista),
+      prof_media_real: toNum(editFields.prof_media_real),
+      dn: toNum(editFields.dn),
+      largura_vala: toNum(editFields.largura_vala),
+      prof_montante: toNum(editFields.prof_montante),
+      prof_jusante: toNum(editFields.prof_jusante),
+      pav_previsto: editFields.pav_previsto || null,
+      pav_real: editFields.pav_real || null,
+      largura_pav_prevista: toNum(editFields.largura_pav_prevista),
+      largura_pav_real: toNum(editFields.largura_pav_real),
+      pav_m2_previsto: toNum(editFields.pav_m2_previsto),
+      pav_m2_real: toNum(editFields.pav_m2_real),
+      ligacoes_previstas: toInt(editFields.ligacoes_previstas),
+      ligacoes_real: toInt(editFields.ligacoes_real),
+      areia: editFields.areia || null,
+      brita: editFields.brita || null,
+      prazo_previsto: toInt(editFields.prazo_previsto),
+      bms: editFields.bms || null,
+      executor: editFields.executor || null,
+    };
+    const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
+    if (error) {
+      toast.error('Erro ao salvar: ' + error.message);
+    } else {
+      toast.success('OS atualizada com sucesso!');
+      setEditing(false);
+      window.location.reload();
+    }
+    setSavingEdit(false);
+  };
+
+  const handleValidar = async () => {
+    if (!os) return;
+    setValidando(true);
+    const { error } = await supabase
+      .from('ordens_servico')
+      .update({ status: 'AMARELO' } as any)
+      .eq('id', os.id);
+    if (error) {
+      toast.error('Erro ao validar: ' + error.message);
+    } else {
+      toast.success('OS validada — status alterado para AMARELO');
+      window.location.reload();
+    }
+    setValidando(false);
+  };
 
   const handleLiberar = async () => {
     if (!os || !selectedEncarregado) return;
@@ -71,6 +185,8 @@ const OSDetailPage = () => {
     );
   }
 
+  const hasRealData = os.comprimento_real != null || os.prof_media_real != null || os.pav_real != null;
+
   return (
     <AppLayout>
       <div className="mb-6">
@@ -89,8 +205,35 @@ const OSDetailPage = () => {
         <p className="text-sm text-muted-foreground mt-1">{os.bacia} • PV {os.pv_montante} → {os.pv_jusante}</p>
       </div>
 
+      {/* Ações da Sala Técnica */}
+      {isSalaTecnica && (
+        <div className="flex flex-wrap gap-3 mb-6">
+          {/* Validar produção — só aparece se tem dados reais preenchidos */}
+          {hasRealData && os.status === 'VERMELHO' && (
+            <button
+              onClick={handleValidar}
+              disabled={validando}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-status-green text-white text-sm font-medium disabled:opacity-50"
+            >
+              {validando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+              ✓ Validar
+            </button>
+          )}
+          {/* Editar */}
+          {!editing && (
+            <button
+              onClick={startEditing}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-status-yellow text-white text-sm font-medium"
+            >
+              <Pencil size={14} />
+              ✏ Editar
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Liberação pela Sala Técnica */}
-      {isSalaTecnica && !os.liberado && (
+      {isSalaTecnica && !os.liberado && !editing && (
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <Send size={16} className="text-primary" />
@@ -124,31 +267,79 @@ const OSDetailPage = () => {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Dados do Trecho</h2>
-          <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
-            <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
-            <span className="text-xs font-semibold text-secondary uppercase">Real</span>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Dados do Trecho</h2>
+            {editing && (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={savingEdit}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
+                >
+                  {savingEdit ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                  Salvar
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-foreground text-xs"
+                >
+                  <X size={12} /> Cancelar
+                </button>
+              </div>
+            )}
           </div>
-          <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
-          <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
-          <DataRow label="DN (m)" previsto={os.dn} />
-          <DataRow label="Largura Vala (m)" previsto={os.largura_vala} />
-          <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} />
-          <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />
-          <DataRow label="Pavimento" previsto={os.pav_previsto} real={os.pav_real} />
-          <DataRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} real={os.largura_pav_real} />
-          <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} real={os.pav_m2_real} />
-          <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real} />
-          <DataRow label="Areia" previsto={os.areia} />
-          <DataRow label="Brita" previsto={os.brita} />
-          <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />
-          <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} />
-          <DataRow label="BMs" previsto={os.bms} />
+
+          {!editing ? (
+            <>
+              <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
+                <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
+                <span className="text-xs font-semibold text-secondary uppercase">Real</span>
+              </div>
+              <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
+              <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
+              <DataRow label="DN (m)" previsto={os.dn} />
+              <DataRow label="Largura Vala (m)" previsto={os.largura_vala} />
+              <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} />
+              <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />
+              <DataRow label="Pavimento" previsto={os.pav_previsto} real={os.pav_real} />
+              <DataRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} real={os.largura_pav_real} />
+              <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} real={os.pav_m2_real} />
+              <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real} />
+              <DataRow label="Areia" previsto={os.areia} />
+              <DataRow label="Brita" previsto={os.brita} />
+              <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />
+              <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} />
+              <DataRow label="BMs" previsto={os.bms} />
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
+                <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
+                <span className="text-xs font-semibold text-secondary uppercase">Real</span>
+              </div>
+              <EditableRow label="Comprimento (m)" previstoValue={editFields.comprimento_previsto} realValue={editFields.comprimento_real} previstoField="comprimento_previsto" realField="comprimento_real" onChange={updateEditField} />
+              <EditableRow label="Prof. Média (m)" previstoValue={editFields.prof_media_prevista} realValue={editFields.prof_media_real} previstoField="prof_media_prevista" realField="prof_media_real" onChange={updateEditField} />
+              <EditableRow label="DN (m)" previstoValue={editFields.dn} realValue="" previstoField="dn" realField="" onChange={updateEditField} />
+              <EditableRow label="Largura Vala (m)" previstoValue={editFields.largura_vala} realValue="" previstoField="largura_vala" realField="" onChange={updateEditField} />
+              <EditableRow label="Prof. Montante (m)" previstoValue={editFields.prof_montante} realValue="" previstoField="prof_montante" realField="" onChange={updateEditField} />
+              <EditableRow label="Prof. Jusante (m)" previstoValue={editFields.prof_jusante} realValue="" previstoField="prof_jusante" realField="" onChange={updateEditField} />
+              <EditableRow label="Pavimento" previstoValue={editFields.pav_previsto} realValue={editFields.pav_real} previstoField="pav_previsto" realField="pav_real" onChange={updateEditField} />
+              <EditableRow label="Largura PAV (m)" previstoValue={editFields.largura_pav_prevista} realValue={editFields.largura_pav_real} previstoField="largura_pav_prevista" realField="largura_pav_real" onChange={updateEditField} />
+              <EditableRow label="PAV (m²)" previstoValue={editFields.pav_m2_previsto} realValue={editFields.pav_m2_real} previstoField="pav_m2_previsto" realField="pav_m2_real" onChange={updateEditField} />
+              <EditableRow label="Ligações" previstoValue={editFields.ligacoes_previstas} realValue={editFields.ligacoes_real} previstoField="ligacoes_previstas" realField="ligacoes_real" onChange={updateEditField} />
+              <EditableRow label="Areia" previstoValue={editFields.areia} realValue="" previstoField="areia" realField="" onChange={updateEditField} />
+              <EditableRow label="Brita" previstoValue={editFields.brita} realValue="" previstoField="brita" realField="" onChange={updateEditField} />
+              <EditableRow label="Prazo (dias)" previstoValue={editFields.prazo_previsto} realValue="" previstoField="prazo_previsto" realField="" onChange={updateEditField} />
+              <EditableRow label="BMs" previstoValue={editFields.bms} realValue="" previstoField="bms" realField="" onChange={updateEditField} />
+              <EditableRow label="Executor" previstoValue={editFields.executor} realValue="" previstoField="executor" realField="" onChange={updateEditField} />
+            </>
+          )}
         </div>
 
         <div className="space-y-6">
-          {os.executor && (
+          {os.executor && !editing && (
             <div className="bg-card rounded-xl border border-border shadow-sm p-6">
               <h2 className="text-lg font-semibold text-foreground mb-2">Executor</h2>
               <p className="text-foreground">{os.executor}</p>

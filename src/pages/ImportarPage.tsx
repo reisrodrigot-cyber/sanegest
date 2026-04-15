@@ -69,9 +69,10 @@ function parseExcel(data: ArrayBuffer): ParsedOS[] {
     if (!row || row.length < 2) continue;
     const trecho = toStr(row[1]); // Column B
     if (!trecho) continue;
-    // Deduplicate: keep first occurrence only
-    if (seen.has(trecho)) continue;
-    seen.add(trecho);
+    // Deduplicate by composite key: trecho + bacia + pv_montante + pv_jusante
+    const compositeKey = `${trecho}|${toStr(row[2])}|${toStr(row[3])}|${toStr(row[4])}`;
+    if (seen.has(compositeKey)) continue;
+    seen.add(compositeKey);
 
     result.push({
       trecho,

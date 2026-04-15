@@ -156,7 +156,7 @@ const ImportarPage = () => {
 
         const { error } = await supabase
           .from('ordens_servico')
-          .upsert(batch, { onConflict: 'trecho' });
+          .upsert(batch, { onConflict: 'trecho,bacia,pv_montante,pv_jusante' });
 
         if (error) throw error;
         totalUpserted += batch.length;

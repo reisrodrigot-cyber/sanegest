@@ -9,10 +9,14 @@ import { useOrdensServico } from '@/hooks/useOrdensServico';
 const OrdensPage = () => {
   const { ordens, loading } = useOrdensServico();
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'TODOS'>('TODOS');
+  const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [search, setSearch] = useState('');
+
+  const bacias = [...new Set(ordens.map(os => os.bacia).filter(Boolean))].sort();
 
   const filtered = ordens.filter(os => {
     if (statusFilter !== 'TODOS' && os.status !== statusFilter) return false;
+    if (baciaFilter !== 'TODAS' && os.bacia !== baciaFilter) return false;
     if (search && !os.trecho.toLowerCase().includes(search.toLowerCase()) && !os.bacia.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -45,7 +49,7 @@ const OrdensPage = () => {
             className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(['TODOS', 'VERMELHO', 'AMARELO', 'VERDE'] as const).map(s => (
             <button
               key={s}
@@ -61,6 +65,34 @@ const OrdensPage = () => {
           ))}
         </div>
       </div>
+      {/* Bacia filter */}
+      {bacias.length > 1 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setBaciaFilter('TODAS')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              baciaFilter === 'TODAS'
+                ? 'bg-secondary text-secondary-foreground border-secondary'
+                : 'bg-card text-muted-foreground border-border hover:border-foreground/20'
+            }`}
+          >
+            Todas as bacias
+          </button>
+          {bacias.map(b => (
+            <button
+              key={b}
+              onClick={() => setBaciaFilter(b)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                baciaFilter === b
+                  ? 'bg-secondary text-secondary-foreground border-secondary'
+                  : 'bg-card text-muted-foreground border-border hover:border-foreground/20'
+              }`}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">

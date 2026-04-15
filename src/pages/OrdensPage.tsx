@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { MOCK_OS } from '@/data/mockData';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { Link } from 'react-router-dom';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Loader2 } from 'lucide-react';
+import { useOrdensServico } from '@/hooks/useOrdensServico';
 
 const OrdensPage = () => {
+  const { ordens, loading } = useOrdensServico();
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'TODOS'>('TODOS');
   const [search, setSearch] = useState('');
 
-  const filtered = MOCK_OS.filter(os => {
+  const filtered = ordens.filter(os => {
     if (statusFilter !== 'TODOS' && os.status !== statusFilter) return false;
     if (search && !os.trecho.toLowerCase().includes(search.toLowerCase()) && !os.bacia.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -21,7 +22,7 @@ const OrdensPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Ordens de Serviço</h1>
-          <p className="text-sm text-muted-foreground">{MOCK_OS.length} OS cadastradas</p>
+          <p className="text-sm text-muted-foreground">{ordens.length} OS cadastradas</p>
         </div>
         <Link
           to="/ordens/nova"
@@ -63,39 +64,49 @@ const OrdensPage = () => {
 
       {/* Table */}
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Trecho</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Bacia</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Comp. (m)</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">DN (m)</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Executor</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(os => (
-                <tr key={os.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                  <td className="px-4 py-3">
-                    <Link to={`/ordens/${os.id}`} className="font-medium text-secondary hover:underline">{os.trecho}</Link>
-                  </td>
-                  <td className="px-4 py-3 text-foreground">{os.bacia}</td>
-                  <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.comprimento_previsto}</td>
-                  <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.dn}</td>
-                  <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.executor || '—'}</td>
-                  <td className="px-4 py-3"><StatusBadge status={os.status} size="sm" /></td>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="animate-spin text-muted-foreground" size={24} />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Trecho</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Bacia</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Comp. (m)</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">DN (m)</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Executor</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Nenhuma OS encontrada</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtered.map(os => (
+                  <tr key={os.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3">
+                      <Link to={`/ordens/${os.id}`} className="font-medium text-secondary hover:underline">{os.trecho}</Link>
+                    </td>
+                    <td className="px-4 py-3 text-foreground">{os.bacia}</td>
+                    <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.comprimento_previsto}</td>
+                    <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.dn}</td>
+                    <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.executor || '—'}</td>
+                    <td className="px-4 py-3"><StatusBadge status={os.status} size="sm" /></td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                      {ordens.length === 0
+                        ? 'Nenhuma OS cadastrada. Importe o Planilhão para começar.'
+                        : 'Nenhuma OS encontrada com os filtros aplicados.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

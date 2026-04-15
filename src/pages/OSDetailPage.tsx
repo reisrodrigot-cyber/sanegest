@@ -1,8 +1,8 @@
 import { useParams, Link } from 'react-router-dom';
-import { MOCK_OS } from '@/data/mockData';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { useOrdemServico } from '@/hooks/useOrdensServico';
 
 const DataRow = ({ label, previsto, real }: { label: string; previsto: React.ReactNode; real?: React.ReactNode }) => (
   <div className="grid grid-cols-3 gap-2 py-2 border-b border-border last:border-0">
@@ -16,7 +16,17 @@ const DataRow = ({ label, previsto, real }: { label: string; previsto: React.Rea
 
 const OSDetailPage = () => {
   const { id } = useParams();
-  const os = MOCK_OS.find(o => o.id === id);
+  const { os, estacas, loading } = useOrdemServico(id);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-muted-foreground" size={24} />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!os) {
     return (
@@ -41,7 +51,6 @@ const OSDetailPage = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Header data */}
         <div className="bg-card rounded-xl border border-border shadow-sm p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Dados do Trecho</h2>
           <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
@@ -66,7 +75,6 @@ const OSDetailPage = () => {
           <DataRow label="BMs" previsto={os.bms} />
         </div>
 
-        {/* Info cards */}
         <div className="space-y-6">
           {os.executor && (
             <div className="bg-card rounded-xl border border-border shadow-sm p-6">
@@ -85,8 +93,7 @@ const OSDetailPage = () => {
         </div>
       </div>
 
-      {/* Estacas table */}
-      {os.estacas && os.estacas.length > 0 && (
+      {estacas.length > 0 && (
         <div className="mt-6 bg-card rounded-xl border border-border shadow-sm p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Tabela de Estacas</h2>
           <div className="overflow-x-auto">
@@ -99,7 +106,7 @@ const OSDetailPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {os.estacas.map(e => (
+                {estacas.map(e => (
                   <tr key={e.id} className="border-b border-border hover:bg-muted/20">
                     <td className="px-3 py-2 font-medium text-foreground whitespace-nowrap">{e.nome}</td>
                     <td className="px-3 py-2 text-foreground">{e.coord_n?.toFixed(2)}</td>

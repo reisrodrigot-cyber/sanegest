@@ -1,11 +1,23 @@
-import { MOCK_OS } from '@/data/mockData';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useState } from 'react';
+import { useOrdensServico } from '@/hooks/useOrdensServico';
+import { Loader2 } from 'lucide-react';
 
 const TopografiaPage = () => {
-  const amarelas = MOCK_OS.filter(os => os.status === 'AMARELO');
+  const { ordens, loading } = useOrdensServico();
+  const amarelas = ordens.filter(os => os.status === 'AMARELO');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-muted-foreground" size={24} />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -18,7 +30,7 @@ const TopografiaPage = () => {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <p className="font-medium text-foreground">{os.trecho}</p>
-                <p className="text-xs text-muted-foreground">{os.bacia} • {os.comprimento_real}m executado</p>
+                <p className="text-xs text-muted-foreground">{os.bacia} • {os.comprimento_real ?? os.comprimento_previsto}m</p>
               </div>
               <StatusBadge status={os.status} size="sm" />
             </div>

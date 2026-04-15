@@ -1,13 +1,25 @@
-import { MOCK_OS } from '@/data/mockData';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrdensServico } from '@/hooks/useOrdensServico';
+import { Loader2 } from 'lucide-react';
 
 const ProducaoPage = () => {
   const { user } = useAuth();
-  const minhasOS = MOCK_OS.filter(os => os.status === 'VERMELHO' && os.executor === user?.nome);
+  const { ordens, loading } = useOrdensServico();
+  const minhasOS = ordens.filter(os => os.status === 'VERMELHO');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-muted-foreground" size={24} />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -16,7 +28,7 @@ const ProducaoPage = () => {
 
       {minhasOS.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
-          Nenhuma OS vermelha atribuída a você no momento.
+          Nenhuma OS vermelha disponível no momento.
         </div>
       ) : (
         <div className="space-y-3">

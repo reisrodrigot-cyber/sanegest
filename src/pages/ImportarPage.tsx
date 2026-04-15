@@ -125,14 +125,16 @@ const ImportarPage = () => {
     try {
       const buffer = await f.arrayBuffer();
       const data = parseExcel(buffer);
+      console.log(`Planilhão: ${data.length} trechos únicos identificados`);
       if (data.length === 0) {
         toast.error('Nenhum trecho válido encontrado (coluna B preenchida a partir da linha 22).');
         setParsing(false);
         return;
       }
       setParsedData(data);
-      toast.success(`${data.length} trechos identificados.`);
+      toast.success(`${data.length} trechos únicos identificados.`);
     } catch (err: any) {
+      console.error('Parse error:', err);
       toast.error(err.message || 'Erro ao ler o arquivo.');
     } finally {
       setParsing(false);

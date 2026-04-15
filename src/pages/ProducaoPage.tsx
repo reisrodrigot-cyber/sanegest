@@ -8,7 +8,10 @@ import { Loader2 } from 'lucide-react';
 const ProducaoPage = () => {
   const { user } = useAuth();
   const { ordens, loading } = useOrdensServico();
-  const minhasOS = ordens.filter(os => os.status === 'VERMELHO');
+  // Encarregado only sees OS explicitly released to them
+  const minhasOS = ordens.filter(os =>
+    os.liberado && os.liberado_para === user?.nome
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   if (loading) {
@@ -28,7 +31,7 @@ const ProducaoPage = () => {
 
       {minhasOS.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
-          Nenhuma OS vermelha disponível no momento.
+          Nenhuma OS liberada para você no momento. A Sala Técnica precisa liberar as OS antes.
         </div>
       ) : (
         <div className="space-y-3">

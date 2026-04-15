@@ -153,6 +153,8 @@ export type Database = {
           largura_pav_prevista: number | null
           largura_pav_real: number | null
           largura_vala: number | null
+          liberado: boolean
+          liberado_para: string | null
           ligacoes_previstas: number | null
           ligacoes_real: number | null
           pav_m2_previsto: number | null
@@ -189,6 +191,8 @@ export type Database = {
           largura_pav_prevista?: number | null
           largura_pav_real?: number | null
           largura_vala?: number | null
+          liberado?: boolean
+          liberado_para?: string | null
           ligacoes_previstas?: number | null
           ligacoes_real?: number | null
           pav_m2_previsto?: number | null
@@ -225,6 +229,8 @@ export type Database = {
           largura_pav_prevista?: number | null
           largura_pav_real?: number | null
           largura_vala?: number | null
+          liberado?: boolean
+          liberado_para?: string | null
           ligacoes_previstas?: number | null
           ligacoes_real?: number | null
           pav_m2_previsto?: number | null

@@ -63,7 +63,8 @@ export interface OrdemServico {
   prazo_previsto: number | null;
   prazo_arredondado: number | null;
   bms: string | null;
-
+  liberado: boolean;
+  liberado_para: string | null;
   // As-built
   as_built_lat: number | null;
   as_built_lng: number | null;

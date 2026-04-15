@@ -14,16 +14,349 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      estacas: {
+        Row: {
+          cc: number | null
+          coord_e: number | null
+          coord_n: number | null
+          cr: number | null
+          created_at: string
+          ct: number | null
+          declividade: number | null
+          diametro: number | null
+          g: number | null
+          h: number | null
+          id: string
+          nome: string
+          os_id: string
+          p: number | null
+          pv_nome: string | null
+          pv_prof: number | null
+          pv_tipo: Database["public"]["Enums"]["pv_tipo"] | null
+          r: number | null
+          updated_at: string
+        }
+        Insert: {
+          cc?: number | null
+          coord_e?: number | null
+          coord_n?: number | null
+          cr?: number | null
+          created_at?: string
+          ct?: number | null
+          declividade?: number | null
+          diametro?: number | null
+          g?: number | null
+          h?: number | null
+          id?: string
+          nome: string
+          os_id: string
+          p?: number | null
+          pv_nome?: string | null
+          pv_prof?: number | null
+          pv_tipo?: Database["public"]["Enums"]["pv_tipo"] | null
+          r?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cc?: number | null
+          coord_e?: number | null
+          coord_n?: number | null
+          cr?: number | null
+          created_at?: string
+          ct?: number | null
+          declividade?: number | null
+          diametro?: number | null
+          g?: number | null
+          h?: number | null
+          id?: string
+          nome?: string
+          os_id?: string
+          p?: number | null
+          pv_nome?: string | null
+          pv_prof?: number | null
+          pv_tipo?: Database["public"]["Enums"]["pv_tipo"] | null
+          r?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estacas_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      materiais_entrega: {
+        Row: {
+          created_at: string
+          data_entrega: string
+          descricao: string
+          divergencia: boolean | null
+          id: string
+          obs_divergencia: string | null
+          os_id: string
+          quantidade: number
+          unidade: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_entrega?: string
+          descricao: string
+          divergencia?: boolean | null
+          id?: string
+          obs_divergencia?: string | null
+          os_id: string
+          quantidade?: number
+          unidade?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_entrega?: string
+          descricao?: string
+          divergencia?: boolean | null
+          id?: string
+          obs_divergencia?: string | null
+          os_id?: string
+          quantidade?: number
+          unidade?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materiais_entrega_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordens_servico: {
+        Row: {
+          areia: string | null
+          as_built_lat: number | null
+          as_built_lng: number | null
+          bacia: string
+          bms: string | null
+          bomba_rebaixo: boolean | null
+          brita: string | null
+          comprimento_previsto: number | null
+          comprimento_real: number | null
+          created_at: string
+          dn: number | null
+          executor: string | null
+          id: string
+          largura_pav_prevista: number | null
+          largura_pav_real: number | null
+          largura_vala: number | null
+          ligacoes_previstas: number | null
+          ligacoes_real: number | null
+          pav_m2_previsto: number | null
+          pav_m2_real: number | null
+          pav_previsto: string | null
+          pav_real: string | null
+          prazo_arredondado: number | null
+          prazo_previsto: number | null
+          prof_jusante: number | null
+          prof_media_executada: number | null
+          prof_media_prevista: number | null
+          prof_media_real: number | null
+          prof_montante: number | null
+          pv_jusante: string | null
+          pv_montante: string | null
+          status: Database["public"]["Enums"]["os_status"]
+          trecho: string
+          updated_at: string
+        }
+        Insert: {
+          areia?: string | null
+          as_built_lat?: number | null
+          as_built_lng?: number | null
+          bacia?: string
+          bms?: string | null
+          bomba_rebaixo?: boolean | null
+          brita?: string | null
+          comprimento_previsto?: number | null
+          comprimento_real?: number | null
+          created_at?: string
+          dn?: number | null
+          executor?: string | null
+          id?: string
+          largura_pav_prevista?: number | null
+          largura_pav_real?: number | null
+          largura_vala?: number | null
+          ligacoes_previstas?: number | null
+          ligacoes_real?: number | null
+          pav_m2_previsto?: number | null
+          pav_m2_real?: number | null
+          pav_previsto?: string | null
+          pav_real?: string | null
+          prazo_arredondado?: number | null
+          prazo_previsto?: number | null
+          prof_jusante?: number | null
+          prof_media_executada?: number | null
+          prof_media_prevista?: number | null
+          prof_media_real?: number | null
+          prof_montante?: number | null
+          pv_jusante?: string | null
+          pv_montante?: string | null
+          status?: Database["public"]["Enums"]["os_status"]
+          trecho: string
+          updated_at?: string
+        }
+        Update: {
+          areia?: string | null
+          as_built_lat?: number | null
+          as_built_lng?: number | null
+          bacia?: string
+          bms?: string | null
+          bomba_rebaixo?: boolean | null
+          brita?: string | null
+          comprimento_previsto?: number | null
+          comprimento_real?: number | null
+          created_at?: string
+          dn?: number | null
+          executor?: string | null
+          id?: string
+          largura_pav_prevista?: number | null
+          largura_pav_real?: number | null
+          largura_vala?: number | null
+          ligacoes_previstas?: number | null
+          ligacoes_real?: number | null
+          pav_m2_previsto?: number | null
+          pav_m2_real?: number | null
+          pav_previsto?: string | null
+          pav_real?: string | null
+          prazo_arredondado?: number | null
+          prazo_previsto?: number | null
+          prof_jusante?: number | null
+          prof_media_executada?: number | null
+          prof_media_prevista?: number | null
+          prof_media_real?: number | null
+          prof_montante?: number | null
+          pv_jusante?: string | null
+          pv_montante?: string | null
+          status?: Database["public"]["Enums"]["os_status"]
+          trecho?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      topografia_asbuilt: {
+        Row: {
+          coord_e: number | null
+          coord_n: number | null
+          created_at: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          observacao: string | null
+          os_id: string
+          registrado_por: string | null
+        }
+        Insert: {
+          coord_e?: number | null
+          coord_n?: number | null
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          observacao?: string | null
+          os_id: string
+          registrado_por?: string | null
+        }
+        Update: {
+          coord_e?: number | null
+          coord_n?: number | null
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          observacao?: string | null
+          os_id?: string
+          registrado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topografia_asbuilt_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "gerencia"
+        | "sala_tecnica"
+        | "almoxarifado"
+        | "encarregado"
+        | "topografo"
+      os_status: "VERMELHO" | "AMARELO" | "VERDE"
+      pv_tipo: "PV" | "TIL" | "TL"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +483,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "gerencia",
+        "sala_tecnica",
+        "almoxarifado",
+        "encarregado",
+        "topografo",
+      ],
+      os_status: ["VERMELHO", "AMARELO", "VERDE"],
+      pv_tipo: ["PV", "TIL", "TL"],
+    },
   },
 } as const

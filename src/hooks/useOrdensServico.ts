@@ -35,6 +35,8 @@ function mapOS(row: any): OrdemServico {
     prazo_previsto: row.prazo_previsto ?? null,
     prazo_arredondado: row.prazo_arredondado ?? null,
     bms: row.bms ?? null,
+    liberado: row.liberado ?? false,
+    liberado_para: row.liberado_para ?? null,
     as_built_lat: row.as_built_lat != null ? Number(row.as_built_lat) : null,
     as_built_lng: row.as_built_lng != null ? Number(row.as_built_lng) : null,
     created_at: row.created_at,

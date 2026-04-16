@@ -419,6 +419,55 @@ const OSDetailPage = () => {
         <p className="text-sm text-muted-foreground mt-1">{os.bacia} • PV {os.pv_montante} → {os.pv_jusante}</p>
       </div>
 
+      {/* Status Selector for Sala Técnica / Admin */}
+      {isSalaTecnica && (
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Controle de Status</h3>
+          <div className="flex flex-wrap gap-3">
+            {STATUS_CONFIG.map(s => (
+              <button
+                key={s.value}
+                onClick={() => handleStatusChange(s.value)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                  os.status === s.value
+                    ? `${s.ring} ring-2 border-transparent ${s.color} text-white`
+                    : 'border-border text-muted-foreground hover:border-foreground/30'
+                }`}
+              >
+                <span className={`w-3 h-3 rounded-full ${s.color}`} />
+                <span>{s.label}</span>
+                <span className="text-xs opacity-70">— {s.description}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Status Change Confirmation Dialog */}
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alteração de status</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirmar alteração de status para <strong>{pendingStatus}</strong>?
+              {asBuiltWarning && (
+                <span className="flex items-center gap-2 mt-3 p-3 bg-amber-50 text-amber-800 rounded-lg border border-amber-200">
+                  <AlertTriangle size={16} className="shrink-0" />
+                  Esta OS não possui coordenadas as-built registradas.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={changingStatus}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStatusChange} disabled={changingStatus}>
+              {changingStatus ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Ações da Sala Técnica */}
       {isSalaTecnica && (
         <div className="flex flex-wrap gap-3 mb-6">

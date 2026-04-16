@@ -576,6 +576,8 @@ const OSDetailPage = () => {
       <div className="mt-6">
         <MateriaisEntreguesSection osId={os.id} canEdit={user?.role === 'almoxarifado' || user?.role === 'sala_tecnica'} />
       </div>
+
+      {estacas.length > 0 && (
         <div className="mt-6 bg-card rounded-xl border border-border shadow-sm p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Tabela de Estacas</h2>
           <div className="overflow-x-auto">

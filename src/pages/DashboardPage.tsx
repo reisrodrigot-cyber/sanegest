@@ -6,7 +6,7 @@ import { ROLE_LABELS } from '@/types/sanegest';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { OSMap } from '@/components/OSMap';
-import { Progress } from '@/components/ui/progress';
+
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useMemo } from 'react';
 
@@ -100,48 +100,40 @@ const DashboardPage = () => {
         </div>
       ) : (
         <>
-          <div className="grid lg:grid-cols-2 gap-6 mt-6">
-            {/* 2º Avanço Físico */}
-            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-              <h2 className="text-lg font-semibold text-foreground mb-1">Avanço Físico</h2>
-              <p className="text-sm text-muted-foreground mb-4">{avanco}% concluído</p>
-              <Progress value={avanco} className="h-5 bg-muted" />
-              <p className="text-sm text-muted-foreground mt-3">
-                <span className="font-semibold text-foreground">{totalExecutado.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</span> metros executados de{' '}
-                <span className="font-semibold text-foreground">{totalPrevisto.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</span> metros previstos
-              </p>
-            </div>
+          <p className="text-sm text-muted-foreground mt-4 mb-6">
+            Avanço Físico: <span className="font-semibold text-foreground">{totalExecutado.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m</span> executados de{' '}
+            <span className="font-semibold text-foreground">{totalPrevisto.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m</span> previstos ({avanco}%)
+          </p>
 
-            {/* Produção Semanal */}
-            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-              <h2 className="text-lg font-semibold text-foreground mb-1">Produção Semanal (m)</h2>
-              <p className="text-sm text-muted-foreground mb-4">Últimas 4 semanas</p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyData}>
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} unit="m" />
-                    <Tooltip
-                      formatter={(value: number) => [`${value} m`, 'Produção']}
-                    />
-                    <Bar dataKey="metros" radius={[6, 6, 0, 0]}>
-                      {weeklyData.map((entry, i) => (
-                        <Cell key={i} fill={entry.isCurrent ? '#0C447C' : '#4A9FE0'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                <span>Esta semana: <span className="font-semibold text-foreground">{semanaAtual} m</span></span>
-                <span>Semana passada: <span className="font-semibold text-foreground">{semanaPassada} m</span></span>
-                {diff !== 0 && (
-                  <span className={`flex items-center gap-1 font-medium ${diff > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {diff > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                    {diff > 0 ? '+' : ''}{diff.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
-                  </span>
-                )}
-              </div>
+          {/* Produção Semanal */}
+          <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h2 className="text-lg font-semibold text-foreground mb-1">Produção Semanal (m)</h2>
+            <p className="text-sm text-muted-foreground mb-4">Últimas 4 semanas</p>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyData}>
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} unit="m" />
+                  <Tooltip
+                    formatter={(value: number) => [`${value} m`, 'Produção']}
+                  />
+                  <Bar dataKey="metros" radius={[6, 6, 0, 0]}>
+                    {weeklyData.map((entry, i) => (
+                      <Cell key={i} fill={entry.isCurrent ? '#0C447C' : '#4A9FE0'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+              <span>Esta semana: <span className="font-semibold text-foreground">{semanaAtual} m</span></span>
+              <span>Semana passada: <span className="font-semibold text-foreground">{semanaPassada} m</span></span>
+              {diff !== 0 && (
+                <span className={`flex items-center gap-1 font-medium ${diff > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {diff > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                  {diff > 0 ? '+' : ''}{diff.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
+                </span>
+              )}
             </div>
           </div>
 

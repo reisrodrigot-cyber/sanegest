@@ -586,10 +586,42 @@ const OSDetailPage = () => {
               ✏ Editar
             </button>
           )}
+          {!editing && (
+            <button
+              onClick={() => setDeleteDialogOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90"
+            >
+              <Trash2 size={14} />
+              Excluir OS
+            </button>
+          )}
         </div>
       )}
 
-      {/* Botão Editar Real para encarregado */}
+      {/* Confirmação de exclusão da OS */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Ordem de Serviço?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza? Esta ação não pode ser desfeita. Todos os dados relacionados
+              (estacas, materiais, registros de produção, ligações e histórico) serão
+              permanentemente removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingOs}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteOs}
+              disabled={deletingOs}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingOs ? <Loader2 size={14} className="animate-spin mr-2" /> : <Trash2 size={14} className="mr-2" />}
+              Excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {isEncarregado && !editingReal && !editing && (
         <div className="flex flex-wrap gap-3 mb-6">
           <button

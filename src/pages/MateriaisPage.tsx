@@ -53,9 +53,18 @@ interface MaterialForm {
   descricao: string;
   quantidade: string;
   unidade: string;
+  locked?: boolean;
 }
 
 const EMPTY_MATERIAL: MaterialForm = { descricao: '', quantidade: '', unidade: 'un' };
+
+function getDefaultMateriais(os: OrdemServico): MaterialForm[] {
+  if (os.dn != null) {
+    const dnInt = Math.round(os.dn * 1000);
+    return [{ descricao: `Tubo DN ${dnInt}`, quantidade: '', unidade: 'UND', locked: true }];
+  }
+  return [{ ...EMPTY_MATERIAL }];
+}
 
 const MateriaisPage = () => {
   const { ordens, loading } = useOrdensServico();
@@ -70,7 +79,8 @@ const MateriaisPage = () => {
       setOpenId(null);
     } else {
       setOpenId(osId);
-      setMateriais([{ ...EMPTY_MATERIAL }]);
+      const os = ordens.find(o => o.id === osId);
+      setMateriais(os ? getDefaultMateriais(os) : [{ ...EMPTY_MATERIAL }]);
     }
   };
 

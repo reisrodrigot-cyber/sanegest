@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { MateriaisEntreguesSection } from '@/components/MateriaisEntreguesSection';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,24 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { permissions } from '@/lib/permissions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+type OSStatus = 'VERMELHO' | 'AMARELO' | 'VERDE';
+
+const STATUS_CONFIG: { value: OSStatus; label: string; description: string; color: string; ring: string }[] = [
+  { value: 'VERMELHO', label: 'Vermelho', description: 'Liberada, em execução', color: 'bg-status-red', ring: 'ring-status-red' },
+  { value: 'AMARELO', label: 'Amarelo', description: 'Produção validada', color: 'bg-status-yellow', ring: 'ring-status-yellow' },
+  { value: 'VERDE', label: 'Verde', description: 'Concluída (as-built registrado)', color: 'bg-status-green', ring: 'ring-status-green' },
+];
 
 const PAV_OPTIONS = [
   'Terreno Natural',

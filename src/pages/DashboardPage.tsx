@@ -23,11 +23,6 @@ const DashboardPage = () => {
   const { user, effectiveRole } = useAuth();
   const { ordens, loading } = useOrdensServico();
 
-  // Encarregado tem dashboard exclusivo
-  if (effectiveRole === 'encarregado') {
-    return <DashboardEncarregadoPage />;
-  }
-
   const { data: divergencias = [] } = useQuery({
     queryKey: ['divergencias-abertas'],
     queryFn: async () => {
@@ -75,6 +70,11 @@ const DashboardPage = () => {
     os.liberado && os.status === 'VERMELHO' && !os.comprimento_real && new Date(os.updated_at) < seteDiasAtras
   );
   const temAlertas = divergencias.length > 0 || nsSemProducao.length > 0;
+
+  // Encarregado tem dashboard exclusivo (após todos os hooks)
+  if (effectiveRole === 'encarregado') {
+    return <DashboardEncarregadoPage />;
+  }
 
   if (loading) {
     return (

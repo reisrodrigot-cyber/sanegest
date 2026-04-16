@@ -167,6 +167,37 @@ const OSDetailPage = () => {
   const isSalaTecnica = permissions.canEditOS(effectiveRole);
   const isEncarregado = permissions.canEditProducao(effectiveRole) && effectiveRole === 'encarregado';
 
+  const handleStatusChange = (newStatus: OSStatus) => {
+    if (!os || newStatus === os.status) return;
+    setPendingStatus(newStatus);
+    // Check as-built warning for VERDE
+    if (newStatus === 'VERDE' && !os.as_built_lat) {
+      setAsBuiltWarning(true);
+    } else {
+      setAsBuiltWarning(false);
+    }
+    setStatusDialogOpen(true);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!os || !pendingStatus) return;
+    setChangingStatus(true);
+    const previousStatus = os.status;
+    const { error } = await supabase
+      .from('ordens_servico')
+      .update({ status: pendingStatus } as any)
+      .eq('id', os.id);
+    if (error) {
+      toast.error('Erro ao alterar status: ' + error.message);
+    } else {
+      const now = new Date().toLocaleString('pt-BR');
+      toast.success(`Status alterado de ${previousStatus} para ${pendingStatus} por Sala Técnica em ${now}`);
+      window.location.reload();
+    }
+    setChangingStatus(false);
+    setStatusDialogOpen(false);
+  };
+
   const startEditing = () => {
     if (!os) return;
     const fields: Record<string, string> = {

@@ -113,11 +113,14 @@ const ReadOnlyRow = ({ label, previsto, real }: { label: string; previsto: unkno
 );
 
 const ProducaoPage = () => {
-  const { user } = useAuth();
+  const { user, effectiveRole } = useAuth();
   const { ordens, loading, refetch } = useOrdensServico();
-  const minhasOS = ordens.filter(os =>
-    os.liberado && os.liberado_para === user?.nome
-  );
+  // Admin viewing as encarregado sees all liberadas; real encarregado sees only their own
+  const minhasOS = ordens.filter(os => {
+    if (!os.liberado) return false;
+    if (user?.role === 'admin') return true; // Admin simulating sees all
+    return os.liberado_para === user?.nome;
+  });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [fields, setFields] = useState<RealFields | null>(null);
   const [saving, setSaving] = useState(false);

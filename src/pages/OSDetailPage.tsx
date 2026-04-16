@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { MOCK_USERS } from '@/data/mockData';
-import { PavimentoRealSelect, parsePavRealToTypes, typesToPavReal } from '@/components/PavimentoRealSelect';
+
 
 function fmt(val: unknown): string {
   if (val == null) return '—';
@@ -454,29 +454,7 @@ const OSDetailPage = () => {
                   onChange={updateEditField}
                 />
               ))}
-              <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-start">
-                <span className="text-sm text-muted-foreground pt-1">Pavimento (Real)</span>
-                <span className="text-sm text-muted-foreground pt-1">—</span>
-                <PavimentoRealSelect
-                  selectedTypes={parsePavRealToTypes(editFields.pav_real)}
-                  onTypesChange={(types) => {
-                    const newFields = { ...editFields, pav_real: types.join(' / ') };
-                    Object.keys(newFields).forEach(k => {
-                      if (k.startsWith('pav_ext_real_')) {
-                        const t = k.replace('pav_ext_real_', '');
-                        if (!types.includes(t)) delete newFields[k];
-                      }
-                    });
-                    setEditFields(newFields);
-                  }}
-                  extensions={Object.fromEntries(
-                    Object.entries(editFields)
-                      .filter(([k]) => k.startsWith('pav_ext_real_'))
-                      .map(([k, v]) => [k.replace('pav_ext_real_', ''), v])
-                  )}
-                  onExtensionChange={(type, val) => updateEditField(`pav_ext_real_${type}`, val)}
-                />
-              </div>
+              <EditableRow label="Pavimento (Real)" previstoValue="" realValue={editFields.pav_real} previstoField="" realField="pav_real" onChange={updateEditField} />
               <EditableRow label="Largura PAV (m)" previstoValue={editFields.largura_pav_prevista} realValue={editFields.largura_pav_real} previstoField="largura_pav_prevista" realField="largura_pav_real" onChange={updateEditField} />
               <EditableRow label="PAV (m²)" previstoValue={editFields.pav_m2_previsto} realValue={editFields.pav_m2_real} previstoField="pav_m2_previsto" realField="pav_m2_real" onChange={updateEditField} />
               <EditableRow label="Ligações" previstoValue={editFields.ligacoes_previstas} realValue={editFields.ligacoes_real} previstoField="ligacoes_previstas" realField="ligacoes_real" onChange={updateEditField} />
@@ -500,31 +478,7 @@ const OSDetailPage = () => {
               <DataRow label="Largura Vala (m)" previsto={os.largura_vala} />
               <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} />
               <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />
-              <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-start">
-                <span className="text-sm text-muted-foreground pt-1">Pavimento</span>
-                <span className="text-sm font-medium text-foreground pt-1">{fmt(os.pav_previsto)}</span>
-                <PavimentoRealSelect
-                  selectedTypes={parsePavRealToTypes(realFields.pav_real)}
-                  onTypesChange={(types) => {
-                    updateRealField('pav_real', types.join(' / '));
-                    // clean up removed extension fields
-                    const newFields = { ...realFields, pav_real: types.join(' / ') };
-                    Object.keys(newFields).forEach(k => {
-                      if (k.startsWith('pav_ext_real_')) {
-                        const t = k.replace('pav_ext_real_', '');
-                        if (!types.includes(t)) delete newFields[k];
-                      }
-                    });
-                    setRealFields(newFields);
-                  }}
-                  extensions={Object.fromEntries(
-                    Object.entries(realFields)
-                      .filter(([k]) => k.startsWith('pav_ext_real_'))
-                      .map(([k, v]) => [k.replace('pav_ext_real_', ''), v])
-                  )}
-                  onExtensionChange={(type, val) => updateRealField(`pav_ext_real_${type}`, val)}
-                />
-              </div>
+              <RealEditableRow label="Pavimento" previsto={os.pav_previsto} realValue={realFields.pav_real} realField="pav_real" onChange={updateRealField} />
               <RealEditableRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} realValue={realFields.largura_pav_real} realField="largura_pav_real" onChange={updateRealField} />
               <RealEditableRow label="PAV (m²)" previsto={os.pav_m2_previsto} realValue={realFields.pav_m2_real} realField="pav_m2_real" onChange={updateRealField} />
               <RealEditableRow label="Ligações" previsto={os.ligacoes_previstas} realValue={realFields.ligacoes_real} realField="ligacoes_real" onChange={updateRealField} />

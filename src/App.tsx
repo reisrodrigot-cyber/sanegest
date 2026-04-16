@@ -4,7 +4,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 import LoginPage from "./pages/LoginPage";
+import NoRolePage from "./pages/NoRolePage";
 import DashboardPage from "./pages/DashboardPage";
 import OrdensPage from "./pages/OrdensPage";
 import OSDetailPage from "./pages/OSDetailPage";
@@ -18,18 +20,28 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const { isAuthenticated, supabaseUser, loading } = useAuth();
+  if (loading) return null;
+  if (!supabaseUser) return <Navigate to="/login" replace />;
+  if (supabaseUser && !isAuthenticated) return <NoRolePage />;
   return <>{children}</>;
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, supabaseUser, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-primary" size={32} />
+      </div>
+    );
+  }
 
   return (
     <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-      <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
+      <Route path="/login" element={supabaseUser ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+      <Route path="/" element={<Navigate to={supabaseUser ? "/dashboard" : "/login"} replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/ordens" element={<ProtectedRoute><OrdensPage /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetailPage /></ProtectedRoute>} />

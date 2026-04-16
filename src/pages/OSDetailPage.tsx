@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MOCK_USERS } from '@/data/mockData';
+import { permissions } from '@/lib/permissions';
 
 const PAV_OPTIONS = [
   'Terreno Natural',
@@ -142,9 +142,8 @@ const OSDetailPage = () => {
   const [realFields, setRealFields] = useState<Record<string, string>>({});
   const [savingReal, setSavingReal] = useState(false);
 
-  const encarregados = MOCK_USERS.filter(u => u.role === 'encarregado');
-  const isSalaTecnica = user?.role === 'sala_tecnica';
-  const isEncarregado = user?.role === 'encarregado';
+  const isSalaTecnica = permissions.canEditOS(user?.role);
+  const isEncarregado = permissions.canEditProducao(user?.role) && user?.role === 'encarregado';
 
   const startEditing = () => {
     if (!os) return;

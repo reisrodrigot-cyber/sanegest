@@ -45,12 +45,15 @@ const DashboardEncarregadoPage = () => {
     const load = async () => {
       const [regAll, osAll] = await Promise.all([
         supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, user_id'),
-        supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, prazo_previsto, liberado_para, updated_at'),
+        supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, prazo_previsto, liberado_para, executor, updated_at'),
       ]);
       setAllRegistros((regAll.data ?? []) as RegistroRow[]);
-      // OS atribuídas a este encarregado (via display_name salvo em liberado_para)
+      // OS atribuídas a este encarregado: usa "executor" (encarregado da OS),
+      // com fallback para "liberado_para" (display_name) por compatibilidade.
       const myName = user.nome;
-      const mine = (osAll.data ?? []).filter((o: any) => o.liberado_para === myName) as OSRow[];
+      const mine = (osAll.data ?? []).filter(
+        (o: any) => o.executor === myName || o.liberado_para === myName,
+      ) as OSRow[];
       setMyOS(mine);
       setLoading(false);
     };

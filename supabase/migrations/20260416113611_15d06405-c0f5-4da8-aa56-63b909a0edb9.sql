@@ -1,0 +1,1 @@
+ALTER TABLE public.topografia_asbuilt ADD COLUMN nome_estaca TEXT;

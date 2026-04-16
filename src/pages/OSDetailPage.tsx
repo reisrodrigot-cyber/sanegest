@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
+import { MateriaisEntreguesSection } from '@/components/MateriaisEntreguesSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -571,7 +572,10 @@ const OSDetailPage = () => {
         </div>
       </div>
 
-      {estacas.length > 0 && (
+      {/* Materiais Entregues */}
+      <div className="mt-6">
+        <MateriaisEntreguesSection osId={os.id} canEdit={user?.role === 'almoxarifado' || user?.role === 'sala_tecnica'} />
+      </div>
         <div className="mt-6 bg-card rounded-xl border border-border shadow-sm p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Tabela de Estacas</h2>
           <div className="overflow-x-auto">

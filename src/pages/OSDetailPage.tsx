@@ -173,6 +173,28 @@ const OSDetailPage = () => {
   const [pendingStatus, setPendingStatus] = useState<OSStatus | null>(null);
   const [changingStatus, setChangingStatus] = useState(false);
   const [asBuiltWarning, setAsBuiltWarning] = useState(false);
+  const [savingEncarregado, setSavingEncarregado] = useState(false);
+
+  // Fetch encarregados from user_roles + profiles
+  const { data: encarregados = [] } = useQuery({
+    queryKey: ['encarregados-list'],
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'encarregado');
+      if (!roles || roles.length === 0) return [];
+      const userIds = roles.map(r => r.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, email')
+        .in('user_id', userIds);
+      return (profiles ?? []).map(p => ({
+        user_id: p.user_id,
+        name: p.display_name || p.email || 'Sem nome',
+      }));
+    },
+  });
 
   const isSalaTecnica = permissions.canEditOS(effectiveRole);
   const isEncarregado = permissions.canEditProducao(effectiveRole) && effectiveRole === 'encarregado';

@@ -90,7 +90,7 @@ const MateriaisPage = () => {
   const { ordens, loading } = useOrdensServico();
   const pendentes = ordens.filter(os => os.liberado);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [newItem, setNewItem] = useState<MaterialForm>({ ...EMPTY_MATERIAL });
+  const [items, setItems] = useState<MaterialForm[]>([]);
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [historico, setHistorico] = useState<Record<string, MaterialDB[]>>({});
@@ -131,12 +131,15 @@ const MateriaisPage = () => {
     } else {
       setOpenId(osId);
       const os = ordens.find(o => o.id === osId);
-      if (os?.dn != null) {
+      const osHist = historico[osId] || [];
+      const hasTubo = osHist.some(m => m.descricao.toLowerCase().startsWith('tubo dn'));
+      const initial: MaterialForm[] = [];
+      if (!hasTubo && os?.dn != null) {
         const dnInt = Math.round(os.dn * 1000);
-        setNewItem({ descricao: `Tubo DN ${dnInt}`, quantidade: '', unidade: 'UND', locked: true });
-      } else {
-        setNewItem({ ...EMPTY_MATERIAL });
+        initial.push({ descricao: `Tubo DN ${dnInt}`, quantidade: '', unidade: 'UND', locked: true });
       }
+      initial.push({ ...EMPTY_MATERIAL });
+      setItems(initial);
     }
   };
 
@@ -144,8 +147,15 @@ const MateriaisPage = () => {
     setExpandedId(prev => prev === osId ? null : osId);
   };
 
-  const updateField = (field: keyof MaterialForm, value: string) => {
-    setNewItem(prev => ({ ...prev, [field]: value }));
+  const updateItem = (idx: number, field: keyof MaterialForm, value: string) => {
+    setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  };
+
+  const addRow = () => setItems(prev => [...prev, { ...EMPTY_MATERIAL }]);
+
+  const removeRow = (idx: number) => {
+    if (items.length <= 1) return;
+    setItems(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handleDelete = async (id: string) => {
@@ -161,27 +171,25 @@ const MateriaisPage = () => {
 
   const handleSave = async () => {
     if (!openId) return;
-    if (!newItem.descricao.trim()) {
-      toast.error('Preencha a descrição do material.');
-      return;
-    }
-    if (!Number(newItem.quantidade) || Number(newItem.quantidade) <= 0) {
-      toast.error('A quantidade deve ser maior que zero.');
+    const valid = items.filter(m => m.descricao.trim() && Number(m.quantidade) > 0);
+    if (valid.length === 0) {
+      toast.error('Preencha descrição e quantidade (> 0) de pelo menos um item.');
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from('materiais_entrega').insert({
+    const rows = valid.map(m => ({
       os_id: openId,
-      descricao: newItem.descricao.trim(),
-      quantidade: Number(newItem.quantidade),
-      unidade: newItem.unidade || 'un',
-    } as any);
+      descricao: m.descricao.trim(),
+      quantidade: Number(m.quantidade),
+      unidade: m.unidade || 'un',
+    }));
+    const { error } = await supabase.from('materiais_entrega').insert(rows as any);
     if (error) {
       toast.error('Erro ao registrar: ' + error.message);
     } else {
-      toast.success('Material registrado!');
+      toast.success(`${rows.length} material(is) registrado(s)!`);
       setOpenId(null);
-      setNewItem({ ...EMPTY_MATERIAL });
+      setItems([]);
       fetchHistorico();
     }
     setSaving(false);

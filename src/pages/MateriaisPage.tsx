@@ -85,7 +85,8 @@ function formatDate(dateStr: string): string {
 }
 
 const MateriaisPage = () => {
-  const { ordens, loading } = useOrdensServico();
+  const { user } = useAuth();
+  const canDelete = user?.role === 'almoxarifado' || user?.role === 'sala_tecnica';
   const pendentes = ordens.filter(os => os.liberado);
   const [openId, setOpenId] = useState<string | null>(null);
   const [materiais, setMateriais] = useState<MaterialForm[]>([{ ...EMPTY_MATERIAL }]);
@@ -148,6 +149,17 @@ const MateriaisPage = () => {
     setMateriais(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Confirmar exclusão desta entrega?')) return;
+    const { error } = await supabase.from('materiais_entrega').delete().eq('id', id);
+    if (error) {
+      toast.error('Erro ao excluir: ' + error.message);
+    } else {
+      toast.success('Entrega excluída.');
+      fetchHistorico();
+    }
+  };
+
   const handleSave = async () => {
     if (!openId) return;
     const valid = materiais.filter(m => m.descricao.trim());
@@ -155,11 +167,16 @@ const MateriaisPage = () => {
       toast.error('Preencha ao menos um material');
       return;
     }
+    const withQty = valid.filter(m => Number(m.quantidade) > 0);
+    if (withQty.length === 0) {
+      toast.error('A quantidade deve ser maior que zero.');
+      return;
+    }
     setSaving(true);
-    const rows = valid.map(m => ({
+    const rows = withQty.map(m => ({
       os_id: openId,
       descricao: m.descricao.trim(),
-      quantidade: Number(m.quantidade) || 0,
+      quantidade: Number(m.quantidade),
       unidade: m.unidade || 'un',
     }));
     const { error } = await supabase.from('materiais_entrega').insert(rows as any);
@@ -229,18 +246,28 @@ const MateriaisPage = () => {
                   <p className="text-xs text-muted-foreground">Nenhum material registrado ainda.</p>
                 ) : (
                   <div className="space-y-0">
-                    <div className="grid grid-cols-4 gap-2 pb-1 border-b border-border mb-1">
+                    <div className={`grid gap-2 pb-1 border-b border-border mb-1 ${canDelete ? 'grid-cols-[1fr_60px_60px_80px_32px]' : 'grid-cols-4'}`}>
                       <span className="text-xs font-semibold text-muted-foreground">Descrição</span>
                       <span className="text-xs font-semibold text-muted-foreground">Qtd</span>
                       <span className="text-xs font-semibold text-muted-foreground">Un.</span>
                       <span className="text-xs font-semibold text-muted-foreground">Data</span>
+                      {canDelete && <span />}
                     </div>
                     {osHistorico.map(m => (
-                      <div key={m.id} className="grid grid-cols-4 gap-2 py-1 border-b border-border last:border-0">
+                      <div key={m.id} className={`grid gap-2 py-1 border-b border-border last:border-0 items-center ${canDelete ? 'grid-cols-[1fr_60px_60px_80px_32px]' : 'grid-cols-4'}`}>
                         <span className="text-xs text-foreground">{m.descricao}</span>
                         <span className="text-xs text-foreground">{m.quantidade}</span>
                         <span className="text-xs text-foreground">{m.unidade}</span>
                         <span className="text-xs text-foreground">{formatDate(m.data_entrega)}</span>
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(m.id)}
+                            className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                            title="Excluir entrega"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -190,7 +190,8 @@ const MateriaisPage = () => {
                         value={m.descricao}
                         onChange={e => updateRow(idx, 'descricao', e.target.value)}
                         placeholder="Ex: Areia média, Tubo 150mm..."
-                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                        disabled={m.locked}
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm disabled:opacity-70 disabled:bg-muted"
                       />
                     </div>
                     <div>
@@ -204,18 +205,26 @@ const MateriaisPage = () => {
                     </div>
                     <div>
                       <label className="block text-xs text-muted-foreground mb-1">Un.</label>
-                      <select
-                        value={m.unidade}
-                        onChange={e => updateRow(idx, 'unidade', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
-                      >
-                        <option value="un">un</option>
-                        <option value="m">m</option>
-                        <option value="m²">m²</option>
-                        <option value="m³">m³</option>
-                        <option value="kg">kg</option>
-                        <option value="t">t</option>
-                      </select>
+                      {m.locked ? (
+                        <input
+                          value={m.unidade}
+                          disabled
+                          className="w-full px-3 py-2 rounded-lg border border-input bg-muted text-foreground text-sm opacity-70"
+                        />
+                      ) : (
+                        <select
+                          value={m.unidade}
+                          onChange={e => updateRow(idx, 'unidade', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                        >
+                          <option value="un">un</option>
+                          <option value="m">m</option>
+                          <option value="m²">m²</option>
+                          <option value="m³">m³</option>
+                          <option value="kg">kg</option>
+                          <option value="t">t</option>
+                        </select>
+                      )}
                     </div>
                     <button
                       onClick={() => removeRow(idx)}

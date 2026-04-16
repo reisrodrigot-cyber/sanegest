@@ -90,7 +90,7 @@ const MateriaisPage = () => {
   const { ordens, loading } = useOrdensServico();
   const pendentes = ordens.filter(os => os.liberado);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [materiais, setMateriais] = useState<MaterialForm[]>([{ ...EMPTY_MATERIAL }]);
+  const [newItem, setNewItem] = useState<MaterialForm>({ ...EMPTY_MATERIAL });
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [historico, setHistorico] = useState<Record<string, MaterialDB[]>>({});
@@ -131,7 +131,12 @@ const MateriaisPage = () => {
     } else {
       setOpenId(osId);
       const os = ordens.find(o => o.id === osId);
-      setMateriais(os ? getDefaultMateriais(os) : [{ ...EMPTY_MATERIAL }]);
+      if (os?.dn != null) {
+        const dnInt = Math.round(os.dn * 1000);
+        setNewItem({ descricao: `Tubo DN ${dnInt}`, quantidade: '', unidade: 'UND', locked: true });
+      } else {
+        setNewItem({ ...EMPTY_MATERIAL });
+      }
     }
   };
 
@@ -139,15 +144,8 @@ const MateriaisPage = () => {
     setExpandedId(prev => prev === osId ? null : osId);
   };
 
-  const addRow = () => setMateriais(prev => [...prev, { ...EMPTY_MATERIAL }]);
-
-  const removeRow = (idx: number) => {
-    if (materiais.length <= 1) return;
-    setMateriais(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const updateRow = (idx: number, field: keyof MaterialForm, value: string) => {
-    setMateriais(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
+  const updateField = (field: keyof MaterialForm, value: string) => {
+    setNewItem(prev => ({ ...prev, [field]: value }));
   };
 
   const handleDelete = async (id: string) => {
@@ -163,30 +161,27 @@ const MateriaisPage = () => {
 
   const handleSave = async () => {
     if (!openId) return;
-    const valid = materiais.filter(m => m.descricao.trim());
-    if (valid.length === 0) {
-      toast.error('Preencha ao menos um material');
+    if (!newItem.descricao.trim()) {
+      toast.error('Preencha a descrição do material.');
       return;
     }
-    const withQty = valid.filter(m => Number(m.quantidade) > 0);
-    if (withQty.length === 0) {
+    if (!Number(newItem.quantidade) || Number(newItem.quantidade) <= 0) {
       toast.error('A quantidade deve ser maior que zero.');
       return;
     }
     setSaving(true);
-    const rows = withQty.map(m => ({
+    const { error } = await supabase.from('materiais_entrega').insert({
       os_id: openId,
-      descricao: m.descricao.trim(),
-      quantidade: Number(m.quantidade),
-      unidade: m.unidade || 'un',
-    }));
-    const { error } = await supabase.from('materiais_entrega').insert(rows as any);
+      descricao: newItem.descricao.trim(),
+      quantidade: Number(newItem.quantidade),
+      unidade: newItem.unidade || 'un',
+    } as any);
     if (error) {
       toast.error('Erro ao registrar: ' + error.message);
     } else {
-      toast.success(`${rows.length} material(is) registrado(s)!`);
+      toast.success('Material registrado!');
       setOpenId(null);
-      setMateriais([{ ...EMPTY_MATERIAL }]);
+      setNewItem({ ...EMPTY_MATERIAL });
       fetchHistorico();
     }
     setSaving(false);
@@ -288,65 +283,50 @@ const MateriaisPage = () => {
               {openId === os.id && (
                 <div className="mt-4 pt-4 border-t border-border space-y-3">
                   <p className="text-sm font-medium text-foreground">Nova Entrega:</p>
-                  {materiais.map((m, idx) => (
-                    <div key={idx} className="grid grid-cols-[1fr_100px_80px_32px] gap-2 items-end">
-                      <div>
-                        <label className="block text-xs text-muted-foreground mb-1">Descrição</label>
-                        <input
-                          value={m.descricao}
-                          onChange={e => updateRow(idx, 'descricao', e.target.value)}
-                          placeholder="Ex: Areia média, Tubo 150mm..."
-                          disabled={m.locked}
-                          className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm disabled:opacity-70 disabled:bg-muted"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-muted-foreground mb-1">Qtd</label>
-                        <input
-                          type="number"
-                          value={m.quantidade}
-                          onChange={e => updateRow(idx, 'quantidade', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-muted-foreground mb-1">Un.</label>
-                        {m.locked ? (
-                          <input
-                            value={m.unidade}
-                            disabled
-                            className="w-full px-3 py-2 rounded-lg border border-input bg-muted text-foreground text-sm opacity-70"
-                          />
-                        ) : (
-                          <select
-                            value={m.unidade}
-                            onChange={e => updateRow(idx, 'unidade', e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
-                          >
-                            <option value="un">un</option>
-                            <option value="m">m</option>
-                            <option value="m²">m²</option>
-                            <option value="m³">m³</option>
-                            <option value="kg">kg</option>
-                            <option value="t">t</option>
-                          </select>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => removeRow(idx)}
-                        className="p-2 text-muted-foreground hover:text-destructive"
-                        title="Remover"
-                      >
-                        <X size={14} />
-                      </button>
+                  <div className="grid grid-cols-[1fr_100px_80px] gap-2 items-end">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Descrição</label>
+                      <input
+                        value={newItem.descricao}
+                        onChange={e => updateField('descricao', e.target.value)}
+                        placeholder="Ex: Areia média, Tubo 150mm..."
+                        disabled={newItem.locked}
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm disabled:opacity-70 disabled:bg-muted"
+                      />
                     </div>
-                  ))}
-                  <button
-                    onClick={addRow}
-                    className="inline-flex items-center gap-1 text-sm text-secondary hover:underline"
-                  >
-                    <Plus size={14} /> Adicionar material
-                  </button>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Qtd</label>
+                      <input
+                        type="number"
+                        value={newItem.quantidade}
+                        onChange={e => updateField('quantidade', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Un.</label>
+                      {newItem.locked ? (
+                        <input
+                          value={newItem.unidade}
+                          disabled
+                          className="w-full px-3 py-2 rounded-lg border border-input bg-muted text-foreground text-sm opacity-70"
+                        />
+                      ) : (
+                        <select
+                          value={newItem.unidade}
+                          onChange={e => updateField('unidade', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                        >
+                          <option value="un">un</option>
+                          <option value="m">m</option>
+                          <option value="m²">m²</option>
+                          <option value="m³">m³</option>
+                          <option value="kg">kg</option>
+                          <option value="t">t</option>
+                        </select>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex gap-3 pt-2">
                     <button
                       onClick={handleSave}

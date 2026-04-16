@@ -825,10 +825,21 @@ const OSDetailPage = () => {
         </div>
       </div>
 
-      {/* Materiais Entregues */}
+      {/* Materiais Entregues — Sala Técnica/Admin sempre podem editar */}
       <div className="mt-6">
-        <MateriaisEntreguesSection osId={os.id} canEdit={isSalaTecnica || user?.role === 'almoxarifado'} dnValue={os.dn} />
+        <MateriaisEntreguesSection
+          osId={os.id}
+          canEdit={isSalaTecnica || effectiveRole === 'almoxarifado'}
+          dnValue={os.dn}
+        />
       </div>
+
+      {/* Histórico — visível para Sala Técnica e Admin */}
+      {isSalaTecnica && (
+        <div className="mt-6">
+          <OSHistoricoSection osId={os.id} />
+        </div>
+      )}
 
       {estacas.length > 0 && (
         <div className="mt-6 bg-card rounded-xl border border-border shadow-sm p-6">

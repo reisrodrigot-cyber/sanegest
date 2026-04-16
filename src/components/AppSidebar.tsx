@@ -36,10 +36,11 @@ export const AppSidebar = () => {
   const filteredItems = NAV_ITEMS.filter(i => {
     if (user.role === 'admin') {
       // Always show admin-only items (Gestão de Usuários)
-      if (i.roles.length === 1 && i.roles[0] === 'admin') return true;
-      // If viewing as another role, filter by that role
+      const isAdminOnly = i.roles.length === 1 && i.roles[0] === 'admin';
+      if (isAdminOnly) return true;
+      // If viewing as another role, show only that role's items
       if (effectiveRole && effectiveRole !== 'admin') {
-        return i.roles.includes(effectiveRole) || i.roles.includes('admin');
+        return i.roles.includes(effectiveRole);
       }
       return true;
     }

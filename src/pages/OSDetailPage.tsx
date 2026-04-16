@@ -159,6 +159,10 @@ const OSDetailPage = () => {
   const [editingReal, setEditingReal] = useState(false);
   const [realFields, setRealFields] = useState<Record<string, string>>({});
   const [savingReal, setSavingReal] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<OSStatus | null>(null);
+  const [changingStatus, setChangingStatus] = useState(false);
+  const [asBuiltWarning, setAsBuiltWarning] = useState(false);
 
   const isSalaTecnica = permissions.canEditOS(effectiveRole);
   const isEncarregado = permissions.canEditProducao(effectiveRole) && effectiveRole === 'encarregado';

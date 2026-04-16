@@ -1,1 +1,4 @@
 project_id = "jmmjepwhakmmqlismifg"
+
+[functions.seed-encarregados]
+verify_jwt = false

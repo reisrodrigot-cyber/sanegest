@@ -21,7 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Produção', path: '/producao', icon: <HardHat size={20} />, roles: ['admin', 'encarregado'] },
   { label: 'Materiais', path: '/materiais', icon: <Package size={20} />, roles: ['admin', 'almoxarifado'] },
   { label: 'Topografia', path: '/topografia', icon: <Map size={20} />, roles: ['admin', 'topografo'] },
-  { label: 'Relatórios', path: '/relatorios', icon: <BarChart3 size={20} />, roles: ['admin', 'gerencia', 'sala_tecnica'] },
+  
   { label: 'Gestão de Usuários', path: '/usuarios', icon: <Users size={20} />, roles: ['admin'] },
 ];
 

@@ -28,11 +28,10 @@ interface RealFields {
   largura_pav_real: string;
   pav_m2_real: string;
   ligacoes_real: string;
-  [key: string]: string; // for dynamic pav extension fields
 }
 
 function initRealFields(os: OrdemServico): RealFields {
-  const fields: RealFields = {
+  return {
     comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
     prof_media_real: os.prof_media_real != null ? String(os.prof_media_real) : '',
     pav_real: os.pav_real ?? '',
@@ -40,12 +39,6 @@ function initRealFields(os: OrdemServico): RealFields {
     pav_m2_real: os.pav_m2_real != null ? String(os.pav_m2_real) : '',
     ligacoes_real: os.ligacoes_real != null ? String(os.ligacoes_real) : '',
   };
-  const pavTypes = parsePavTypes(os.pav_previsto);
-  const extReal = (os as any).pav_extensoes_real || {};
-  pavTypes.forEach(t => {
-    fields[`pav_ext_real_${t}`] = extReal[t] != null ? String(extReal[t]) : '';
-  });
-  return fields;
 }
 
 const DataRow = ({ label, previsto, realValue, field, onChange }: {
@@ -99,16 +92,6 @@ const ProducaoPage = () => {
     setFields(prev => prev ? { ...prev, [field]: val } : prev);
   };
 
-  const buildPavExtensoesFromFields = (f: RealFields) => {
-    const ext: Record<string, number | null> = {};
-    Object.entries(f).forEach(([k, v]) => {
-      if (k.startsWith('pav_ext_real_')) {
-        const type = k.replace('pav_ext_real_', '');
-        ext[type] = v ? Number(v) : null;
-      }
-    });
-    return Object.keys(ext).length > 0 ? ext : {};
-  };
 
   const handleSave = async (osId: string) => {
     if (!fields) return;
@@ -120,7 +103,6 @@ const ProducaoPage = () => {
       largura_pav_real: fields.largura_pav_real ? Number(fields.largura_pav_real) : null,
       pav_m2_real: fields.pav_m2_real ? Number(fields.pav_m2_real) : null,
       ligacoes_real: fields.ligacoes_real ? Number(fields.ligacoes_real) : null,
-      pav_extensoes_real: buildPavExtensoesFromFields(fields),
     };
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', osId);
     if (error) {

@@ -1,9 +1,10 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck, Trash2 } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { MateriaisEntreguesSection } from '@/components/MateriaisEntreguesSection';
+import { OSHistoricoSection } from '@/components/OSHistoricoSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -158,6 +159,7 @@ const RealSelectRow = ({ label, previsto, realValue, realField, options, onChang
 
 const OSDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { os, estacas, loading } = useOrdemServico(id);
   const { user, effectiveRole } = useAuth();
   const [liberando, setLiberando] = useState(false);
@@ -174,6 +176,31 @@ const OSDetailPage = () => {
   const [changingStatus, setChangingStatus] = useState(false);
   const [asBuiltWarning, setAsBuiltWarning] = useState(false);
   const [savingEncarregado, setSavingEncarregado] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingOs, setDeletingOs] = useState(false);
+
+  const handleDeleteOs = async () => {
+    if (!os) return;
+    setDeletingOs(true);
+    // Delete dependent records first to be safe (no FK cascades)
+    await Promise.all([
+      supabase.from('registros_producao').delete().eq('os_id', os.id),
+      supabase.from('ligacoes').delete().eq('os_id', os.id),
+      supabase.from('topografia_asbuilt').delete().eq('os_id', os.id),
+      supabase.from('materiais_entrega').delete().eq('os_id', os.id),
+      supabase.from('estacas').delete().eq('os_id', os.id),
+      supabase.from('os_status_historico').delete().eq('os_id', os.id),
+    ]);
+    const { error } = await supabase.from('ordens_servico').delete().eq('id', os.id);
+    setDeletingOs(false);
+    setDeleteDialogOpen(false);
+    if (error) {
+      toast.error('Erro ao excluir OS: ' + error.message);
+      return;
+    }
+    toast.success('OS excluída com sucesso!');
+    navigate('/ordens');
+  };
 
   // Fetch encarregados from user_roles + profiles
   const { data: encarregados = [] } = useQuery({
@@ -559,10 +586,42 @@ const OSDetailPage = () => {
               ✏ Editar
             </button>
           )}
+          {!editing && (
+            <button
+              onClick={() => setDeleteDialogOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90"
+            >
+              <Trash2 size={14} />
+              Excluir OS
+            </button>
+          )}
         </div>
       )}
 
-      {/* Botão Editar Real para encarregado */}
+      {/* Confirmação de exclusão da OS */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Ordem de Serviço?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza? Esta ação não pode ser desfeita. Todos os dados relacionados
+              (estacas, materiais, registros de produção, ligações e histórico) serão
+              permanentemente removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingOs}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteOs}
+              disabled={deletingOs}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingOs ? <Loader2 size={14} className="animate-spin mr-2" /> : <Trash2 size={14} className="mr-2" />}
+              Excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {isEncarregado && !editingReal && !editing && (
         <div className="flex flex-wrap gap-3 mb-6">
           <button
@@ -766,10 +825,21 @@ const OSDetailPage = () => {
         </div>
       </div>
 
-      {/* Materiais Entregues */}
+      {/* Materiais Entregues — Sala Técnica/Admin sempre podem editar */}
       <div className="mt-6">
-        <MateriaisEntreguesSection osId={os.id} canEdit={isSalaTecnica || user?.role === 'almoxarifado'} dnValue={os.dn} />
+        <MateriaisEntreguesSection
+          osId={os.id}
+          canEdit={isSalaTecnica || effectiveRole === 'almoxarifado'}
+          dnValue={os.dn}
+        />
       </div>
+
+      {/* Histórico — visível para Sala Técnica e Admin */}
+      {isSalaTecnica && (
+        <div className="mt-6">
+          <OSHistoricoSection osId={os.id} />
+        </div>
+      )}
 
       {estacas.length > 0 && (
         <div className="mt-6 bg-card rounded-xl border border-border shadow-sm p-6">

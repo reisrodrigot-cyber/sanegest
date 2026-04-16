@@ -86,7 +86,7 @@ function formatDate(dateStr: string): string {
 
 const MateriaisPage = () => {
   const { effectiveRole } = useAuth();
-  const canDelete = effectiveRole === 'almoxarifado' || effectiveRole === 'sala_tecnica' || effectiveRole === 'admin';
+  const canDelete = effectiveRole === 'admin' || effectiveRole === 'almoxarifado' || effectiveRole === 'sala_tecnica';
   const { ordens, loading } = useOrdensServico();
   const pendentes = ordens.filter(os => os.liberado);
   const [openId, setOpenId] = useState<string | null>(null);

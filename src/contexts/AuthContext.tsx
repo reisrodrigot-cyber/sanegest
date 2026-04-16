@@ -18,6 +18,11 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
+  /** Admin: role being "viewed as" */
+  viewAsRole: UserRole | null;
+  setViewAsRole: (role: UserRole | null) => void;
+  /** Effective role (viewAs if set, otherwise real role) */
+  effectiveRole: UserRole | undefined;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -52,7 +57,7 @@ async function buildAuthUser(supaUser: User): Promise<AuthUser | null> {
     fetchProfile(supaUser.id),
   ]);
 
-  if (!role) return null; // no role assigned yet
+  if (!role) return null;
 
   return {
     id: supaUser.id,
@@ -66,14 +71,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewAsRole, setViewAsRole] = useState<UserRole | null>(null);
+
+  const effectiveRole = user?.role === 'admin' && viewAsRole ? viewAsRole : user?.role;
 
   useEffect(() => {
-    // Listen to auth state changes FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
           setSupabaseUser(session.user);
-          // Use setTimeout to avoid Supabase client deadlock
           setTimeout(async () => {
             const authUser = await buildAuthUser(session.user);
             setUser(authUser);
@@ -87,7 +93,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // Then check existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         setSupabaseUser(session.user);
@@ -123,10 +128,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     setUser(null);
     setSupabaseUser(null);
+    setViewAsRole(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, supabaseUser, login, signup, logout, isAuthenticated: !!user, loading }}>
+    <AuthContext.Provider value={{
+      user, supabaseUser, login, signup, logout,
+      isAuthenticated: !!user, loading,
+      viewAsRole, setViewAsRole, effectiveRole,
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -98,9 +98,7 @@ const OSDetailPage = () => {
   const startEditing = () => {
     if (!os) return;
     const pavTypesPrev = parsePavTypes(os.pav_previsto);
-    const pavTypesReal = parsePavTypes(os.pav_real || os.pav_previsto);
     const extPrev = (os as any).pav_extensoes_previsto || {};
-    const extReal = (os as any).pav_extensoes_real || {};
 
     const fields: Record<string, string> = {
       comprimento_previsto: os.comprimento_previsto != null ? String(os.comprimento_previsto) : '',
@@ -125,12 +123,8 @@ const OSDetailPage = () => {
       bms: os.bms ?? '',
       executor: os.executor ?? '',
     };
-    // Populate pav extension fields
     pavTypesPrev.forEach(t => {
       fields[`pav_ext_prev_${t}`] = extPrev[t] != null ? String(extPrev[t]) : '';
-    });
-    pavTypesReal.forEach(t => {
-      fields[`pav_ext_real_${t}`] = extReal[t] != null ? String(extReal[t]) : '';
     });
     setEditFields(fields);
     setEditing(true);
@@ -138,8 +132,6 @@ const OSDetailPage = () => {
 
   const startEditingReal = () => {
     if (!os) return;
-    const pavTypes = parsePavTypes(os.pav_previsto);
-    const extReal = (os as any).pav_extensoes_real || {};
     const fields: Record<string, string> = {
       comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
       prof_media_real: os.prof_media_real != null ? String(os.prof_media_real) : '',
@@ -148,9 +140,6 @@ const OSDetailPage = () => {
       pav_m2_real: os.pav_m2_real != null ? String(os.pav_m2_real) : '',
       ligacoes_real: os.ligacoes_real != null ? String(os.ligacoes_real) : '',
     };
-    pavTypes.forEach(t => {
-      fields[`pav_ext_real_${t}`] = extReal[t] != null ? String(extReal[t]) : '';
-    });
     setRealFields(fields);
     setEditingReal(true);
   };
@@ -202,7 +191,6 @@ const OSDetailPage = () => {
       bms: editFields.bms || null,
       executor: editFields.executor || null,
       pav_extensoes_previsto: buildPavExtensoesFromFields(editFields, 'pav_ext_prev_'),
-      pav_extensoes_real: buildPavExtensoesFromFields(editFields, 'pav_ext_real_'),
     };
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
     if (error) {
@@ -226,7 +214,7 @@ const OSDetailPage = () => {
       largura_pav_real: toNum(realFields.largura_pav_real),
       pav_m2_real: toNum(realFields.pav_m2_real),
       ligacoes_real: realFields.ligacoes_real ? Number(realFields.ligacoes_real) : null,
-      pav_extensoes_real: buildPavExtensoesFromFields(realFields, 'pav_ext_real_'),
+      };
     };
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
     if (error) {

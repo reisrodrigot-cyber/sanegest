@@ -574,32 +574,60 @@ const OSDetailPage = () => {
         </div>
       )}
 
-      {/* Liberação pela Sala Técnica */}
-      {isSalaTecnica && !os.liberado && !editing && (
+      {/* Encarregado Responsável — Sala Técnica */}
+      {isSalaTecnica && !editing && (
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Send size={16} className="text-primary" />
-            Liberar OS para Encarregado
+            <UserCheck size={16} className="text-primary" />
+            Encarregado Responsável
           </h3>
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Nome do Encarregado</label>
-              <input
-                value={selectedEncarregado}
-                onChange={e => setSelectedEncarregado(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm min-w-[200px]"
-                placeholder="Nome do encarregado"
-              />
+          {!os.liberado ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[240px]">
+                <label className="block text-xs text-muted-foreground mb-1">Selecionar Encarregado</label>
+                <Select value={selectedEncarregado} onValueChange={setSelectedEncarregado}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um encarregado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {encarregados.map(e => (
+                      <SelectItem key={e.user_id} value={e.user_id}>{e.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <button
+                onClick={handleLiberar}
+                disabled={!selectedEncarregado || liberando}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+              >
+                {liberando ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Liberar OS
+              </button>
             </div>
-            <button
-              onClick={handleLiberar}
-              disabled={!selectedEncarregado || liberando}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
-            >
-              {liberando ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Liberar
-            </button>
-          </div>
+          ) : (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[240px]">
+                <label className="block text-xs text-muted-foreground mb-1">
+                  Atribuído a: <span className="font-semibold text-foreground">{os.liberado_para}</span>
+                </label>
+                <Select onValueChange={handleChangeEncarregado} disabled={savingEncarregado}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Trocar encarregado..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__remove__" className="text-destructive">
+                      ✕ Remover encarregado
+                    </SelectItem>
+                    {encarregados.map(e => (
+                      <SelectItem key={e.user_id} value={e.user_id}>{e.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {savingEncarregado && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
+            </div>
+          )}
         </div>
       )}
 

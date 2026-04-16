@@ -1,0 +1,3 @@
+
+ALTER TYPE public.os_status ADD VALUE IF NOT EXISTS 'CINZA';
+ALTER TYPE public.os_status ADD VALUE IF NOT EXISTS 'LARANJA';

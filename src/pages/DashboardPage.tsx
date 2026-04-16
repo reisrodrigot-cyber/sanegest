@@ -6,6 +6,7 @@ import { ROLE_LABELS } from '@/types/sanegest';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { Loader2 } from 'lucide-react';
+import { OSMap } from '@/components/OSMap';
 
 const OBRA_NOME = 'SES Japaratinga';
 
@@ -63,6 +64,9 @@ const DashboardPage = () => {
           <p className="text-3xl font-bold text-status-green mt-1">{verdes}</p>
         </div>
       </div>
+
+      {/* Mapa das OS */}
+      <OSMap />
 
       {total === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">

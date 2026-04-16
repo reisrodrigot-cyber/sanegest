@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { MateriaisEntreguesSection } from '@/components/MateriaisEntreguesSection';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,24 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { permissions } from '@/lib/permissions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+type OSStatus = 'VERMELHO' | 'AMARELO' | 'VERDE';
+
+const STATUS_CONFIG: { value: OSStatus; label: string; description: string; color: string; ring: string }[] = [
+  { value: 'VERMELHO', label: 'Vermelho', description: 'Liberada, em execução', color: 'bg-status-red', ring: 'ring-status-red' },
+  { value: 'AMARELO', label: 'Amarelo', description: 'Produção validada', color: 'bg-status-yellow', ring: 'ring-status-yellow' },
+  { value: 'VERDE', label: 'Verde', description: 'Concluída (as-built registrado)', color: 'bg-status-green', ring: 'ring-status-green' },
+];
 
 const PAV_OPTIONS = [
   'Terreno Natural',
@@ -141,9 +159,44 @@ const OSDetailPage = () => {
   const [editingReal, setEditingReal] = useState(false);
   const [realFields, setRealFields] = useState<Record<string, string>>({});
   const [savingReal, setSavingReal] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<OSStatus | null>(null);
+  const [changingStatus, setChangingStatus] = useState(false);
+  const [asBuiltWarning, setAsBuiltWarning] = useState(false);
 
   const isSalaTecnica = permissions.canEditOS(effectiveRole);
   const isEncarregado = permissions.canEditProducao(effectiveRole) && effectiveRole === 'encarregado';
+
+  const handleStatusChange = (newStatus: OSStatus) => {
+    if (!os || newStatus === os.status) return;
+    setPendingStatus(newStatus);
+    // Check as-built warning for VERDE
+    if (newStatus === 'VERDE' && !os.as_built_lat) {
+      setAsBuiltWarning(true);
+    } else {
+      setAsBuiltWarning(false);
+    }
+    setStatusDialogOpen(true);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!os || !pendingStatus) return;
+    setChangingStatus(true);
+    const previousStatus = os.status;
+    const { error } = await supabase
+      .from('ordens_servico')
+      .update({ status: pendingStatus } as any)
+      .eq('id', os.id);
+    if (error) {
+      toast.error('Erro ao alterar status: ' + error.message);
+    } else {
+      const now = new Date().toLocaleString('pt-BR');
+      toast.success(`Status alterado de ${previousStatus} para ${pendingStatus} por Sala Técnica em ${now}`);
+      window.location.reload();
+    }
+    setChangingStatus(false);
+    setStatusDialogOpen(false);
+  };
 
   const startEditing = () => {
     if (!os) return;
@@ -365,6 +418,55 @@ const OSDetailPage = () => {
         </div>
         <p className="text-sm text-muted-foreground mt-1">{os.bacia} • PV {os.pv_montante} → {os.pv_jusante}</p>
       </div>
+
+      {/* Status Selector for Sala Técnica / Admin */}
+      {isSalaTecnica && (
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Controle de Status</h3>
+          <div className="flex flex-wrap gap-3">
+            {STATUS_CONFIG.map(s => (
+              <button
+                key={s.value}
+                onClick={() => handleStatusChange(s.value)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                  os.status === s.value
+                    ? `${s.ring} ring-2 border-transparent ${s.color} text-white`
+                    : 'border-border text-muted-foreground hover:border-foreground/30'
+                }`}
+              >
+                <span className={`w-3 h-3 rounded-full ${s.color}`} />
+                <span>{s.label}</span>
+                <span className="text-xs opacity-70">— {s.description}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Status Change Confirmation Dialog */}
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alteração de status</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirmar alteração de status para <strong>{pendingStatus}</strong>?
+              {asBuiltWarning && (
+                <span className="flex items-center gap-2 mt-3 p-3 bg-amber-50 text-amber-800 rounded-lg border border-amber-200">
+                  <AlertTriangle size={16} className="shrink-0" />
+                  Esta OS não possui coordenadas as-built registradas.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={changingStatus}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStatusChange} disabled={changingStatus}>
+              {changingStatus ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Ações da Sala Técnica */}
       {isSalaTecnica && (

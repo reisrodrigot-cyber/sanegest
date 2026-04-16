@@ -32,19 +32,25 @@ export const AppSidebar = () => {
 
   if (!user) return null;
 
-  // Admin with viewAs: show items for viewed role + admin-only items
-  const filteredItems = NAV_ITEMS.filter(i => {
+  // Explicit role → allowed paths mapping
+  const ROLE_MENU: Record<UserRole, string[]> = {
+    admin: ['/dashboard', '/importar', '/ordens', '/producao', '/materiais', '/topografia', '/usuarios'],
+    sala_tecnica: ['/dashboard', '/importar', '/ordens'],
+    encarregado: ['/dashboard', '/producao'],
+    almoxarifado: ['/dashboard', '/materiais'],
+    topografo: ['/dashboard', '/topografia'],
+    gerencia: ['/dashboard'],
+  };
+
+  const filteredItems = NAV_ITEMS.filter(item => {
     if (user.role === 'admin') {
-      // Always show admin-only items (Gestão de Usuários)
-      const isAdminOnly = i.roles.length === 1 && i.roles[0] === 'admin';
-      if (isAdminOnly) return true;
-      // If viewing as another role, show only that role's items
-      if (effectiveRole && effectiveRole !== 'admin') {
-        return i.roles.includes(effectiveRole);
-      }
-      return true;
+      // Admin-only items always visible for real admins
+      if (item.path === '/usuarios') return true;
+      // Use effectiveRole to determine which menu items to show
+      const role = effectiveRole || 'admin';
+      return ROLE_MENU[role]?.includes(item.path) ?? false;
     }
-    return i.roles.includes(user.role);
+    return ROLE_MENU[user.role]?.includes(item.path) ?? false;
   });
 
   const sidebarContent = (

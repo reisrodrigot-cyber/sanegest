@@ -57,20 +57,32 @@ const ReadField = ({ label, value }: { label: string; value: unknown }) => (
 const OSPanel = ({ os }: { os: OrdemServico }) => {
   const { user } = useAuth();
   const [registros, setRegistros] = useState<RegistroDia[]>([]);
+  const [ligacoesAll, setLigacoesAll] = useState<LigacaoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [comprimento, setComprimento] = useState('');
   const [numLigacoes, setNumLigacoes] = useState('');
   const [ligacoes, setLigacoes] = useState<LigacaoNova[]>([]);
   const [saving, setSaving] = useState(false);
+  const [popupRegistroId, setPopupRegistroId] = useState<string | null>(null);
+  const [popupAcumOpen, setPopupAcumOpen] = useState(false);
 
   const fetchRegistros = useCallback(async () => {
-    const { data } = await supabase
-      .from('registros_producao')
-      .select('id, data_registro, comprimento_dia, ligacoes_dia')
-      .eq('os_id', os.id)
-      .eq('user_id', user?.id ?? '')
-      .order('data_registro', { ascending: false });
-    setRegistros((data ?? []) as RegistroDia[]);
+    const [regRes, ligRes] = await Promise.all([
+      supabase
+        .from('registros_producao')
+        .select('id, data_registro, comprimento_dia, ligacoes_dia')
+        .eq('os_id', os.id)
+        .eq('user_id', user?.id ?? '')
+        .order('data_registro', { ascending: false }),
+      supabase
+        .from('ligacoes')
+        .select('id, comprimento, referencia, latitude, longitude, data_topografia, registro_producao_id, created_at')
+        .eq('os_id', os.id)
+        .eq('encarregado_id', user?.id ?? '')
+        .order('created_at', { ascending: true }),
+    ]);
+    setRegistros((regRes.data ?? []) as RegistroDia[]);
+    setLigacoesAll((ligRes.data ?? []) as LigacaoRow[]);
     setLoading(false);
   }, [os.id, user?.id]);
 

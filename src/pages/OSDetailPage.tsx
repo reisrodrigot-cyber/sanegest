@@ -574,7 +574,7 @@ const OSDetailPage = () => {
 
       {/* Materiais Entregues */}
       <div className="mt-6">
-        <MateriaisEntreguesSection osId={os.id} canEdit={user?.role === 'almoxarifado' || user?.role === 'sala_tecnica'} />
+        <MateriaisEntreguesSection osId={os.id} canEdit={user?.role === 'almoxarifado' || user?.role === 'sala_tecnica'} dnValue={os.dn} />
       </div>
 
       {estacas.length > 0 && (

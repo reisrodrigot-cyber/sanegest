@@ -107,3 +107,16 @@
     @apply bg-[hsl(var(--status-green))];
   }
 }
+
+/* Keep Leaflet maps below the sidebar/overlay so the mobile menu sits on top */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 1 !important;
+}
+.leaflet-control {
+  z-index: 2 !important;
+}
+.leaflet-container {
+  z-index: 0;
+}

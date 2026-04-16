@@ -3,18 +3,36 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
-import { Loader2, Save, Plus, Trash2, MapPin } from 'lucide-react';
+import { Loader2, Save, MapPin, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OrdemServico } from '@/types/sanegest';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 interface RegistroDia {
   id: string;
   data_registro: string;
   comprimento_dia: number;
   ligacoes_dia: number;
+}
+
+interface LigacaoRow {
+  id: string;
+  comprimento: number | null;
+  referencia: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  data_topografia: string | null;
+  registro_producao_id: string | null;
+  created_at: string;
 }
 
 interface LigacaoNova {

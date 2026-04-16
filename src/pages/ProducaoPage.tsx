@@ -1,179 +1,272 @@
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
-import { Loader2, Save, AlertTriangle } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OrdemServico } from '@/types/sanegest';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
-const PAV_OPTIONS = [
-  'Terreno Natural',
-  'Asfalto',
-  'Paralelo',
-  'Terreno Natural e Asfalto',
-  'Terreno Natural e Paralelo',
-  'Asfalto e Paralelo',
-  'Terreno Natural, Asfalto e Paralelo',
-];
+interface RegistroDia {
+  id: string;
+  data_registro: string;
+  comprimento_dia: number;
+  ligacoes_dia: number;
+}
 
-function fmt(val: unknown): string {
-  if (val == null) return '—';
-  const n = Number(val);
-  if (isNaN(n)) return String(val);
+interface LigacaoNova {
+  comprimento: string;
+  referencia: string;
+}
+
+const fmt = (v: unknown) => {
+  if (v == null) return '—';
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
   return n.toFixed(2).replace(/\.?0+$/, '') || '0';
-}
+};
 
-interface RealFields {
-  comprimento_real: string;
-  prof_media_real: string;
-  dn_real: string;
-  largura_vala_real: string;
-  prof_montante_real: string;
-  prof_jusante_real: string;
-  pav_real: string;
-  largura_pav_real: string;
-  pav_m2_real: string;
-  ligacoes_real: string;
-  areia_real: string;
-  brita_real: string;
-  prazo_real: string;
-  bms_real: string;
-  executor_real: string;
-}
-
-function initRealFields(os: OrdemServico): RealFields {
-  return {
-    comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
-    prof_media_real: os.prof_media_real != null ? String(os.prof_media_real) : '',
-    dn_real: (os as any).dn_real != null ? String((os as any).dn_real) : '',
-    largura_vala_real: (os as any).largura_vala_real != null ? String((os as any).largura_vala_real) : '',
-    prof_montante_real: (os as any).prof_montante_real != null ? String((os as any).prof_montante_real) : '',
-    prof_jusante_real: (os as any).prof_jusante_real != null ? String((os as any).prof_jusante_real) : '',
-    pav_real: os.pav_real ?? '',
-    largura_pav_real: os.largura_pav_real != null ? String(os.largura_pav_real) : '',
-    pav_m2_real: os.pav_m2_real != null ? String(os.pav_m2_real) : '',
-    ligacoes_real: os.ligacoes_real != null ? String(os.ligacoes_real) : '',
-    areia_real: (os as any).areia_real ?? '',
-    brita_real: (os as any).brita_real ?? '',
-    prazo_real: (os as any).prazo_real != null ? String((os as any).prazo_real) : '',
-    bms_real: (os as any).bms_real ?? '',
-    executor_real: (os as any).executor_real ?? '',
-  };
-}
-
-const DataRow = ({ label, previsto, realValue, field, onChange }: {
-  label: string;
-  previsto: unknown;
-  realValue: string;
-  field: string;
-  onChange: (field: string, val: string) => void;
-}) => (
-  <div className="grid grid-cols-3 gap-2 py-2 border-b border-border last:border-0 items-center">
-    <span className="text-sm text-muted-foreground">{label}</span>
-    <span className="text-sm font-medium text-foreground">{fmt(previsto)}</span>
-    <input
-      value={realValue}
-      onChange={e => onChange(field, e.target.value)}
-      className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-full"
-      placeholder="—"
-    />
+const ReadField = ({ label, value }: { label: string; value: unknown }) => (
+  <div className="flex justify-between py-1.5 border-b border-border last:border-0 text-sm">
+    <span className="text-muted-foreground">{label}</span>
+    <span className="text-foreground font-medium">{fmt(value)}</span>
   </div>
 );
 
-const SelectRow = ({ label, previsto, realValue, field, options, onChange }: {
-  label: string;
-  previsto: unknown;
-  realValue: string;
-  field: string;
-  options: string[];
-  onChange: (field: string, val: string) => void;
-}) => (
-  <div className="grid grid-cols-3 gap-2 py-2 border-b border-border last:border-0 items-center">
-    <span className="text-sm text-muted-foreground">{label}</span>
-    <span className="text-sm font-medium text-foreground">{fmt(previsto)}</span>
-    <select
-      value={realValue}
-      onChange={e => onChange(field, e.target.value)}
-      className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-full"
-    >
-      <option value="">— Selecione —</option>
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
-  </div>
-);
-
-const ReadOnlyRow = ({ label, previsto, real }: { label: string; previsto: unknown; real?: unknown }) => (
-  <div className="grid grid-cols-3 gap-2 py-2 border-b border-border last:border-0">
-    <span className="text-sm text-muted-foreground">{label}</span>
-    <span className="text-sm font-medium text-foreground">{fmt(previsto)}</span>
-    <span className="text-sm text-muted-foreground">{real != null ? fmt(real) : '—'}</span>
-  </div>
-);
-
-const ProducaoPage = () => {
-  const { user, effectiveRole } = useAuth();
-  const { ordens, loading, refetch } = useOrdensServico();
-  // Admin viewing as encarregado sees all liberadas; real encarregado sees only their own
-  const minhasOS = ordens.filter(os => {
-    if (!os.liberado) return false;
-    if (user?.role === 'admin') return true; // Admin simulating sees all
-    return os.liberado_para === user?.nome;
-  });
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [fields, setFields] = useState<RealFields | null>(null);
+const OSPanel = ({ os }: { os: OrdemServico }) => {
+  const { user } = useAuth();
+  const [registros, setRegistros] = useState<RegistroDia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [comprimento, setComprimento] = useState('');
+  const [numLigacoes, setNumLigacoes] = useState('');
+  const [ligacoes, setLigacoes] = useState<LigacaoNova[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const handleExpand = (os: OrdemServico) => {
-    if (expandedId === os.id) {
-      setExpandedId(null);
-      setFields(null);
-    } else {
-      setExpandedId(os.id);
-      setFields(initRealFields(os));
+  const fetchRegistros = useCallback(async () => {
+    const { data } = await supabase
+      .from('registros_producao')
+      .select('id, data_registro, comprimento_dia, ligacoes_dia')
+      .eq('os_id', os.id)
+      .eq('user_id', user?.id ?? '')
+      .order('data_registro', { ascending: false });
+    setRegistros((data ?? []) as RegistroDia[]);
+    setLoading(false);
+  }, [os.id, user?.id]);
+
+  useEffect(() => {
+    fetchRegistros();
+  }, [fetchRegistros]);
+
+  // Update ligacoes array when count changes
+  useEffect(() => {
+    const n = parseInt(numLigacoes) || 0;
+    setLigacoes((prev) => {
+      const next = [...prev];
+      while (next.length < n) next.push({ comprimento: '', referencia: '' });
+      while (next.length > n) next.pop();
+      return next;
+    });
+  }, [numLigacoes]);
+
+  const updateLigacao = (idx: number, field: keyof LigacaoNova, val: string) => {
+    setLigacoes((prev) => prev.map((l, i) => (i === idx ? { ...l, [field]: val } : l)));
+  };
+
+  const acumComprimento = registros.reduce((s, r) => s + Number(r.comprimento_dia || 0), 0);
+  const acumLigacoes = registros.reduce((s, r) => s + (r.ligacoes_dia || 0), 0);
+
+  const handleSave = async () => {
+    const compNum = parseFloat(comprimento) || 0;
+    const ligNum = parseInt(numLigacoes) || 0;
+    if (compNum <= 0 && ligNum <= 0) {
+      toast.error('Informe comprimento ou ligações.');
+      return;
     }
-  };
-
-  const updateField = (field: string, val: string) => {
-    setFields(prev => prev ? { ...prev, [field]: val } : prev);
-  };
-
-  const handleSave = async (osId: string) => {
-    if (!fields) return;
+    if (!user) return;
     setSaving(true);
-    const toNum = (v: string) => v ? Number(v) : null;
-    const toInt = (v: string) => v ? parseInt(v) : null;
-    const update: any = {
-      comprimento_real: toNum(fields.comprimento_real),
-      prof_media_real: toNum(fields.prof_media_real),
-      dn_real: toNum(fields.dn_real),
-      largura_vala_real: toNum(fields.largura_vala_real),
-      prof_montante_real: toNum(fields.prof_montante_real),
-      prof_jusante_real: toNum(fields.prof_jusante_real),
-      pav_real: fields.pav_real || null,
-      largura_pav_real: toNum(fields.largura_pav_real),
-      pav_m2_real: toNum(fields.pav_m2_real),
-      ligacoes_real: toInt(fields.ligacoes_real),
-      areia_real: fields.areia_real || null,
-      brita_real: fields.brita_real || null,
-      prazo_real: toInt(fields.prazo_real),
-      bms_real: fields.bms_real || null,
-      executor_real: fields.executor_real || null,
-    };
-    const { error } = await supabase.from('ordens_servico').update(update).eq('id', osId);
-    if (error) {
-      toast.error('Erro ao salvar: ' + error.message);
-    } else {
-      toast.success('Dados reais salvos com sucesso!');
-      refetch();
+
+    const { data: reg, error: regErr } = await supabase
+      .from('registros_producao')
+      .insert({
+        os_id: os.id,
+        user_id: user.id,
+        comprimento_dia: compNum,
+        ligacoes_dia: ligNum,
+      })
+      .select('id')
+      .single();
+
+    if (regErr || !reg) {
+      toast.error('Erro ao salvar registro: ' + (regErr?.message ?? ''));
+      setSaving(false);
+      return;
     }
+
+    if (ligNum > 0) {
+      const ligRows = ligacoes.map((l) => ({
+        os_id: os.id,
+        registro_producao_id: reg.id,
+        encarregado_id: user.id,
+        comprimento: l.comprimento ? Number(l.comprimento) : null,
+        referencia: l.referencia.trim() || null,
+      }));
+      const { error: ligErr } = await supabase.from('ligacoes').insert(ligRows);
+      if (ligErr) {
+        toast.error('Registro salvo, mas erro nas ligações: ' + ligErr.message);
+      }
+    }
+
+    // Atualiza acumulado na OS
+    const novoAcumComp = acumComprimento + compNum;
+    const novoAcumLig = acumLigacoes + ligNum;
+    await supabase
+      .from('ordens_servico')
+      .update({ comprimento_real: novoAcumComp, ligacoes_real: novoAcumLig })
+      .eq('id', os.id);
+
+    toast.success('Produção do dia registrada!');
+    setComprimento('');
+    setNumLigacoes('');
+    setLigacoes([]);
+    fetchRegistros();
     setSaving(false);
   };
 
-  const handleDivergencia = async (osId: string) => {
-    toast.info('Divergência sinalizada para a Sala Técnica.');
-  };
+  return (
+    <div className="mt-4 pt-4 border-t border-border space-y-5">
+      {/* Dados da OS (read-only) */}
+      <div className="bg-muted/30 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-2">Dados da OS</h3>
+        <div className="grid md:grid-cols-2 gap-x-6">
+          <ReadField label="Comprimento (m)" value={os.comprimento_previsto} />
+          <ReadField label="DN (m)" value={os.dn} />
+          <ReadField label="Prof. Média (m)" value={os.prof_media_prevista} />
+          <ReadField label="Prof. Montante (m)" value={os.prof_montante} />
+          <ReadField label="Prof. Jusante (m)" value={os.prof_jusante} />
+          <ReadField label="Largura Vala (m)" value={os.largura_vala} />
+          <ReadField label="Pavimento" value={os.pav_previsto} />
+          <ReadField label="Ligações previstas" value={os.ligacoes_previstas} />
+        </div>
+      </div>
+
+      {/* Acumulado */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-card border border-border rounded-lg p-3">
+          <p className="text-xs text-muted-foreground">Comprimento acumulado</p>
+          <p className="text-xl font-bold text-foreground">
+            {acumComprimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
+          </p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-3">
+          <p className="text-xs text-muted-foreground">Ligações acumuladas</p>
+          <p className="text-xl font-bold text-foreground">{acumLigacoes}</p>
+        </div>
+      </div>
+
+      {/* Novo registro do dia */}
+      <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Registro de hoje</h3>
+        <div className="grid md:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground">Comprimento do dia (m)</label>
+            <Input
+              type="number"
+              step="any"
+              value={comprimento}
+              onChange={(e) => setComprimento(e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Ligações do dia</label>
+            <Input
+              type="number"
+              min="0"
+              value={numLigacoes}
+              onChange={(e) => setNumLigacoes(e.target.value)}
+              placeholder="0"
+            />
+          </div>
+        </div>
+
+        {ligacoes.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-border">
+            <p className="text-xs font-semibold text-muted-foreground uppercase">Detalhes das ligações</p>
+            {ligacoes.map((l, idx) => (
+              <div key={idx} className="grid md:grid-cols-3 gap-2 items-center">
+                <Input
+                  type="number"
+                  step="any"
+                  placeholder="Comprimento (m)"
+                  value={l.comprimento}
+                  onChange={(e) => updateLigacao(idx, 'comprimento', e.target.value)}
+                />
+                <Input
+                  placeholder="Referência (ex: Casa nº 47)"
+                  value={l.referencia}
+                  onChange={(e) => updateLigacao(idx, 'referencia', e.target.value)}
+                />
+                <div className="text-xs text-muted-foreground italic flex items-center gap-1">
+                  <MapPin size={12} /> Coord. preenchida pelo Topógrafo
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+          {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save size={14} className="mr-2" />}
+          Salvar registro do dia
+        </Button>
+      </div>
+
+      {/* Histórico do encarregado */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-2">Meus registros ({registros.length})</h3>
+        {loading ? (
+          <Loader2 className="animate-spin text-muted-foreground" size={16} />
+        ) : registros.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum registro ainda.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-muted-foreground">
+                <th className="py-1 font-medium">Data</th>
+                <th className="py-1 font-medium text-right">Comp. (m)</th>
+                <th className="py-1 font-medium text-right">Ligações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {registros.map((r) => (
+                <tr key={r.id} className="border-b border-border/50">
+                  <td className="py-1 text-foreground">
+                    {new Date(r.data_registro + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </td>
+                  <td className="py-1 text-right text-foreground">{Number(r.comprimento_dia).toFixed(2)}</td>
+                  <td className="py-1 text-right text-foreground">{r.ligacoes_dia}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ProducaoPage = () => {
+  const { user } = useAuth();
+  const { ordens, loading } = useOrdensServico();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const minhasOS = ordens.filter((os) => {
+    if (!os.liberado) return false;
+    if (user?.role === 'admin') return true;
+    return os.liberado_para === user?.nome;
+  });
 
   if (loading) {
     return (
@@ -188,78 +281,36 @@ const ProducaoPage = () => {
   return (
     <AppLayout>
       <h1 className="text-2xl font-bold text-foreground mb-1">Registro de Produção</h1>
-      <p className="text-sm text-muted-foreground mb-6">Preencha os dados reais das OS atribuídas a você</p>
+      <p className="text-sm text-muted-foreground mb-6">
+        Registre a produção do dia em cada NS atribuída a você
+      </p>
 
       {minhasOS.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
-          Nenhuma OS liberada para você no momento. A Sala Técnica precisa liberar as OS antes.
+          Nenhuma OS liberada para você no momento.
         </div>
       ) : (
         <div className="space-y-3">
-          {minhasOS.map(os => (
+          {minhasOS.map((os) => (
             <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-foreground">{os.trecho}</p>
                   <p className="text-xs text-muted-foreground">
                     {os.bacia} • PV {os.pv_montante} → {os.pv_jusante} • {fmt(os.comprimento_previsto)}m previsto
                   </p>
                 </div>
-                <StatusBadge status={os.status} size="sm" />
-              </div>
-              <button
-                onClick={() => handleExpand(os)}
-                className="text-sm text-secondary hover:underline"
-              >
-                {expandedId === os.id ? 'Fechar' : 'Registrar Produção'}
-              </button>
-
-              {expandedId === os.id && fields && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <div className="bg-muted/30 rounded-lg p-4 mb-4">
-                    <h3 className="text-sm font-semibold text-foreground mb-3">Dados do Trecho</h3>
-                    <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
-                      <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
-                      <span className="text-xs font-semibold text-secondary uppercase">Real (editável)</span>
-                    </div>
-                    <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} realValue={fields.comprimento_real} field="comprimento_real" onChange={updateField} />
-                    <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} realValue={fields.prof_media_real} field="prof_media_real" onChange={updateField} />
-                    <DataRow label="DN (m)" previsto={os.dn} realValue={fields.dn_real} field="dn_real" onChange={updateField} />
-                    <DataRow label="Largura Vala (m)" previsto={os.largura_vala} realValue={fields.largura_vala_real} field="largura_vala_real" onChange={updateField} />
-                    <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} realValue={fields.prof_montante_real} field="prof_montante_real" onChange={updateField} />
-                    <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} realValue={fields.prof_jusante_real} field="prof_jusante_real" onChange={updateField} />
-                    <SelectRow label="Pavimento" previsto={os.pav_previsto} realValue={fields.pav_real} field="pav_real" options={PAV_OPTIONS} onChange={updateField} />
-                    <DataRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} realValue={fields.largura_pav_real} field="largura_pav_real" onChange={updateField} />
-                    <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} realValue={fields.pav_m2_real} field="pav_m2_real" onChange={updateField} />
-                    <DataRow label="Ligações" previsto={os.ligacoes_previstas} realValue={fields.ligacoes_real} field="ligacoes_real" onChange={updateField} />
-                    <DataRow label="Areia" previsto={os.areia} realValue={fields.areia_real} field="areia_real" onChange={updateField} />
-                    <DataRow label="Brita" previsto={os.brita} realValue={fields.brita_real} field="brita_real" onChange={updateField} />
-                    <ReadOnlyRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />
-                    <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} realValue={fields.prazo_real} field="prazo_real" onChange={updateField} />
-                    <DataRow label="BMs" previsto={os.bms} realValue={fields.bms_real} field="bms_real" onChange={updateField} />
-                    <DataRow label="Executor" previsto={os.executor} realValue={fields.executor_real} field="executor_real" onChange={updateField} />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleSave(os.id)}
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
-                    >
-                      {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                      Salvar
-                    </button>
-                    <button
-                      onClick={() => handleDivergencia(os.id)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-destructive text-destructive text-sm font-medium"
-                    >
-                      <AlertTriangle size={14} />
-                      Sinalizar Divergência
-                    </button>
-                  </div>
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={os.status} size="sm" />
+                  <button
+                    onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
+                    className="text-sm text-secondary hover:underline"
+                  >
+                    {expandedId === os.id ? 'Fechar' : 'Registrar Dia'}
+                  </button>
                 </div>
-              )}
+              </div>
+              {expandedId === os.id && <OSPanel os={os} />}
             </div>
           ))}
         </div>

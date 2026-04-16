@@ -1,7 +1,8 @@
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
-import { Loader2, Package, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Package, Plus, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

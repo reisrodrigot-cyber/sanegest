@@ -320,6 +320,7 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          nome_estaca: string | null
           observacao: string | null
           os_id: string
           registrado_por: string | null
@@ -331,6 +332,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          nome_estaca?: string | null
           observacao?: string | null
           os_id: string
           registrado_por?: string | null
@@ -342,6 +344,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          nome_estaca?: string | null
           observacao?: string | null
           os_id?: string
           registrado_por?: string | null

@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { LigacoesPanel } from '@/components/topografia/LigacoesPanel';
 
 interface AsBuiltPoint {
   id: string;
@@ -160,7 +161,6 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   };
 
   const isConcluded = os.status === 'VERDE';
-  // In "NS Registradas" tab, always allow adding/editing
   const canAdd = allowEditAll || !isConcluded;
   const canEditPoint = (p: AsBuiltPoint) => {
     if (allowEditAll) return true;
@@ -193,7 +193,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                           </div>
                           <div className="flex gap-1">
                             <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => saveEdit(p.id)}>
-                              <Check size={14} className="text-green-600" />
+                              <Check size={14} className="text-status-green" />
                             </Button>
                             <Button size="sm" variant="ghost" className="h-7 px-2" onClick={cancelEdit}>
                               <X size={14} className="text-muted-foreground" />
@@ -271,7 +271,6 @@ const TopografiaPage = () => {
   const [loadingRegistered, setLoadingRegistered] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Fetch OS IDs where current user registered at least 1 estaca
   useEffect(() => {
     const fetchRegistered = async () => {
       if (!user) return;
@@ -332,7 +331,7 @@ const TopografiaPage = () => {
   return (
     <AppLayout>
       <h1 className="text-2xl font-bold text-foreground mb-1">Registro Topográfico</h1>
-      <p className="text-sm text-muted-foreground mb-6">Registre as estacas as-built para cada NS</p>
+      <p className="text-sm text-muted-foreground mb-6">Registre as estacas as-built e coordenadas das ligações</p>
 
       <Tabs defaultValue="pendentes">
         <TabsList className="mb-4">
@@ -340,6 +339,7 @@ const TopografiaPage = () => {
           <TabsTrigger value="registradas">
             NS Registradas ({loadingRegistered ? '…' : registradas.length})
           </TabsTrigger>
+          <TabsTrigger value="ligacoes">Ligações</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pendentes">
@@ -352,6 +352,10 @@ const TopografiaPage = () => {
           ) : (
             renderOsList(registradas, true)
           )}
+        </TabsContent>
+
+        <TabsContent value="ligacoes">
+          <LigacoesPanel />
         </TabsContent>
       </Tabs>
     </AppLayout>

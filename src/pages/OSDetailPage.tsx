@@ -1,9 +1,10 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck, Trash2 } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { MateriaisEntreguesSection } from '@/components/MateriaisEntreguesSection';
+import { OSHistoricoSection } from '@/components/OSHistoricoSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';

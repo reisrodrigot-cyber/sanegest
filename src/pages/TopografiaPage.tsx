@@ -254,16 +254,22 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 </div>
               )}
 
-              {!isConcluded && !allowEditAll && points.length > 0 && (
+              {!isConcluded && !allowEditAll && points.length > 0 && ligacoesPendentes === 0 && (
                 <Button onClick={handleConclude} disabled={concluding} variant="default" className="w-full bg-status-green hover:bg-status-green/90 text-white">
                   {concluding ? <Loader2 className="animate-spin mr-2" size={14} /> : <CheckCircle2 size={14} className="mr-1" />}
-                  Concluir OS (Status → Verde)
+                  Concluir NS (→ Verde)
                 </Button>
+              )}
+
+              {!isConcluded && !allowEditAll && points.length > 0 && ligacoesPendentes > 0 && (
+                <p className="text-sm text-status-yellow bg-status-yellow/10 border border-status-yellow/30 rounded-lg px-3 py-2 flex items-center gap-2">
+                  ⏳ {ligacoesPendentes} {ligacoesPendentes === 1 ? 'ligação ainda aguarda coordenadas' : 'ligações ainda aguardam coordenadas'} para concluir esta NS
+                </p>
               )}
 
               {isConcluded && !allowEditAll && (
                 <p className="text-sm text-status-green font-medium flex items-center gap-1">
-                  <CheckCircle2 size={14} /> OS concluída
+                  <CheckCircle2 size={14} /> NS concluída
                 </p>
               )}
             </>

@@ -471,6 +471,7 @@ const OSDetailPage = () => {
 
   return (
     <AppLayout>
+      <div className="max-w-[900px] mx-auto">
       <div className="mb-6">
         <Link to="/ordens" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
           <ArrowLeft size={16} /> Voltar
@@ -767,7 +768,7 @@ const OSDetailPage = () => {
 
       {/* Materiais Entregues */}
       <div className="mt-6">
-        <MateriaisEntreguesSection osId={os.id} canEdit={user?.role === 'almoxarifado' || user?.role === 'sala_tecnica'} dnValue={os.dn} />
+        <MateriaisEntreguesSection osId={os.id} canEdit={isSalaTecnica || user?.role === 'almoxarifado'} dnValue={os.dn} />
       </div>
 
       {estacas.length > 0 && (
@@ -807,6 +808,7 @@ const OSDetailPage = () => {
           </div>
         </div>
       )}
+      </div>
     </AppLayout>
   );
 };

@@ -20,12 +20,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-type OSStatus = 'VERMELHO' | 'AMARELO' | 'VERDE';
+type OSStatus = 'CINZA' | 'VERMELHO' | 'LARANJA' | 'AMARELO' | 'VERDE';
 
 const STATUS_CONFIG: { value: OSStatus; label: string; description: string; color: string; ring: string }[] = [
-  { value: 'VERMELHO', label: 'Vermelho', description: 'Liberada, em execução', color: 'bg-status-red', ring: 'ring-status-red' },
-  { value: 'AMARELO', label: 'Amarelo', description: 'Produção validada', color: 'bg-status-yellow', ring: 'ring-status-yellow' },
-  { value: 'VERDE', label: 'Verde', description: 'Concluída (as-built registrado)', color: 'bg-status-green', ring: 'ring-status-green' },
+  { value: 'CINZA', label: 'Cinza', description: 'Não liberada', color: 'bg-status-gray', ring: 'ring-status-gray' },
+  { value: 'VERMELHO', label: 'Vermelho', description: 'Aguardando entrega de material', color: 'bg-status-red', ring: 'ring-status-red' },
+  { value: 'LARANJA', label: 'Laranja', description: 'Aguardando produção', color: 'bg-status-orange', ring: 'ring-status-orange' },
+  { value: 'AMARELO', label: 'Amarelo', description: 'Aguardando registro topográfico', color: 'bg-status-yellow', ring: 'ring-status-yellow' },
+  { value: 'VERDE', label: 'Verde', description: 'Concluída', color: 'bg-status-green', ring: 'ring-status-green' },
 ];
 
 const PAV_OPTIONS = [

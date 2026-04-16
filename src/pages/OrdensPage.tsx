@@ -149,7 +149,9 @@ const OrdensPage = () => {
             <div className="flex flex-wrap gap-2 mb-4">
               {([
                 { key: 'TODAS' as const, label: 'Todas as fases' },
+                { key: 'CINZA' as const, label: `Cinza (${countByStatus('CINZA')})` },
                 { key: 'VERMELHO' as const, label: `Vermelho (${countByStatus('VERMELHO')})` },
+                { key: 'LARANJA' as const, label: `Laranja (${countByStatus('LARANJA')})` },
                 { key: 'AMARELO' as const, label: `Amarelo (${countByStatus('AMARELO')})` },
                 { key: 'VERDE' as const, label: `Verde (${countByStatus('VERDE')})` },
               ]).map(f => (

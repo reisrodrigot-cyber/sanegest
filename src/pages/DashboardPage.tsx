@@ -6,7 +6,7 @@ import { ROLE_LABELS } from '@/types/sanegest';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { OSMap } from '@/components/OSMap';
-import { Progress } from '@/components/ui/progress';
+
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useMemo } from 'react';
 

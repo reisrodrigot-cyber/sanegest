@@ -8,6 +8,8 @@ import { Loader2, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { OSMap } from '@/components/OSMap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useMemo } from 'react';
+import { AvancoFisicoDetail } from '@/components/dashboard/AvancoFisicoDetail';
+import { ProducaoPorEncarregado } from '@/components/dashboard/ProducaoPorEncarregado';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -153,6 +155,11 @@ const DashboardPage = () => {
             Avanço Físico: <span className="font-semibold text-foreground">{totalExecutado.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m</span> executados de{' '}
             <span className="font-semibold text-foreground">{totalPrevisto.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m</span> previstos ({avanco}%)
           </p>
+
+          <AvancoFisicoDetail ordens={ordens} />
+
+          {/* 2.5º Produção por Encarregado */}
+          <ProducaoPorEncarregado ordens={ordens} />
 
           {/* 3º Resumo Rápido */}
           <div className="grid grid-cols-3 gap-4 mb-6">

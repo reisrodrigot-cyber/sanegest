@@ -371,7 +371,7 @@ const OSDetailPage = () => {
     setLiberando(true);
     const { error } = await supabase
       .from('ordens_servico')
-      .update({ liberado: true, liberado_para: selectedEncarregado } as any)
+      .update({ liberado: true, liberado_para: selectedEncarregado, status: 'VERMELHO' } as any)
       .eq('id', os.id);
     if (error) {
       toast.error('Erro ao liberar OS: ' + error.message);

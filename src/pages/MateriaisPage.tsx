@@ -283,65 +283,50 @@ const MateriaisPage = () => {
               {openId === os.id && (
                 <div className="mt-4 pt-4 border-t border-border space-y-3">
                   <p className="text-sm font-medium text-foreground">Nova Entrega:</p>
-                  {materiais.map((m, idx) => (
-                    <div key={idx} className="grid grid-cols-[1fr_100px_80px_32px] gap-2 items-end">
-                      <div>
-                        <label className="block text-xs text-muted-foreground mb-1">Descrição</label>
-                        <input
-                          value={m.descricao}
-                          onChange={e => updateRow(idx, 'descricao', e.target.value)}
-                          placeholder="Ex: Areia média, Tubo 150mm..."
-                          disabled={m.locked}
-                          className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm disabled:opacity-70 disabled:bg-muted"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-muted-foreground mb-1">Qtd</label>
-                        <input
-                          type="number"
-                          value={m.quantidade}
-                          onChange={e => updateRow(idx, 'quantidade', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-muted-foreground mb-1">Un.</label>
-                        {m.locked ? (
-                          <input
-                            value={m.unidade}
-                            disabled
-                            className="w-full px-3 py-2 rounded-lg border border-input bg-muted text-foreground text-sm opacity-70"
-                          />
-                        ) : (
-                          <select
-                            value={m.unidade}
-                            onChange={e => updateRow(idx, 'unidade', e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
-                          >
-                            <option value="un">un</option>
-                            <option value="m">m</option>
-                            <option value="m²">m²</option>
-                            <option value="m³">m³</option>
-                            <option value="kg">kg</option>
-                            <option value="t">t</option>
-                          </select>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => removeRow(idx)}
-                        className="p-2 text-muted-foreground hover:text-destructive"
-                        title="Remover"
-                      >
-                        <X size={14} />
-                      </button>
+                  <div className="grid grid-cols-[1fr_100px_80px] gap-2 items-end">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Descrição</label>
+                      <input
+                        value={newItem.descricao}
+                        onChange={e => updateField('descricao', e.target.value)}
+                        placeholder="Ex: Areia média, Tubo 150mm..."
+                        disabled={newItem.locked}
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm disabled:opacity-70 disabled:bg-muted"
+                      />
                     </div>
-                  ))}
-                  <button
-                    onClick={addRow}
-                    className="inline-flex items-center gap-1 text-sm text-secondary hover:underline"
-                  >
-                    <Plus size={14} /> Adicionar material
-                  </button>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Qtd</label>
+                      <input
+                        type="number"
+                        value={newItem.quantidade}
+                        onChange={e => updateField('quantidade', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Un.</label>
+                      {newItem.locked ? (
+                        <input
+                          value={newItem.unidade}
+                          disabled
+                          className="w-full px-3 py-2 rounded-lg border border-input bg-muted text-foreground text-sm opacity-70"
+                        />
+                      ) : (
+                        <select
+                          value={newItem.unidade}
+                          onChange={e => updateField('unidade', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                        >
+                          <option value="un">un</option>
+                          <option value="m">m</option>
+                          <option value="m²">m²</option>
+                          <option value="m³">m³</option>
+                          <option value="kg">kg</option>
+                          <option value="t">t</option>
+                        </select>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex gap-3 pt-2">
                     <button
                       onClick={handleSave}

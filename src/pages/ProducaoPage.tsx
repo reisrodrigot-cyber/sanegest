@@ -140,8 +140,6 @@ const ProducaoPage = () => {
       ) : (
         <div className="space-y-3">
           {minhasOS.map(os => {
-            const pavTypesPrev = parsePavTypes(os.pav_previsto);
-            const extPrev = (os as any).pav_extensoes_previsto || {};
             return (
               <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4">
                 <div className="flex items-center justify-between mb-2">

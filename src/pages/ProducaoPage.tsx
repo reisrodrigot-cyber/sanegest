@@ -16,10 +16,6 @@ function fmt(val: unknown): string {
   return n.toFixed(2).replace(/\.?0+$/, '') || '0';
 }
 
-function parsePavTypes(pav: string | null | undefined): string[] {
-  if (!pav) return [];
-  return pav.split('/').map(s => s.trim()).filter(Boolean);
-}
 
 interface RealFields {
   comprimento_real: string;

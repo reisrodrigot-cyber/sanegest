@@ -260,6 +260,13 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
           <MiniMap points={points} />
         </div>
       </div>
+
+      <div className="mt-6 pt-6 border-t border-border">
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <MapPin size={16} /> Ligações desta NS
+        </h3>
+        <LigacoesPanel osId={os.id} />
+      </div>
     </div>
   );
 };

@@ -397,6 +397,7 @@ export type Database = {
         | "almoxarifado"
         | "encarregado"
         | "topografo"
+        | "admin"
       os_status: "VERMELHO" | "AMARELO" | "VERDE"
       pv_tipo: "PV" | "TIL" | "TL"
     }
@@ -532,6 +533,7 @@ export const Constants = {
         "almoxarifado",
         "encarregado",
         "topografo",
+        "admin",
       ],
       os_status: ["VERMELHO", "AMARELO", "VERDE"],
       pv_tipo: ["PV", "TIL", "TL"],

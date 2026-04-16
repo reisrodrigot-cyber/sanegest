@@ -1,8 +1,9 @@
 export type OSStatus = 'VERMELHO' | 'AMARELO' | 'VERDE';
 
-export type UserRole = 'gerencia' | 'sala_tecnica' | 'almoxarifado' | 'encarregado' | 'topografo';
+export type UserRole = 'admin' | 'gerencia' | 'sala_tecnica' | 'almoxarifado' | 'encarregado' | 'topografo';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Administrador',
   gerencia: 'Gerência / Diretoria',
   sala_tecnica: 'Sala Técnica',
   almoxarifado: 'Almoxarifado',
@@ -39,7 +40,6 @@ export interface OrdemServico {
   executor: string | null;
   status: OSStatus;
   
-  // Dados previstos
   comprimento_previsto: number | null;
   comprimento_real: number | null;
   largura_vala: number | null;
@@ -74,7 +74,6 @@ export interface OrdemServico {
   executor_real: string | null;
   liberado: boolean;
   liberado_para: string | null;
-  // As-built
   as_built_lat: number | null;
   as_built_lng: number | null;
 

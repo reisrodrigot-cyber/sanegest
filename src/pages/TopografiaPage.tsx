@@ -78,6 +78,8 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const [editNome, setEditNome] = useState('');
   const [editLat, setEditLat] = useState('');
   const [editLng, setEditLng] = useState('');
+  const [ligacoesTotal, setLigacoesTotal] = useState(0);
+  const [ligacoesPendentes, setLigacoesPendentes] = useState(0);
 
   const fetchPoints = useCallback(async () => {
     const { data } = await supabase
@@ -89,14 +91,26 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     setLoading(false);
   }, [os.id]);
 
+  const fetchLigacoesStatus = useCallback(async () => {
+    const { data } = await supabase
+      .from('ligacoes')
+      .select('id, latitude')
+      .eq('os_id', os.id);
+    const rows = data ?? [];
+    setLigacoesTotal(rows.length);
+    setLigacoesPendentes(rows.filter((r) => r.latitude == null).length);
+  }, [os.id]);
+
   useEffect(() => {
     fetchPoints();
+    fetchLigacoesStatus();
     const channel = supabase
       .channel(`topo-${os.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'topografia_asbuilt', filter: `os_id=eq.${os.id}` }, () => fetchPoints())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ligacoes', filter: `os_id=eq.${os.id}` }, () => fetchLigacoesStatus())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [os.id, fetchPoints]);
+  }, [os.id, fetchPoints, fetchLigacoesStatus]);
 
   const handleAdd = async () => {
     const latVal = parseFloat(lat);
@@ -240,16 +254,22 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 </div>
               )}
 
-              {!isConcluded && !allowEditAll && points.length > 0 && (
+              {!isConcluded && !allowEditAll && points.length > 0 && ligacoesPendentes === 0 && (
                 <Button onClick={handleConclude} disabled={concluding} variant="default" className="w-full bg-status-green hover:bg-status-green/90 text-white">
                   {concluding ? <Loader2 className="animate-spin mr-2" size={14} /> : <CheckCircle2 size={14} className="mr-1" />}
-                  Concluir OS (Status → Verde)
+                  Concluir NS (→ Verde)
                 </Button>
+              )}
+
+              {!isConcluded && !allowEditAll && points.length > 0 && ligacoesPendentes > 0 && (
+                <p className="text-sm text-status-yellow bg-status-yellow/10 border border-status-yellow/30 rounded-lg px-3 py-2 flex items-center gap-2">
+                  ⏳ {ligacoesPendentes} {ligacoesPendentes === 1 ? 'ligação ainda aguarda coordenadas' : 'ligações ainda aguardam coordenadas'} para concluir esta NS
+                </p>
               )}
 
               {isConcluded && !allowEditAll && (
                 <p className="text-sm text-status-green font-medium flex items-center gap-1">
-                  <CheckCircle2 size={14} /> OS concluída
+                  <CheckCircle2 size={14} /> NS concluída
                 </p>
               )}
             </>

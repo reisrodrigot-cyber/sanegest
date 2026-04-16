@@ -214,7 +214,6 @@ const OSDetailPage = () => {
       largura_pav_real: toNum(realFields.largura_pav_real),
       pav_m2_real: toNum(realFields.pav_m2_real),
       ligacoes_real: realFields.ligacoes_real ? Number(realFields.ligacoes_real) : null,
-      };
     };
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
     if (error) {

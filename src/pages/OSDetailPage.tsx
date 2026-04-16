@@ -159,6 +159,7 @@ const RealSelectRow = ({ label, previsto, realValue, realField, options, onChang
 
 const OSDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { os, estacas, loading } = useOrdemServico(id);
   const { user, effectiveRole } = useAuth();
   const [liberando, setLiberando] = useState(false);
@@ -175,6 +176,31 @@ const OSDetailPage = () => {
   const [changingStatus, setChangingStatus] = useState(false);
   const [asBuiltWarning, setAsBuiltWarning] = useState(false);
   const [savingEncarregado, setSavingEncarregado] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingOs, setDeletingOs] = useState(false);
+
+  const handleDeleteOs = async () => {
+    if (!os) return;
+    setDeletingOs(true);
+    // Delete dependent records first to be safe (no FK cascades)
+    await Promise.all([
+      supabase.from('registros_producao').delete().eq('os_id', os.id),
+      supabase.from('ligacoes').delete().eq('os_id', os.id),
+      supabase.from('topografia_asbuilt').delete().eq('os_id', os.id),
+      supabase.from('materiais_entrega').delete().eq('os_id', os.id),
+      supabase.from('estacas').delete().eq('os_id', os.id),
+      supabase.from('os_status_historico').delete().eq('os_id', os.id),
+    ]);
+    const { error } = await supabase.from('ordens_servico').delete().eq('id', os.id);
+    setDeletingOs(false);
+    setDeleteDialogOpen(false);
+    if (error) {
+      toast.error('Erro ao excluir OS: ' + error.message);
+      return;
+    }
+    toast.success('OS excluída com sucesso!');
+    navigate('/ordens');
+  };
 
   // Fetch encarregados from user_roles + profiles
   const { data: encarregados = [] } = useQuery({

@@ -87,6 +87,7 @@ function formatDate(dateStr: string): string {
 const MateriaisPage = () => {
   const { user } = useAuth();
   const canDelete = user?.role === 'almoxarifado' || user?.role === 'sala_tecnica';
+  const { ordens, loading } = useOrdensServico();
   const pendentes = ordens.filter(os => os.liberado);
   const [openId, setOpenId] = useState<string | null>(null);
   const [materiais, setMateriais] = useState<MaterialForm[]>([{ ...EMPTY_MATERIAL }]);

@@ -413,17 +413,13 @@ const OSDetailPage = () => {
           </h3>
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Selecionar Encarregado</label>
-              <select
+              <label className="block text-xs text-muted-foreground mb-1">Nome do Encarregado</label>
+              <input
                 value={selectedEncarregado}
                 onChange={e => setSelectedEncarregado(e.target.value)}
                 className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm min-w-[200px]"
-              >
-                <option value="">— Selecione —</option>
-                {encarregados.map(e => (
-                  <option key={e.id} value={e.nome}>{e.nome}</option>
-                ))}
-              </select>
+                placeholder="Nome do encarregado"
+              />
             </div>
             <button
               onClick={handleLiberar}

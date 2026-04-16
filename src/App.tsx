@@ -14,7 +14,7 @@ import ImportarPage from "./pages/ImportarPage";
 import ProducaoPage from "./pages/ProducaoPage";
 import MateriaisPage from "./pages/MateriaisPage";
 import TopografiaPage from "./pages/TopografiaPage";
-import RelatoriosPage from "./pages/RelatoriosPage";
+
 import UsuariosPage from "./pages/UsuariosPage";
 import NotFound from "./pages/NotFound";
 
@@ -50,7 +50,7 @@ const AppRoutes = () => {
       <Route path="/producao" element={<ProtectedRoute><ProducaoPage /></ProtectedRoute>} />
       <Route path="/materiais" element={<ProtectedRoute><MateriaisPage /></ProtectedRoute>} />
       <Route path="/topografia" element={<ProtectedRoute><TopografiaPage /></ProtectedRoute>} />
-      <Route path="/relatorios" element={<ProtectedRoute><RelatoriosPage /></ProtectedRoute>} />
+      
       <Route path="/usuarios" element={<ProtectedRoute><UsuariosPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>

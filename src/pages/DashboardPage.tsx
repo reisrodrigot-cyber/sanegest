@@ -4,11 +4,12 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Link } from 'react-router-dom';
 import { ROLE_LABELS } from '@/types/sanegest';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
-import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { OSMap } from '@/components/OSMap';
-
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 const OBRA_NOME = 'SES Japaratinga';
 
@@ -16,17 +17,14 @@ function getWeekRange(weeksAgo: number) {
   const now = new Date();
   const dayOfWeek = now.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-
   const thisMonday = new Date(now);
   thisMonday.setHours(0, 0, 0, 0);
   thisMonday.setDate(now.getDate() + mondayOffset);
-
   const start = new Date(thisMonday);
   start.setDate(start.getDate() - weeksAgo * 7);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
   end.setHours(23, 59, 59, 999);
-
   return { start, end };
 }
 
@@ -38,13 +36,35 @@ const DashboardPage = () => {
   const { user, effectiveRole } = useAuth();
   const { ordens, loading } = useOrdensServico();
 
+  // Divergências abertas
+  const { data: divergencias = [] } = useQuery({
+    queryKey: ['divergencias-abertas'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('materiais_entrega')
+        .select('id, os_id')
+        .eq('divergencia', true);
+      return data ?? [];
+    },
+  });
+
   const totalPrevisto = ordens.reduce((sum, os) => sum + (os.comprimento_previsto ?? 0), 0);
   const totalExecutado = ordens.reduce((sum, os) => sum + (os.comprimento_real ?? 0), 0);
   const avanco = totalPrevisto > 0 ? Math.round((totalExecutado / totalPrevisto) * 100) : 0;
 
+  // Resumo rápido
+  const now = new Date();
+  const h24ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const liberadasHoje = ordens.filter(os => os.liberado && new Date(os.updated_at) >= h24ago).length;
+
+  const osConcluidas = ordens.filter(os => os.status === 'VERDE' && os.liberado);
+  const prazoMedio = osConcluidas.length > 0
+    ? Math.round(osConcluidas.reduce((sum, os) => sum + (os.prazo_real ?? os.prazo_previsto ?? 0), 0) / osConcluidas.length)
+    : 0;
+
+  // Produção semanal
   const weeklyData = useMemo(() => {
     const osComReal = ordens.filter(os => os.comprimento_real != null && os.comprimento_real > 0);
-
     return [3, 2, 1, 0].map(weeksAgo => {
       const { start, end } = getWeekRange(weeksAgo);
       const metros = osComReal
@@ -53,11 +73,9 @@ const DashboardPage = () => {
           return updated >= start && updated <= end;
         })
         .reduce((sum, os) => sum + (os.comprimento_real ?? 0), 0);
-
       const label = weeksAgo === 0
         ? 'Sem atual'
         : `${formatDateShort(start)} - ${formatDateShort(end)}`;
-
       return { label, metros: Math.round(metros * 10) / 10, isCurrent: weeksAgo === 0 };
     });
   }, [ordens]);
@@ -66,6 +84,27 @@ const DashboardPage = () => {
   const semanaPassada = weeklyData[2]?.metros ?? 0;
   const diff = semanaAtual - semanaPassada;
 
+  // Avanço por bacia
+  const avancoPorBacia = useMemo(() => {
+    const bacias = new Map<string, { previsto: number; executado: number }>();
+    ordens.filter(os => os.liberado).forEach(os => {
+      const b = os.bacia || 'Sem bacia';
+      const cur = bacias.get(b) ?? { previsto: 0, executado: 0 };
+      cur.previsto += os.comprimento_previsto ?? 0;
+      cur.executado += os.comprimento_real ?? 0;
+      bacias.set(b, cur);
+    });
+    return Array.from(bacias.entries())
+      .map(([bacia, v]) => ({
+        bacia,
+        previsto: v.previsto,
+        executado: v.executado,
+        pct: v.previsto > 0 ? Math.round((v.executado / v.previsto) * 100) : 0,
+      }))
+      .sort((a, b) => b.pct - a.pct);
+  }, [ordens]);
+
+  // NS em Execução
   const nsEmExecucao = ordens
     .filter(os => os.liberado && (os.status === 'AMARELO' || os.status === 'VERMELHO'))
     .sort((a, b) => {
@@ -73,6 +112,16 @@ const DashboardPage = () => {
       if (a.status !== 'AMARELO' && b.status === 'AMARELO') return 1;
       return 0;
     });
+
+  // Alertas
+  const seteDiasAtras = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const nsSemProducao = ordens.filter(os =>
+    os.liberado &&
+    os.status === 'VERMELHO' &&
+    !os.comprimento_real &&
+    new Date(os.updated_at) < seteDiasAtras
+  );
+  const temAlertas = divergencias.length > 0 || nsSemProducao.length > 0;
 
   if (loading) {
     return (
@@ -91,7 +140,7 @@ const DashboardPage = () => {
         <p className="text-muted-foreground text-sm">{OBRA_NOME} • {effectiveRole && ROLE_LABELS[effectiveRole]}</p>
       </div>
 
-      {/* 1º Mapa das OS */}
+      {/* 1º Mapa */}
       <OSMap />
 
       {ordens.length === 0 ? (
@@ -100,13 +149,30 @@ const DashboardPage = () => {
         </div>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground mt-4 mb-6">
+          {/* 2º Avanço Físico */}
+          <p className="text-sm text-muted-foreground mt-4 mb-4">
             Avanço Físico: <span className="font-semibold text-foreground">{totalExecutado.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m</span> executados de{' '}
             <span className="font-semibold text-foreground">{totalPrevisto.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m</span> previstos ({avanco}%)
           </p>
 
-          {/* Produção Semanal */}
-          <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          {/* 3º Resumo Rápido */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-card rounded-xl border border-border p-4 text-center">
+              <p className="text-xs text-muted-foreground">NS liberadas hoje</p>
+              <p className="text-2xl font-bold text-foreground">{liberadasHoje}</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4 text-center">
+              <p className="text-xs text-muted-foreground">Divergências abertas</p>
+              <p className="text-2xl font-bold text-foreground">{divergencias.length}</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4 text-center">
+              <p className="text-xs text-muted-foreground">Prazo médio conclusão</p>
+              <p className="text-2xl font-bold text-foreground">{prazoMedio} <span className="text-sm font-normal">dias</span></p>
+            </div>
+          </div>
+
+          {/* 4º Produção Semanal */}
+          <div className="bg-card rounded-xl p-6 border border-border shadow-sm mb-6">
             <h2 className="text-lg font-semibold text-foreground mb-1">Produção Semanal (m)</h2>
             <p className="text-sm text-muted-foreground mb-4">Últimas 4 semanas</p>
             <div className="h-48">
@@ -114,9 +180,7 @@ const DashboardPage = () => {
                 <BarChart data={weeklyData}>
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} unit="m" />
-                  <Tooltip
-                    formatter={(value: number) => [`${value} m`, 'Produção']}
-                  />
+                  <Tooltip formatter={(value: number) => [`${value} m`, 'Produção']} />
                   <Bar dataKey="metros" radius={[6, 6, 0, 0]}>
                     {weeklyData.map((entry, i) => (
                       <Cell key={i} fill={entry.isCurrent ? '#0C447C' : '#4A9FE0'} />
@@ -137,8 +201,37 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          {/* 3º NS em Execução */}
-          <div className="bg-card rounded-xl p-6 border border-border shadow-sm mt-6">
+          {/* 5º Avanço por Bacia */}
+          {avancoPorBacia.length > 0 && (
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm mb-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Avanço por Bacia</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th className="pb-2 font-medium">Bacia</th>
+                      <th className="pb-2 font-medium text-right">Previsto (m)</th>
+                      <th className="pb-2 font-medium text-right">Executado (m)</th>
+                      <th className="pb-2 font-medium text-right">%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {avancoPorBacia.map(b => (
+                      <tr key={b.bacia} className="border-b border-border/50">
+                        <td className="py-2 text-foreground font-medium">{b.bacia}</td>
+                        <td className="py-2 text-right text-muted-foreground">{b.previsto.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</td>
+                        <td className="py-2 text-right text-muted-foreground">{b.executado.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</td>
+                        <td className="py-2 text-right font-semibold text-foreground">{b.pct}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 6º NS em Execução */}
+          <div className="bg-card rounded-xl p-6 border border-border shadow-sm mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">NS em Execução</h2>
               <Link to="/ordens" className="text-sm text-secondary hover:underline">Ver todas</Link>
@@ -163,6 +256,35 @@ const DashboardPage = () => {
               )}
             </div>
           </div>
+
+          {/* 7º Alertas */}
+          {temAlertas && (
+            <div className="rounded-xl border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 dark:border-yellow-800 p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle size={18} className="text-yellow-600 dark:text-yellow-400" />
+                <h2 className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Alertas</h2>
+              </div>
+              <ul className="space-y-2 text-sm">
+                {divergencias.length > 0 && (
+                  <li className="text-yellow-800 dark:text-yellow-200">
+                    <span className="font-semibold">{divergencias.length}</span> divergência{divergencias.length > 1 ? 's' : ''} aberta{divergencias.length > 1 ? 's' : ''} aguardando resolução do Almoxarifado
+                  </li>
+                )}
+                {nsSemProducao.length > 0 && (
+                  <li className="text-yellow-800 dark:text-yellow-200">
+                    <span className="font-semibold">{nsSemProducao.length}</span> NS liberada{nsSemProducao.length > 1 ? 's' : ''} há mais de 7 dias sem produção registrada
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {nsSemProducao.slice(0, 5).map(os => (
+                        <Link key={os.id} to={`/ordens/${os.id}`} className="text-xs underline text-yellow-700 dark:text-yellow-300 hover:text-yellow-900">
+                          {os.trecho}
+                        </Link>
+                      ))}
+                    </div>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
         </>
       )}
     </AppLayout>

@@ -88,6 +88,66 @@ export type Database = {
           },
         ]
       }
+      ligacoes: {
+        Row: {
+          comprimento: number | null
+          created_at: string
+          data_topografia: string | null
+          encarregado_id: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          os_id: string
+          referencia: string | null
+          registro_producao_id: string | null
+          topografo_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          comprimento?: number | null
+          created_at?: string
+          data_topografia?: string | null
+          encarregado_id: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          os_id: string
+          referencia?: string | null
+          registro_producao_id?: string | null
+          topografo_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          comprimento?: number | null
+          created_at?: string
+          data_topografia?: string | null
+          encarregado_id?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          os_id?: string
+          referencia?: string | null
+          registro_producao_id?: string | null
+          topografo_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ligacoes_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ligacoes_registro_producao_id_fkey"
+            columns: ["registro_producao_id"]
+            isOneToOne: false
+            referencedRelation: "registros_producao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materiais_entrega: {
         Row: {
           created_at: string
@@ -98,6 +158,7 @@ export type Database = {
           obs_divergencia: string | null
           os_id: string
           quantidade: number
+          registrado_por: string | null
           unidade: string
           updated_at: string
         }
@@ -110,6 +171,7 @@ export type Database = {
           obs_divergencia?: string | null
           os_id: string
           quantidade?: number
+          registrado_por?: string | null
           unidade?: string
           updated_at?: string
         }
@@ -122,6 +184,7 @@ export type Database = {
           obs_divergencia?: string | null
           os_id?: string
           quantidade?: number
+          registrado_por?: string | null
           unidade?: string
           updated_at?: string
         }
@@ -285,6 +348,44 @@ export type Database = {
         }
         Relationships: []
       }
+      os_status_historico: {
+        Row: {
+          created_at: string
+          id: string
+          observacao: string | null
+          os_id: string
+          status_anterior: Database["public"]["Enums"]["os_status"] | null
+          status_novo: Database["public"]["Enums"]["os_status"]
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          os_id: string
+          status_anterior?: Database["public"]["Enums"]["os_status"] | null
+          status_novo: Database["public"]["Enums"]["os_status"]
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          os_id?: string
+          status_anterior?: Database["public"]["Enums"]["os_status"] | null
+          status_novo?: Database["public"]["Enums"]["os_status"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_status_historico_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -311,6 +412,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      registros_producao: {
+        Row: {
+          comprimento_dia: number
+          created_at: string
+          data_registro: string
+          id: string
+          ligacoes_dia: number
+          observacao: string | null
+          os_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comprimento_dia?: number
+          created_at?: string
+          data_registro?: string
+          id?: string
+          ligacoes_dia?: number
+          observacao?: string | null
+          os_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comprimento_dia?: number
+          created_at?: string
+          data_registro?: string
+          id?: string
+          ligacoes_dia?: number
+          observacao?: string | null
+          os_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_producao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       topografia_asbuilt: {
         Row: {

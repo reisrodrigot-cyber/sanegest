@@ -54,6 +54,7 @@ const OrdensPage = () => {
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Bacia</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Comp. (m)</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">DN (m)</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Prof. Média (m)</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Executor</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
             </tr>
@@ -67,13 +68,14 @@ const OrdensPage = () => {
                 <td className="px-4 py-3 text-foreground">{os.bacia}</td>
                 <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.comprimento_previsto}</td>
                 <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.dn}</td>
+                <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.prof_media_prevista ?? '—'}</td>
                 <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.executor || '—'}</td>
                 <td className="px-4 py-3"><StatusBadge status={os.status} size="sm" /></td>
               </tr>
             ))}
             {data.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   {ordens.length === 0
                     ? 'Nenhuma OS cadastrada. Importe o Planilhão para começar.'
                     : 'Nenhuma OS encontrada com os filtros aplicados.'}

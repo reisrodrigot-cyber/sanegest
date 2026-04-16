@@ -1,0 +1,1 @@
+ALTER TABLE public.ordens_servico ALTER COLUMN status SET DEFAULT 'CINZA'::os_status;

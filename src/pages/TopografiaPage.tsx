@@ -78,6 +78,8 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const [editNome, setEditNome] = useState('');
   const [editLat, setEditLat] = useState('');
   const [editLng, setEditLng] = useState('');
+  const [ligacoesTotal, setLigacoesTotal] = useState(0);
+  const [ligacoesPendentes, setLigacoesPendentes] = useState(0);
 
   const fetchPoints = useCallback(async () => {
     const { data } = await supabase
@@ -89,14 +91,26 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     setLoading(false);
   }, [os.id]);
 
+  const fetchLigacoesStatus = useCallback(async () => {
+    const { data } = await supabase
+      .from('ligacoes')
+      .select('id, latitude')
+      .eq('os_id', os.id);
+    const rows = data ?? [];
+    setLigacoesTotal(rows.length);
+    setLigacoesPendentes(rows.filter((r) => r.latitude == null).length);
+  }, [os.id]);
+
   useEffect(() => {
     fetchPoints();
+    fetchLigacoesStatus();
     const channel = supabase
       .channel(`topo-${os.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'topografia_asbuilt', filter: `os_id=eq.${os.id}` }, () => fetchPoints())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ligacoes', filter: `os_id=eq.${os.id}` }, () => fetchLigacoesStatus())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [os.id, fetchPoints]);
+  }, [os.id, fetchPoints, fetchLigacoesStatus]);
 
   const handleAdd = async () => {
     const latVal = parseFloat(lat);

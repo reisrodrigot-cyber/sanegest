@@ -58,11 +58,7 @@ export const AppSidebar = () => {
         </div>
       </div>
 
-      {user.role === 'admin' && (
-        <div className="px-3 pt-3">
-          <ViewAsSelector />
-        </div>
-      )}
+      {user.role === 'admin' && <ViewAsSelector />}
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {filteredItems.map(item => {

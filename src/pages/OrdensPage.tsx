@@ -68,7 +68,7 @@ const OrdensPage = () => {
                 <td className="px-4 py-3 text-foreground">{os.bacia}</td>
                 <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.comprimento_previsto}</td>
                 <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.dn}</td>
-                <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.prof_media_prevista ?? '—'}</td>
+                <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.prof_media_prevista != null ? Number(os.prof_media_prevista).toFixed(2) : '—'}</td>
                 <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.executor || '—'}</td>
                 <td className="px-4 py-3"><StatusBadge status={os.status} size="sm" /></td>
               </tr>

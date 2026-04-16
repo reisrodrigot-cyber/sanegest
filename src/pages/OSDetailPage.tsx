@@ -399,17 +399,53 @@ const OSDetailPage = () => {
   const handleLiberar = async () => {
     if (!os || !selectedEncarregado) return;
     setLiberando(true);
+    const encarregadoName = encarregados.find(e => e.user_id === selectedEncarregado)?.name ?? selectedEncarregado;
     const { error } = await supabase
       .from('ordens_servico')
-      .update({ liberado: true, liberado_para: selectedEncarregado, status: 'VERMELHO' } as any)
+      .update({ liberado: true, liberado_para: encarregadoName, status: 'VERMELHO' } as any)
       .eq('id', os.id);
     if (error) {
       toast.error('Erro ao liberar OS: ' + error.message);
     } else {
-      toast.success('OS liberada para o encarregado!');
+      toast.success(`OS liberada para ${encarregadoName}!`);
       window.location.reload();
     }
     setLiberando(false);
+  };
+
+  const handleChangeEncarregado = async (newUserId: string) => {
+    if (!os) return;
+    setSavingEncarregado(true);
+    const previousEnc = os.liberado_para ?? 'nenhum';
+
+    if (newUserId === '__remove__') {
+      // Remove encarregado → back to CINZA
+      const { error } = await supabase
+        .from('ordens_servico')
+        .update({ liberado: false, liberado_para: null, status: 'CINZA' } as any)
+        .eq('id', os.id);
+      if (error) {
+        toast.error('Erro: ' + error.message);
+      } else {
+        const now = new Date().toLocaleString('pt-BR');
+        toast.success(`Encarregado removido — OS retornada para Não Liberada em ${now}`);
+        window.location.reload();
+      }
+    } else {
+      const newName = encarregados.find(e => e.user_id === newUserId)?.name ?? newUserId;
+      const { error } = await supabase
+        .from('ordens_servico')
+        .update({ liberado_para: newName } as any)
+        .eq('id', os.id);
+      if (error) {
+        toast.error('Erro: ' + error.message);
+      } else {
+        const now = new Date().toLocaleString('pt-BR');
+        toast.success(`Encarregado alterado de ${previousEnc} para ${newName} por Sala Técnica em ${now}`);
+        window.location.reload();
+      }
+    }
+    setSavingEncarregado(false);
   };
 
   if (loading) {

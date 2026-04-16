@@ -7,7 +7,7 @@ import { Loader2, Save, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OrdemServico } from '@/types/sanegest';
-import { PavimentoRealSelect, parsePavRealToTypes, typesToPavReal } from '@/components/PavimentoRealSelect';
+
 
 function fmt(val: unknown): string {
   if (val == null) return '—';
@@ -16,10 +16,6 @@ function fmt(val: unknown): string {
   return n.toFixed(2).replace(/\.?0+$/, '') || '0';
 }
 
-function parsePavTypes(pav: string | null | undefined): string[] {
-  if (!pav) return [];
-  return pav.split('/').map(s => s.trim()).filter(Boolean);
-}
 
 interface RealFields {
   comprimento_real: string;
@@ -28,11 +24,10 @@ interface RealFields {
   largura_pav_real: string;
   pav_m2_real: string;
   ligacoes_real: string;
-  [key: string]: string; // for dynamic pav extension fields
 }
 
 function initRealFields(os: OrdemServico): RealFields {
-  const fields: RealFields = {
+  return {
     comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
     prof_media_real: os.prof_media_real != null ? String(os.prof_media_real) : '',
     pav_real: os.pav_real ?? '',
@@ -40,12 +35,6 @@ function initRealFields(os: OrdemServico): RealFields {
     pav_m2_real: os.pav_m2_real != null ? String(os.pav_m2_real) : '',
     ligacoes_real: os.ligacoes_real != null ? String(os.ligacoes_real) : '',
   };
-  const pavTypes = parsePavTypes(os.pav_previsto);
-  const extReal = (os as any).pav_extensoes_real || {};
-  pavTypes.forEach(t => {
-    fields[`pav_ext_real_${t}`] = extReal[t] != null ? String(extReal[t]) : '';
-  });
-  return fields;
 }
 
 const DataRow = ({ label, previsto, realValue, field, onChange }: {
@@ -99,16 +88,6 @@ const ProducaoPage = () => {
     setFields(prev => prev ? { ...prev, [field]: val } : prev);
   };
 
-  const buildPavExtensoesFromFields = (f: RealFields) => {
-    const ext: Record<string, number | null> = {};
-    Object.entries(f).forEach(([k, v]) => {
-      if (k.startsWith('pav_ext_real_')) {
-        const type = k.replace('pav_ext_real_', '');
-        ext[type] = v ? Number(v) : null;
-      }
-    });
-    return Object.keys(ext).length > 0 ? ext : {};
-  };
 
   const handleSave = async (osId: string) => {
     if (!fields) return;
@@ -120,7 +99,6 @@ const ProducaoPage = () => {
       largura_pav_real: fields.largura_pav_real ? Number(fields.largura_pav_real) : null,
       pav_m2_real: fields.pav_m2_real ? Number(fields.pav_m2_real) : null,
       ligacoes_real: fields.ligacoes_real ? Number(fields.ligacoes_real) : null,
-      pav_extensoes_real: buildPavExtensoesFromFields(fields),
     };
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', osId);
     if (error) {
@@ -158,8 +136,6 @@ const ProducaoPage = () => {
       ) : (
         <div className="space-y-3">
           {minhasOS.map(os => {
-            const pavTypesPrev = parsePavTypes(os.pav_previsto);
-            const extPrev = (os as any).pav_extensoes_previsto || {};
             return (
               <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -193,29 +169,7 @@ const ProducaoPage = () => {
                       <ReadOnlyRow label="Largura Vala (m)" previsto={os.largura_vala} />
                       <ReadOnlyRow label="Prof. Montante (m)" previsto={os.prof_montante} />
                       <ReadOnlyRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />
-                      <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-start">
-                        <span className="text-sm text-muted-foreground pt-1">Pavimento</span>
-                        <span className="text-sm font-medium text-foreground pt-1">{fmt(os.pav_previsto)}</span>
-                        <PavimentoRealSelect
-                          selectedTypes={parsePavRealToTypes(fields.pav_real)}
-                          onTypesChange={(types) => {
-                            const newFields = { ...fields, pav_real: types.join(' / ') };
-                            Object.keys(newFields).forEach(k => {
-                              if (k.startsWith('pav_ext_real_')) {
-                                const t = k.replace('pav_ext_real_', '');
-                                if (!types.includes(t)) delete newFields[k];
-                              }
-                            });
-                            setFields(newFields as RealFields);
-                          }}
-                          extensions={Object.fromEntries(
-                            Object.entries(fields)
-                              .filter(([k]) => k.startsWith('pav_ext_real_'))
-                              .map(([k, v]) => [k.replace('pav_ext_real_', ''), v])
-                          )}
-                          onExtensionChange={(type, val) => updateField(`pav_ext_real_${type}`, val)}
-                        />
-                      </div>
+                      <DataRow label="Pavimento" previsto={os.pav_previsto} realValue={fields.pav_real} field="pav_real" onChange={updateField} />
                       <DataRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} realValue={fields.largura_pav_real} field="largura_pav_real" onChange={updateField} />
                       <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} realValue={fields.pav_m2_real} field="pav_m2_real" onChange={updateField} />
                       <DataRow label="Ligações" previsto={os.ligacoes_previstas} realValue={fields.ligacoes_real} field="ligacoes_real" onChange={updateField} />

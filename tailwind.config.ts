@@ -73,8 +73,12 @@ export default {
           cream: "hsl(var(--sane-cream))",
         },
         status: {
+          gray: "hsl(var(--status-gray))",
+          "gray-bg": "hsl(var(--status-gray-bg))",
           red: "hsl(var(--status-red))",
           "red-bg": "hsl(var(--status-red-bg))",
+          orange: "hsl(var(--status-orange))",
+          "orange-bg": "hsl(var(--status-orange-bg))",
           yellow: "hsl(var(--status-yellow))",
           "yellow-bg": "hsl(var(--status-yellow-bg))",
           green: "hsl(var(--status-green))",

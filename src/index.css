@@ -44,8 +44,12 @@
     --sane-gray-light: 40 6% 83%;
     --sane-cream: 40 20% 97%;
 
+    --status-gray: 0 0% 60%;
+    --status-gray-bg: 0 0% 93%;
     --status-red: 0 72% 51%;
     --status-red-bg: 0 72% 95%;
+    --status-orange: 25 95% 53%;
+    --status-orange-bg: 25 95% 93%;
     --status-yellow: 45 93% 47%;
     --status-yellow-bg: 45 93% 93%;
     --status-green: 142 71% 35%;
@@ -72,8 +76,14 @@
 }
 
 @layer utilities {
+  .status-cinza {
+    @apply bg-[hsl(var(--status-gray-bg))] text-[hsl(var(--status-gray))] border-[hsl(var(--status-gray))];
+  }
   .status-vermelho {
     @apply bg-[hsl(var(--status-red-bg))] text-[hsl(var(--status-red))] border-[hsl(var(--status-red))];
+  }
+  .status-laranja {
+    @apply bg-[hsl(var(--status-orange-bg))] text-[hsl(var(--status-orange))] border-[hsl(var(--status-orange))];
   }
   .status-amarelo {
     @apply bg-[hsl(var(--status-yellow-bg))] text-[hsl(var(--status-yellow))] border-[hsl(var(--status-yellow))];
@@ -81,8 +91,14 @@
   .status-verde {
     @apply bg-[hsl(var(--status-green-bg))] text-[hsl(var(--status-green))] border-[hsl(var(--status-green))];
   }
+  .status-dot-cinza {
+    @apply bg-[hsl(var(--status-gray))];
+  }
   .status-dot-vermelho {
     @apply bg-[hsl(var(--status-red))];
+  }
+  .status-dot-laranja {
+    @apply bg-[hsl(var(--status-orange))];
   }
   .status-dot-amarelo {
     @apply bg-[hsl(var(--status-yellow))];

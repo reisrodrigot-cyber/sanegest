@@ -9,14 +9,16 @@ interface MapPoint {
   os_id: string;
   trecho: string;
   bacia: string;
-  status: 'VERMELHO' | 'AMARELO' | 'VERDE';
+  status: string;
   latitude: number;
   longitude: number;
   nome_estaca: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
+  CINZA: '#999999',
   VERMELHO: '#dc2626',
+  LARANJA: '#f97316',
   AMARELO: '#ca8a04',
   VERDE: '#16a34a',
 };

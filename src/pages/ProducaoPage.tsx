@@ -3,18 +3,36 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
-import { Loader2, Save, Plus, Trash2, MapPin } from 'lucide-react';
+import { Loader2, Save, MapPin, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OrdemServico } from '@/types/sanegest';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 interface RegistroDia {
   id: string;
   data_registro: string;
   comprimento_dia: number;
   ligacoes_dia: number;
+}
+
+interface LigacaoRow {
+  id: string;
+  comprimento: number | null;
+  referencia: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  data_topografia: string | null;
+  registro_producao_id: string | null;
+  created_at: string;
 }
 
 interface LigacaoNova {
@@ -39,20 +57,32 @@ const ReadField = ({ label, value }: { label: string; value: unknown }) => (
 const OSPanel = ({ os }: { os: OrdemServico }) => {
   const { user } = useAuth();
   const [registros, setRegistros] = useState<RegistroDia[]>([]);
+  const [ligacoesAll, setLigacoesAll] = useState<LigacaoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [comprimento, setComprimento] = useState('');
   const [numLigacoes, setNumLigacoes] = useState('');
   const [ligacoes, setLigacoes] = useState<LigacaoNova[]>([]);
   const [saving, setSaving] = useState(false);
+  const [popupRegistroId, setPopupRegistroId] = useState<string | null>(null);
+  const [popupAcumOpen, setPopupAcumOpen] = useState(false);
 
   const fetchRegistros = useCallback(async () => {
-    const { data } = await supabase
-      .from('registros_producao')
-      .select('id, data_registro, comprimento_dia, ligacoes_dia')
-      .eq('os_id', os.id)
-      .eq('user_id', user?.id ?? '')
-      .order('data_registro', { ascending: false });
-    setRegistros((data ?? []) as RegistroDia[]);
+    const [regRes, ligRes] = await Promise.all([
+      supabase
+        .from('registros_producao')
+        .select('id, data_registro, comprimento_dia, ligacoes_dia')
+        .eq('os_id', os.id)
+        .eq('user_id', user?.id ?? '')
+        .order('data_registro', { ascending: false }),
+      supabase
+        .from('ligacoes')
+        .select('id, comprimento, referencia, latitude, longitude, data_topografia, registro_producao_id, created_at')
+        .eq('os_id', os.id)
+        .eq('encarregado_id', user?.id ?? '')
+        .order('created_at', { ascending: true }),
+    ]);
+    setRegistros((regRes.data ?? []) as RegistroDia[]);
+    setLigacoesAll((ligRes.data ?? []) as LigacaoRow[]);
     setLoading(false);
   }, [os.id, user?.id]);
 
@@ -160,10 +190,18 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
             {acumComprimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
           </p>
         </div>
-        <div className="bg-card border border-border rounded-lg p-3">
-          <p className="text-xs text-muted-foreground">Ligações acumuladas</p>
+        <button
+          type="button"
+          onClick={() => acumLigacoes > 0 && setPopupAcumOpen(true)}
+          disabled={acumLigacoes === 0}
+          className="bg-card border border-border rounded-lg p-3 text-left transition hover:border-secondary hover:bg-muted/40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
+        >
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            Ligações acumuladas
+            {acumLigacoes > 0 && <Eye size={11} className="opacity-60" />}
+          </p>
           <p className="text-xl font-bold text-foreground">{acumLigacoes}</p>
-        </div>
+        </button>
       </div>
 
       {/* Novo registro do dia */}
@@ -237,6 +275,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
                 <th className="py-1 font-medium">Data</th>
                 <th className="py-1 font-medium text-right">Comp. (m)</th>
                 <th className="py-1 font-medium text-right">Ligações</th>
+                <th className="py-1 font-medium text-right w-12"></th>
               </tr>
             </thead>
             <tbody>
@@ -247,12 +286,142 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
                   </td>
                   <td className="py-1 text-right text-foreground">{Number(r.comprimento_dia).toFixed(2)}</td>
                   <td className="py-1 text-right text-foreground">{r.ligacoes_dia}</td>
+                  <td className="py-1 text-right">
+                    {r.ligacoes_dia > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setPopupRegistroId(r.id)}
+                        className="text-secondary hover:text-secondary/80"
+                        title="Ver ligações"
+                      >
+                        <Eye size={15} />
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      {/* Popup: ligações de um registro específico */}
+      <Dialog open={!!popupRegistroId} onOpenChange={(o) => !o && setPopupRegistroId(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ligações do registro</DialogTitle>
+            <DialogDescription>
+              {(() => {
+                const reg = registros.find((r) => r.id === popupRegistroId);
+                return reg
+                  ? new Date(reg.data_registro + 'T00:00:00').toLocaleDateString('pt-BR')
+                  : '';
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {(() => {
+              const ligs = ligacoesAll.filter((l) => l.registro_producao_id === popupRegistroId);
+              if (ligs.length === 0) {
+                return <p className="text-sm text-muted-foreground">Sem detalhes salvos.</p>;
+              }
+              return ligs.map((l, i) => {
+                const temCoord = l.latitude != null && l.longitude != null;
+                return (
+                  <div key={l.id} className="bg-muted/40 rounded-lg p-3 text-sm">
+                    <p className="font-semibold text-foreground mb-1">Ligação {i + 1}</p>
+                    <p className="text-muted-foreground">
+                      <span className="text-foreground">Comprimento:</span>{' '}
+                      {l.comprimento != null ? `${Number(l.comprimento).toFixed(2)} m` : '—'}
+                    </p>
+                    <p className="text-muted-foreground">
+                      <span className="text-foreground">Referência:</span>{' '}
+                      {l.referencia || '—'}
+                    </p>
+                    <p className="text-muted-foreground flex items-center gap-1">
+                      <MapPin size={12} />
+                      <span className="text-foreground">Coordenada:</span>{' '}
+                      {temCoord ? (
+                        <span className="text-status-green">
+                          ✓ {Number(l.latitude).toFixed(6)}, {Number(l.longitude).toFixed(6)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">⏳ Pendente</span>
+                      )}
+                    </p>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Popup: todas as ligações da OS, agrupadas por data */}
+      <Dialog open={popupAcumOpen} onOpenChange={setPopupAcumOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Ligações registradas — {os.trecho}</DialogTitle>
+            <DialogDescription>
+              {ligacoesAll.length} ligação(ões) no total
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[65vh] overflow-y-auto">
+            {(() => {
+              // Agrupar por data do registro de produção
+              const regById = new Map(registros.map((r) => [r.id, r.data_registro]));
+              const groups = new Map<string, LigacaoRow[]>();
+              ligacoesAll.forEach((l) => {
+                const data =
+                  (l.registro_producao_id && regById.get(l.registro_producao_id)) ||
+                  l.created_at.slice(0, 10);
+                if (!groups.has(data)) groups.set(data, []);
+                groups.get(data)!.push(l);
+              });
+              const sorted = Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+              if (sorted.length === 0) {
+                return <p className="text-sm text-muted-foreground">Nenhuma ligação registrada.</p>;
+              }
+              return sorted.map(([data, ligs]) => (
+                <div key={data}>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    {new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')} — {ligs.length} ligação(ões)
+                  </p>
+                  <div className="space-y-2">
+                    {ligs.map((l, i) => {
+                      const temCoord = l.latitude != null && l.longitude != null;
+                      return (
+                        <div
+                          key={l.id}
+                          className="bg-muted/40 rounded-lg p-3 text-sm flex items-center justify-between gap-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium text-foreground truncate">
+                              {l.referencia || `Ligação ${i + 1}`}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {l.comprimento != null ? `${Number(l.comprimento).toFixed(2)} m` : 'sem comprimento'}
+                            </p>
+                          </div>
+                          {temCoord ? (
+                            <span className="text-xs font-medium text-status-green whitespace-nowrap">
+                              ✓ Preenchida
+                            </span>
+                          ) : (
+                            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                              ⏳ Pendente
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

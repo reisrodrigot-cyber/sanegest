@@ -116,8 +116,9 @@ export const AppSidebar = () => {
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 bg-foreground/50 z-40" onClick={() => setMobileOpen(false)} />
       )}
+      
 
-      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 transform transition-transform lg:translate-x-0 ${
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 transform transition-transform lg:translate-x-0 ${
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         {sidebarContent}

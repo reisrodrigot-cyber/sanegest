@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { MateriaisEntreguesSection } from '@/components/MateriaisEntreguesSection';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { permissions } from '@/lib/permissions';
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +20,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type OSStatus = 'CINZA' | 'VERMELHO' | 'LARANJA' | 'AMARELO' | 'VERDE';
 
@@ -165,6 +173,28 @@ const OSDetailPage = () => {
   const [pendingStatus, setPendingStatus] = useState<OSStatus | null>(null);
   const [changingStatus, setChangingStatus] = useState(false);
   const [asBuiltWarning, setAsBuiltWarning] = useState(false);
+  const [savingEncarregado, setSavingEncarregado] = useState(false);
+
+  // Fetch encarregados from user_roles + profiles
+  const { data: encarregados = [] } = useQuery({
+    queryKey: ['encarregados-list'],
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'encarregado');
+      if (!roles || roles.length === 0) return [];
+      const userIds = roles.map(r => r.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, email')
+        .in('user_id', userIds);
+      return (profiles ?? []).map(p => ({
+        user_id: p.user_id,
+        name: p.display_name || p.email || 'Sem nome',
+      }));
+    },
+  });
 
   const isSalaTecnica = permissions.canEditOS(effectiveRole);
   const isEncarregado = permissions.canEditProducao(effectiveRole) && effectiveRole === 'encarregado';
@@ -369,17 +399,53 @@ const OSDetailPage = () => {
   const handleLiberar = async () => {
     if (!os || !selectedEncarregado) return;
     setLiberando(true);
+    const encarregadoName = encarregados.find(e => e.user_id === selectedEncarregado)?.name ?? selectedEncarregado;
     const { error } = await supabase
       .from('ordens_servico')
-      .update({ liberado: true, liberado_para: selectedEncarregado, status: 'VERMELHO' } as any)
+      .update({ liberado: true, liberado_para: encarregadoName, status: 'VERMELHO' } as any)
       .eq('id', os.id);
     if (error) {
       toast.error('Erro ao liberar OS: ' + error.message);
     } else {
-      toast.success('OS liberada para o encarregado!');
+      toast.success(`OS liberada para ${encarregadoName}!`);
       window.location.reload();
     }
     setLiberando(false);
+  };
+
+  const handleChangeEncarregado = async (newUserId: string) => {
+    if (!os) return;
+    setSavingEncarregado(true);
+    const previousEnc = os.liberado_para ?? 'nenhum';
+
+    if (newUserId === '__remove__') {
+      // Remove encarregado → back to CINZA
+      const { error } = await supabase
+        .from('ordens_servico')
+        .update({ liberado: false, liberado_para: null, status: 'CINZA' } as any)
+        .eq('id', os.id);
+      if (error) {
+        toast.error('Erro: ' + error.message);
+      } else {
+        const now = new Date().toLocaleString('pt-BR');
+        toast.success(`Encarregado removido — OS retornada para Não Liberada em ${now}`);
+        window.location.reload();
+      }
+    } else {
+      const newName = encarregados.find(e => e.user_id === newUserId)?.name ?? newUserId;
+      const { error } = await supabase
+        .from('ordens_servico')
+        .update({ liberado_para: newName } as any)
+        .eq('id', os.id);
+      if (error) {
+        toast.error('Erro: ' + error.message);
+      } else {
+        const now = new Date().toLocaleString('pt-BR');
+        toast.success(`Encarregado alterado de ${previousEnc} para ${newName} por Sala Técnica em ${now}`);
+        window.location.reload();
+      }
+    }
+    setSavingEncarregado(false);
   };
 
   if (loading) {
@@ -508,32 +574,60 @@ const OSDetailPage = () => {
         </div>
       )}
 
-      {/* Liberação pela Sala Técnica */}
-      {isSalaTecnica && !os.liberado && !editing && (
+      {/* Encarregado Responsável — Sala Técnica */}
+      {isSalaTecnica && !editing && (
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Send size={16} className="text-primary" />
-            Liberar OS para Encarregado
+            <UserCheck size={16} className="text-primary" />
+            Encarregado Responsável
           </h3>
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Nome do Encarregado</label>
-              <input
-                value={selectedEncarregado}
-                onChange={e => setSelectedEncarregado(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm min-w-[200px]"
-                placeholder="Nome do encarregado"
-              />
+          {!os.liberado ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[240px]">
+                <label className="block text-xs text-muted-foreground mb-1">Selecionar Encarregado</label>
+                <Select value={selectedEncarregado} onValueChange={setSelectedEncarregado}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um encarregado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {encarregados.map(e => (
+                      <SelectItem key={e.user_id} value={e.user_id}>{e.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <button
+                onClick={handleLiberar}
+                disabled={!selectedEncarregado || liberando}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+              >
+                {liberando ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Liberar OS
+              </button>
             </div>
-            <button
-              onClick={handleLiberar}
-              disabled={!selectedEncarregado || liberando}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
-            >
-              {liberando ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Liberar
-            </button>
-          </div>
+          ) : (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[240px]">
+                <label className="block text-xs text-muted-foreground mb-1">
+                  Atribuído a: <span className="font-semibold text-foreground">{os.liberado_para}</span>
+                </label>
+                <Select onValueChange={handleChangeEncarregado} disabled={savingEncarregado}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Trocar encarregado..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__remove__" className="text-destructive">
+                      ✕ Remover encarregado
+                    </SelectItem>
+                    {encarregados.map(e => (
+                      <SelectItem key={e.user_id} value={e.user_id}>{e.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {savingEncarregado && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
+            </div>
+          )}
         </div>
       )}
 

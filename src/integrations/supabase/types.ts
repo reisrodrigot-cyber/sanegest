@@ -138,21 +138,27 @@ export type Database = {
       ordens_servico: {
         Row: {
           areia: string | null
+          areia_real: string | null
           as_built_lat: number | null
           as_built_lng: number | null
           bacia: string
           bms: string | null
+          bms_real: string | null
           bomba_rebaixo: boolean | null
           brita: string | null
+          brita_real: string | null
           comprimento_previsto: number | null
           comprimento_real: number | null
           created_at: string
           dn: number | null
+          dn_real: number | null
           executor: string | null
+          executor_real: string | null
           id: string
           largura_pav_prevista: number | null
           largura_pav_real: number | null
           largura_vala: number | null
+          largura_vala_real: number | null
           liberado: boolean
           liberado_para: string | null
           ligacoes_previstas: number | null
@@ -165,11 +171,14 @@ export type Database = {
           pav_real: string | null
           prazo_arredondado: number | null
           prazo_previsto: number | null
+          prazo_real: number | null
           prof_jusante: number | null
+          prof_jusante_real: number | null
           prof_media_executada: number | null
           prof_media_prevista: number | null
           prof_media_real: number | null
           prof_montante: number | null
+          prof_montante_real: number | null
           pv_jusante: string | null
           pv_montante: string | null
           status: Database["public"]["Enums"]["os_status"]
@@ -178,21 +187,27 @@ export type Database = {
         }
         Insert: {
           areia?: string | null
+          areia_real?: string | null
           as_built_lat?: number | null
           as_built_lng?: number | null
           bacia?: string
           bms?: string | null
+          bms_real?: string | null
           bomba_rebaixo?: boolean | null
           brita?: string | null
+          brita_real?: string | null
           comprimento_previsto?: number | null
           comprimento_real?: number | null
           created_at?: string
           dn?: number | null
+          dn_real?: number | null
           executor?: string | null
+          executor_real?: string | null
           id?: string
           largura_pav_prevista?: number | null
           largura_pav_real?: number | null
           largura_vala?: number | null
+          largura_vala_real?: number | null
           liberado?: boolean
           liberado_para?: string | null
           ligacoes_previstas?: number | null
@@ -205,11 +220,14 @@ export type Database = {
           pav_real?: string | null
           prazo_arredondado?: number | null
           prazo_previsto?: number | null
+          prazo_real?: number | null
           prof_jusante?: number | null
+          prof_jusante_real?: number | null
           prof_media_executada?: number | null
           prof_media_prevista?: number | null
           prof_media_real?: number | null
           prof_montante?: number | null
+          prof_montante_real?: number | null
           pv_jusante?: string | null
           pv_montante?: string | null
           status?: Database["public"]["Enums"]["os_status"]
@@ -218,21 +236,27 @@ export type Database = {
         }
         Update: {
           areia?: string | null
+          areia_real?: string | null
           as_built_lat?: number | null
           as_built_lng?: number | null
           bacia?: string
           bms?: string | null
+          bms_real?: string | null
           bomba_rebaixo?: boolean | null
           brita?: string | null
+          brita_real?: string | null
           comprimento_previsto?: number | null
           comprimento_real?: number | null
           created_at?: string
           dn?: number | null
+          dn_real?: number | null
           executor?: string | null
+          executor_real?: string | null
           id?: string
           largura_pav_prevista?: number | null
           largura_pav_real?: number | null
           largura_vala?: number | null
+          largura_vala_real?: number | null
           liberado?: boolean
           liberado_para?: string | null
           ligacoes_previstas?: number | null
@@ -245,11 +269,14 @@ export type Database = {
           pav_real?: string | null
           prazo_arredondado?: number | null
           prazo_previsto?: number | null
+          prazo_real?: number | null
           prof_jusante?: number | null
+          prof_jusante_real?: number | null
           prof_media_executada?: number | null
           prof_media_prevista?: number | null
           prof_media_real?: number | null
           prof_montante?: number | null
+          prof_montante_real?: number | null
           pv_jusante?: string | null
           pv_montante?: string | null
           status?: Database["public"]["Enums"]["os_status"]

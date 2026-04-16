@@ -56,13 +56,22 @@ export interface OrdemServico {
   pav_m2_previsto: number | null;
   pav_m2_real: number | null;
   areia: string | null;
+  areia_real: string | null;
   brita: string | null;
+  brita_real: string | null;
   ligacoes_previstas: number | null;
   ligacoes_real: number | null;
   bomba_rebaixo: boolean;
   prazo_previsto: number | null;
   prazo_arredondado: number | null;
+  prazo_real: number | null;
   bms: string | null;
+  bms_real: string | null;
+  dn_real: number | null;
+  largura_vala_real: number | null;
+  prof_montante_real: number | null;
+  prof_jusante_real: number | null;
+  executor_real: string | null;
   liberado: boolean;
   liberado_para: string | null;
   // As-built

@@ -16,6 +16,11 @@ function fmt(val: unknown): string {
   return n.toFixed(2).replace(/\.?0+$/, '') || '0';
 }
 
+function parsePavTypes(pav: string | null | undefined): string[] {
+  if (!pav) return [];
+  return pav.split('/').map(s => s.trim()).filter(Boolean);
+}
+
 const DataRow = ({ label, previsto, real }: { label: string; previsto: unknown; real?: unknown }) => (
   <div className="grid grid-cols-3 gap-2 py-2 border-b border-border last:border-0">
     <span className="text-sm text-muted-foreground">{label}</span>
@@ -49,6 +54,26 @@ const EditableRow = ({ label, previstoValue, realValue, previstoField, realField
   </div>
 );
 
+/** Row where only the REAL column is editable */
+const RealEditableRow = ({ label, previsto, realValue, realField, onChange }: {
+  label: string;
+  previsto: unknown;
+  realValue: string;
+  realField: string;
+  onChange: (field: string, val: string) => void;
+}) => (
+  <div className="grid grid-cols-3 gap-2 py-2 border-b border-border last:border-0 items-center">
+    <span className="text-sm text-muted-foreground">{label}</span>
+    <span className="text-sm font-medium text-foreground">{fmt(previsto)}</span>
+    <input
+      value={realValue}
+      onChange={e => onChange(realField, e.target.value)}
+      className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-full"
+      placeholder="—"
+    />
+  </div>
+);
+
 const OSDetailPage = () => {
   const { id } = useParams();
   const { os, estacas, loading } = useOrdemServico(id);
@@ -59,13 +84,24 @@ const OSDetailPage = () => {
   const [editFields, setEditFields] = useState<Record<string, string>>({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [validando, setValidando] = useState(false);
+  // Real-only editing (for encarregado or when not in full edit mode)
+  const [editingReal, setEditingReal] = useState(false);
+  const [realFields, setRealFields] = useState<Record<string, string>>({});
+  const [savingReal, setSavingReal] = useState(false);
 
   const encarregados = MOCK_USERS.filter(u => u.role === 'encarregado');
   const isSalaTecnica = user?.role === 'sala_tecnica';
+  const isEncarregado = user?.role === 'encarregado';
+  const canEditReal = isSalaTecnica || isEncarregado;
 
   const startEditing = () => {
     if (!os) return;
-    setEditFields({
+    const pavTypesPrev = parsePavTypes(os.pav_previsto);
+    const pavTypesReal = parsePavTypes(os.pav_real || os.pav_previsto);
+    const extPrev = (os as any).pav_extensoes_previsto || {};
+    const extReal = (os as any).pav_extensoes_real || {};
+
+    const fields: Record<string, string> = {
       comprimento_previsto: os.comprimento_previsto != null ? String(os.comprimento_previsto) : '',
       comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
       prof_media_prevista: os.prof_media_prevista != null ? String(os.prof_media_prevista) : '',
@@ -87,12 +123,54 @@ const OSDetailPage = () => {
       prazo_previsto: os.prazo_previsto != null ? String(os.prazo_previsto) : '',
       bms: os.bms ?? '',
       executor: os.executor ?? '',
+    };
+    // Populate pav extension fields
+    pavTypesPrev.forEach(t => {
+      fields[`pav_ext_prev_${t}`] = extPrev[t] != null ? String(extPrev[t]) : '';
     });
+    pavTypesReal.forEach(t => {
+      fields[`pav_ext_real_${t}`] = extReal[t] != null ? String(extReal[t]) : '';
+    });
+    setEditFields(fields);
     setEditing(true);
+  };
+
+  const startEditingReal = () => {
+    if (!os) return;
+    const pavTypes = parsePavTypes(os.pav_previsto);
+    const extReal = (os as any).pav_extensoes_real || {};
+    const fields: Record<string, string> = {
+      comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
+      prof_media_real: os.prof_media_real != null ? String(os.prof_media_real) : '',
+      pav_real: os.pav_real ?? '',
+      largura_pav_real: os.largura_pav_real != null ? String(os.largura_pav_real) : '',
+      pav_m2_real: os.pav_m2_real != null ? String(os.pav_m2_real) : '',
+      ligacoes_real: os.ligacoes_real != null ? String(os.ligacoes_real) : '',
+    };
+    pavTypes.forEach(t => {
+      fields[`pav_ext_real_${t}`] = extReal[t] != null ? String(extReal[t]) : '';
+    });
+    setRealFields(fields);
+    setEditingReal(true);
   };
 
   const updateEditField = (field: string, val: string) => {
     setEditFields(prev => ({ ...prev, [field]: val }));
+  };
+
+  const updateRealField = (field: string, val: string) => {
+    setRealFields(prev => ({ ...prev, [field]: val }));
+  };
+
+  const buildPavExtensoesFromFields = (fields: Record<string, string>, prefix: string) => {
+    const ext: Record<string, number | null> = {};
+    Object.entries(fields).forEach(([k, v]) => {
+      if (k.startsWith(prefix)) {
+        const type = k.replace(prefix, '');
+        ext[type] = v ? Number(v) : null;
+      }
+    });
+    return Object.keys(ext).length > 0 ? ext : {};
   };
 
   const handleSaveEdit = async () => {
@@ -122,6 +200,8 @@ const OSDetailPage = () => {
       prazo_previsto: toInt(editFields.prazo_previsto),
       bms: editFields.bms || null,
       executor: editFields.executor || null,
+      pav_extensoes_previsto: buildPavExtensoesFromFields(editFields, 'pav_ext_prev_'),
+      pav_extensoes_real: buildPavExtensoesFromFields(editFields, 'pav_ext_real_'),
     };
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
     if (error) {
@@ -132,6 +212,30 @@ const OSDetailPage = () => {
       window.location.reload();
     }
     setSavingEdit(false);
+  };
+
+  const handleSaveReal = async () => {
+    if (!os) return;
+    setSavingReal(true);
+    const toNum = (v: string) => v ? Number(v) : null;
+    const update: any = {
+      comprimento_real: toNum(realFields.comprimento_real),
+      prof_media_real: toNum(realFields.prof_media_real),
+      pav_real: realFields.pav_real || null,
+      largura_pav_real: toNum(realFields.largura_pav_real),
+      pav_m2_real: toNum(realFields.pav_m2_real),
+      ligacoes_real: realFields.ligacoes_real ? Number(realFields.ligacoes_real) : null,
+      pav_extensoes_real: buildPavExtensoesFromFields(realFields, 'pav_ext_real_'),
+    };
+    const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
+    if (error) {
+      toast.error('Erro ao salvar: ' + error.message);
+    } else {
+      toast.success('Dados reais salvos com sucesso!');
+      setEditingReal(false);
+      window.location.reload();
+    }
+    setSavingReal(false);
   };
 
   const handleValidar = async () => {
@@ -186,6 +290,10 @@ const OSDetailPage = () => {
   }
 
   const hasRealData = os.comprimento_real != null || os.prof_media_real != null || os.pav_real != null;
+  const pavTypesPrev = parsePavTypes(os.pav_previsto);
+  const pavTypesReal = parsePavTypes(os.pav_real || os.pav_previsto);
+  const extPrev = (os as any).pav_extensoes_previsto || {};
+  const extReal = (os as any).pav_extensoes_real || {};
 
   return (
     <AppLayout>
@@ -208,7 +316,6 @@ const OSDetailPage = () => {
       {/* Ações da Sala Técnica */}
       {isSalaTecnica && (
         <div className="flex flex-wrap gap-3 mb-6">
-          {/* Validar produção — só aparece se tem dados reais preenchidos */}
           {hasRealData && os.status === 'VERMELHO' && (
             <button
               onClick={handleValidar}
@@ -219,7 +326,6 @@ const OSDetailPage = () => {
               ✓ Validar
             </button>
           )}
-          {/* Editar */}
           {!editing && (
             <button
               onClick={startEditing}
@@ -229,6 +335,19 @@ const OSDetailPage = () => {
               ✏ Editar
             </button>
           )}
+        </div>
+      )}
+
+      {/* Botão Editar Real para encarregado */}
+      {isEncarregado && !editingReal && !editing && (
+        <div className="flex flex-wrap gap-3 mb-6">
+          <button
+            onClick={startEditingReal}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
+          >
+            <Pencil size={14} />
+            Editar Dados Reais
+          </button>
         </div>
       )}
 
@@ -287,32 +406,28 @@ const OSDetailPage = () => {
                 </button>
               </div>
             )}
+            {editingReal && (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveReal}
+                  disabled={savingReal}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
+                >
+                  {savingReal ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                  Salvar
+                </button>
+                <button
+                  onClick={() => setEditingReal(false)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-foreground text-xs"
+                >
+                  <X size={12} /> Cancelar
+                </button>
+              </div>
+            )}
           </div>
 
-          {!editing ? (
-            <>
-              <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
-                <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
-                <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
-                <span className="text-xs font-semibold text-secondary uppercase">Real</span>
-              </div>
-              <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
-              <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
-              <DataRow label="DN (m)" previsto={os.dn} />
-              <DataRow label="Largura Vala (m)" previsto={os.largura_vala} />
-              <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} />
-              <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />
-              <DataRow label="Pavimento" previsto={os.pav_previsto} real={os.pav_real} />
-              <DataRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} real={os.largura_pav_real} />
-              <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} real={os.pav_m2_real} />
-              <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real} />
-              <DataRow label="Areia" previsto={os.areia} />
-              <DataRow label="Brita" previsto={os.brita} />
-              <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />
-              <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} />
-              <DataRow label="BMs" previsto={os.bms} />
-            </>
-          ) : (
+          {editing ? (
+            /* Full edit mode (Sala Técnica) */
             <>
               <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
@@ -326,6 +441,18 @@ const OSDetailPage = () => {
               <EditableRow label="Prof. Montante (m)" previstoValue={editFields.prof_montante} realValue="" previstoField="prof_montante" realField="" onChange={updateEditField} />
               <EditableRow label="Prof. Jusante (m)" previstoValue={editFields.prof_jusante} realValue="" previstoField="prof_jusante" realField="" onChange={updateEditField} />
               <EditableRow label="Pavimento" previstoValue={editFields.pav_previsto} realValue={editFields.pav_real} previstoField="pav_previsto" realField="pav_real" onChange={updateEditField} />
+              {/* Per-type pav extensions */}
+              {parsePavTypes(editFields.pav_previsto).map(t => (
+                <EditableRow
+                  key={`pav_ext_${t}`}
+                  label={`  ↳ ${t} (m)`}
+                  previstoValue={editFields[`pav_ext_prev_${t}`] || ''}
+                  realValue={editFields[`pav_ext_real_${t}`] || ''}
+                  previstoField={`pav_ext_prev_${t}`}
+                  realField={`pav_ext_real_${t}`}
+                  onChange={updateEditField}
+                />
+              ))}
               <EditableRow label="Largura PAV (m)" previstoValue={editFields.largura_pav_prevista} realValue={editFields.largura_pav_real} previstoField="largura_pav_prevista" realField="largura_pav_real" onChange={updateEditField} />
               <EditableRow label="PAV (m²)" previstoValue={editFields.pav_m2_previsto} realValue={editFields.pav_m2_real} previstoField="pav_m2_previsto" realField="pav_m2_real" onChange={updateEditField} />
               <EditableRow label="Ligações" previstoValue={editFields.ligacoes_previstas} realValue={editFields.ligacoes_real} previstoField="ligacoes_previstas" realField="ligacoes_real" onChange={updateEditField} />
@@ -334,6 +461,74 @@ const OSDetailPage = () => {
               <EditableRow label="Prazo (dias)" previstoValue={editFields.prazo_previsto} realValue="" previstoField="prazo_previsto" realField="" onChange={updateEditField} />
               <EditableRow label="BMs" previstoValue={editFields.bms} realValue="" previstoField="bms" realField="" onChange={updateEditField} />
               <EditableRow label="Executor" previstoValue={editFields.executor} realValue="" previstoField="executor" realField="" onChange={updateEditField} />
+            </>
+          ) : editingReal ? (
+            /* Real-only edit mode (Encarregado or Sala Técnica quick edit) */
+            <>
+              <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
+                <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
+                <span className="text-xs font-semibold text-secondary uppercase">Real (editável)</span>
+              </div>
+              <RealEditableRow label="Comprimento (m)" previsto={os.comprimento_previsto} realValue={realFields.comprimento_real} realField="comprimento_real" onChange={updateRealField} />
+              <RealEditableRow label="Prof. Média (m)" previsto={os.prof_media_prevista} realValue={realFields.prof_media_real} realField="prof_media_real" onChange={updateRealField} />
+              <DataRow label="DN (m)" previsto={os.dn} />
+              <DataRow label="Largura Vala (m)" previsto={os.largura_vala} />
+              <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} />
+              <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />
+              <RealEditableRow label="Pavimento" previsto={os.pav_previsto} realValue={realFields.pav_real} realField="pav_real" onChange={updateRealField} />
+              {/* Per-type pav extensions */}
+              {pavTypesPrev.map(t => (
+                <RealEditableRow
+                  key={`pav_ext_real_${t}`}
+                  label={`  ↳ ${t} (m)`}
+                  previsto={extPrev[t]}
+                  realValue={realFields[`pav_ext_real_${t}`] || ''}
+                  realField={`pav_ext_real_${t}`}
+                  onChange={updateRealField}
+                />
+              ))}
+              <RealEditableRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} realValue={realFields.largura_pav_real} realField="largura_pav_real" onChange={updateRealField} />
+              <RealEditableRow label="PAV (m²)" previsto={os.pav_m2_previsto} realValue={realFields.pav_m2_real} realField="pav_m2_real" onChange={updateRealField} />
+              <RealEditableRow label="Ligações" previsto={os.ligacoes_previstas} realValue={realFields.ligacoes_real} realField="ligacoes_real" onChange={updateRealField} />
+              <DataRow label="Areia" previsto={os.areia} />
+              <DataRow label="Brita" previsto={os.brita} />
+              <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />
+              <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} />
+              <DataRow label="BMs" previsto={os.bms} />
+            </>
+          ) : (
+            /* Read-only view */
+            <>
+              <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
+                <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
+                <span className="text-xs font-semibold text-secondary uppercase">Real</span>
+              </div>
+              <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
+              <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
+              <DataRow label="DN (m)" previsto={os.dn} />
+              <DataRow label="Largura Vala (m)" previsto={os.largura_vala} />
+              <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} />
+              <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />
+              <DataRow label="Pavimento" previsto={os.pav_previsto} real={os.pav_real} />
+              {/* Per-type pav extensions (read-only) */}
+              {pavTypesPrev.length > 0 && pavTypesPrev.map(t => (
+                <DataRow
+                  key={`pav_ext_${t}`}
+                  label={`  ↳ ${t} (m)`}
+                  previsto={extPrev[t]}
+                  real={extReal[t]}
+                />
+              ))}
+              <DataRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} real={os.largura_pav_real} />
+              <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} real={os.pav_m2_real} />
+              <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real} />
+              <DataRow label="Areia" previsto={os.areia} />
+              <DataRow label="Brita" previsto={os.brita} />
+              <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />
+              <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} />
+              <DataRow label="BMs" previsto={os.bms} />
             </>
           )}
         </div>

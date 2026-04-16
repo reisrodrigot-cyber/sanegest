@@ -6,6 +6,13 @@ import { Link } from 'react-router-dom';
 import { Search, Plus, Loader2 } from 'lucide-react';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const OrdensPage = () => {
   const { ordens, loading } = useOrdensServico();
@@ -95,46 +102,32 @@ const OrdensPage = () => {
         </Link>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Buscar por trecho ou bacia..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-
-      {/* Bacia filter */}
-      {bacias.length > 1 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button
-            onClick={() => setBaciaFilter('TODAS')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              baciaFilter === 'TODAS'
-                ? 'bg-secondary text-secondary-foreground border-secondary'
-                : 'bg-card text-muted-foreground border-border hover:border-foreground/20'
-            }`}
-          >
-            Todas as bacias
-          </button>
-          {bacias.map(b => (
-            <button
-              key={b}
-              onClick={() => setBaciaFilter(b)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                baciaFilter === b
-                  ? 'bg-secondary text-secondary-foreground border-secondary'
-                  : 'bg-card text-muted-foreground border-border hover:border-foreground/20'
-              }`}
-            >
-              {b}
-            </button>
-          ))}
+      {/* Search + Bacia dropdown */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Buscar por trecho ou bacia..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
         </div>
-      )}
+        {bacias.length > 1 && (
+          <Select value={baciaFilter} onValueChange={setBaciaFilter}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Filtrar por bacia" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TODAS">Todas as bacias</SelectItem>
+              {bacias.map(b => (
+                <SelectItem key={b} value={b}>{b}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-12">

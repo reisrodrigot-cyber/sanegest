@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { UserRole } from "@/types/sanegest";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,11 +21,41 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+/** Maps each route prefix to the roles allowed to access it */
+const ROUTE_ROLES: Record<string, UserRole[]> = {
+  '/dashboard': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'],
+  '/importar': ['admin', 'sala_tecnica'],
+  '/ordens': ['admin', 'gerencia', 'sala_tecnica'],
+  '/producao': ['admin', 'encarregado'],
+  '/materiais': ['admin', 'almoxarifado'],
+  '/topografia': ['admin', 'topografo'],
+  '/usuarios': ['admin'],
+};
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, supabaseUser, loading } = useAuth();
+  const { isAuthenticated, supabaseUser, loading, effectiveRole } = useAuth();
+  const location = useLocation();
+
   if (loading) return null;
   if (!supabaseUser) return <Navigate to="/login" replace />;
   if (supabaseUser && !isAuthenticated) return <NoRolePage />;
+
+  // Check route permissions using effectiveRole (respects "view as")
+  if (effectiveRole) {
+    const matchedPrefix = Object.keys(ROUTE_ROLES).find(prefix => location.pathname.startsWith(prefix));
+    if (matchedPrefix) {
+      const allowed = ROUTE_ROLES[matchedPrefix];
+      // Admin always allowed to /usuarios; for others check effectiveRole
+      const isAdminOnlyRoute = allowed.length === 1 && allowed[0] === 'admin';
+      if (isAdminOnlyRoute) {
+        // real role must be admin
+        // effectiveRole doesn't matter for admin-only routes
+      } else if (!allowed.includes(effectiveRole)) {
+        return <Navigate to="/dashboard" replace />;
+      }
+    }
+  }
+
   return <>{children}</>;
 };
 

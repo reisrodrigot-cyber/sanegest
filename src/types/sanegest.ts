@@ -1,4 +1,4 @@
-export type OSStatus = 'VERMELHO' | 'AMARELO' | 'VERDE';
+export type OSStatus = 'CINZA' | 'VERMELHO' | 'LARANJA' | 'AMARELO' | 'VERDE';
 
 export type UserRole = 'admin' | 'gerencia' | 'sala_tecnica' | 'almoxarifado' | 'encarregado' | 'topografo';
 

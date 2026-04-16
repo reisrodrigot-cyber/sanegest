@@ -398,7 +398,7 @@ export type Database = {
         | "encarregado"
         | "topografo"
         | "admin"
-      os_status: "VERMELHO" | "AMARELO" | "VERDE"
+      os_status: "VERMELHO" | "AMARELO" | "VERDE" | "CINZA" | "LARANJA"
       pv_tipo: "PV" | "TIL" | "TL"
     }
     CompositeTypes: {
@@ -535,7 +535,7 @@ export const Constants = {
         "topografo",
         "admin",
       ],
-      os_status: ["VERMELHO", "AMARELO", "VERDE"],
+      os_status: ["VERMELHO", "AMARELO", "VERDE", "CINZA", "LARANJA"],
       pv_tipo: ["PV", "TIL", "TL"],
     },
   },

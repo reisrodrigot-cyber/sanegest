@@ -104,13 +104,12 @@ const DashboardPage = () => {
       .sort((a, b) => b.pct - a.pct);
   }, [ordens]);
 
-  // NS em Execução
+  // NS em Execução (Vermelho, Laranja, Amarelo — não Cinza nem Verde)
   const nsEmExecucao = ordens
-    .filter(os => os.liberado && (os.status === 'AMARELO' || os.status === 'VERMELHO'))
+    .filter(os => os.liberado && (os.status === 'VERMELHO' || os.status === 'LARANJA' || os.status === 'AMARELO'))
     .sort((a, b) => {
-      if (a.status === 'AMARELO' && b.status !== 'AMARELO') return -1;
-      if (a.status !== 'AMARELO' && b.status === 'AMARELO') return 1;
-      return 0;
+      const order = { AMARELO: 0, LARANJA: 1, VERMELHO: 2 };
+      return (order[a.status as keyof typeof order] ?? 9) - (order[b.status as keyof typeof order] ?? 9);
     });
 
   // Alertas

@@ -151,7 +151,7 @@ const ImportarPage = () => {
       for (let i = 0; i < parsedData.length; i += BATCH_SIZE) {
         const batch = parsedData.slice(i, i + BATCH_SIZE).map(os => ({
           ...os,
-          status: 'VERMELHO' as const,
+          status: 'CINZA' as const,
         }));
 
         const { error } = await supabase

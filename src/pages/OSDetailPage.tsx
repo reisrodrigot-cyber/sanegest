@@ -131,7 +131,7 @@ const RealSelectRow = ({ label, previsto, realValue, realField, options, onChang
 const OSDetailPage = () => {
   const { id } = useParams();
   const { os, estacas, loading } = useOrdemServico(id);
-  const { user } = useAuth();
+  const { user, effectiveRole } = useAuth();
   const [liberando, setLiberando] = useState(false);
   const [selectedEncarregado, setSelectedEncarregado] = useState('');
   const [editing, setEditing] = useState(false);
@@ -142,8 +142,8 @@ const OSDetailPage = () => {
   const [realFields, setRealFields] = useState<Record<string, string>>({});
   const [savingReal, setSavingReal] = useState(false);
 
-  const isSalaTecnica = permissions.canEditOS(user?.role);
-  const isEncarregado = permissions.canEditProducao(user?.role) && user?.role === 'encarregado';
+  const isSalaTecnica = permissions.canEditOS(effectiveRole);
+  const isEncarregado = permissions.canEditProducao(effectiveRole) && effectiveRole === 'encarregado';
 
   const startEditing = () => {
     if (!os) return;

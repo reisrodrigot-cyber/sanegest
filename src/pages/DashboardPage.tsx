@@ -11,7 +11,7 @@ import { OSMap } from '@/components/OSMap';
 const OBRA_NOME = 'SES Japaratinga';
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, effectiveRole } = useAuth();
   const { ordens, loading } = useOrdensServico();
 
   const vermelhas = ordens.filter(os => os.status === 'VERMELHO').length;
@@ -42,7 +42,7 @@ const DashboardPage = () => {
     <AppLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground text-sm">{OBRA_NOME} • {user && ROLE_LABELS[user.role]}</p>
+        <p className="text-muted-foreground text-sm">{OBRA_NOME} • {effectiveRole && ROLE_LABELS[effectiveRole]}</p>
       </div>
 
       {/* Metric cards */}

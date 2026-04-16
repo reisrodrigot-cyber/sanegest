@@ -157,6 +157,8 @@ export type Database = {
           liberado_para: string | null
           ligacoes_previstas: number | null
           ligacoes_real: number | null
+          pav_extensoes_previsto: Json | null
+          pav_extensoes_real: Json | null
           pav_m2_previsto: number | null
           pav_m2_real: number | null
           pav_previsto: string | null
@@ -195,6 +197,8 @@ export type Database = {
           liberado_para?: string | null
           ligacoes_previstas?: number | null
           ligacoes_real?: number | null
+          pav_extensoes_previsto?: Json | null
+          pav_extensoes_real?: Json | null
           pav_m2_previsto?: number | null
           pav_m2_real?: number | null
           pav_previsto?: string | null
@@ -233,6 +237,8 @@ export type Database = {
           liberado_para?: string | null
           ligacoes_previstas?: number | null
           ligacoes_real?: number | null
+          pav_extensoes_previsto?: Json | null
+          pav_extensoes_real?: Json | null
           pav_m2_previsto?: number | null
           pav_m2_real?: number | null
           pav_previsto?: string | null

@@ -1,10 +1,11 @@
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
-import { Loader2, Package, Plus, X } from 'lucide-react';
+import { Loader2, Package, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { OrdemServico } from '@/types/sanegest';
 
 function fmt(val: unknown): string {
   if (val == null) return '—';
@@ -12,6 +13,41 @@ function fmt(val: unknown): string {
   if (isNaN(n)) return String(val);
   return n.toFixed(2).replace(/\.?0+$/, '') || '0';
 }
+
+const DataRow = ({ label, previsto, real }: { label: string; previsto: unknown; real?: unknown }) => (
+  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border last:border-0">
+    <span className="text-xs text-muted-foreground">{label}</span>
+    <span className="text-xs font-medium text-foreground">{fmt(previsto)}</span>
+    <span className={`text-xs font-medium ${real !== undefined && real !== null ? 'text-secondary' : 'text-muted-foreground'}`}>
+      {fmt(real)}
+    </span>
+  </div>
+);
+
+const OSDetail = ({ os }: { os: OrdemServico }) => (
+  <div className="mb-4">
+    <div className="grid grid-cols-3 gap-2 pb-1.5 border-b-2 border-border mb-1">
+      <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
+      <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
+      <span className="text-xs font-semibold text-secondary uppercase">Real</span>
+    </div>
+    <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
+    <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
+    <DataRow label="DN (m)" previsto={os.dn} />
+    <DataRow label="Largura Vala (m)" previsto={os.largura_vala} />
+    <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} />
+    <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />
+    <DataRow label="Pavimento" previsto={os.pav_previsto} real={os.pav_real} />
+    <DataRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} real={os.largura_pav_real} />
+    <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} real={os.pav_m2_real} />
+    <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real} />
+    <DataRow label="Areia" previsto={os.areia} />
+    <DataRow label="Brita" previsto={os.brita} />
+    <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />
+    <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} />
+    <DataRow label="BMs" previsto={os.bms} />
+  </div>
+);
 
 interface MaterialForm {
   descricao: string;
@@ -22,11 +58,12 @@ interface MaterialForm {
 const EMPTY_MATERIAL: MaterialForm = { descricao: '', quantidade: '', unidade: 'un' };
 
 const MateriaisPage = () => {
-  const { ordens, loading, refetch } = useOrdensServico();
+  const { ordens, loading } = useOrdensServico();
   const pendentes = ordens.filter(os => os.liberado);
   const [openId, setOpenId] = useState<string | null>(null);
   const [materiais, setMateriais] = useState<MaterialForm[]>([{ ...EMPTY_MATERIAL }]);
   const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleOpen = (osId: string) => {
     if (openId === osId) {
@@ -35,6 +72,10 @@ const MateriaisPage = () => {
       setOpenId(osId);
       setMateriais([{ ...EMPTY_MATERIAL }]);
     }
+  };
+
+  const toggleExpand = (osId: string) => {
+    setExpandedId(prev => prev === osId ? null : osId);
   };
 
   const addRow = () => setMateriais(prev => [...prev, { ...EMPTY_MATERIAL }]);
@@ -95,11 +136,29 @@ const MateriaisPage = () => {
               <div>
                 <p className="font-medium text-foreground">{os.trecho}</p>
                 <p className="text-xs text-muted-foreground">
-                  {os.bacia} • Areia: {os.areia ?? '—'} • Brita: {os.brita ?? '—'}
+                  {os.bacia} • PV {os.pv_montante} → {os.pv_jusante}
                 </p>
               </div>
-              <StatusBadge status={os.status} size="sm" />
+              <div className="flex items-center gap-2">
+                <StatusBadge status={os.status} size="sm" />
+                <button
+                  onClick={() => toggleExpand(os.id)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                  title="Ver dados do trecho"
+                >
+                  {expandedId === os.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+              </div>
             </div>
+
+            {/* Dados do trecho expandidos */}
+            {expandedId === os.id && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <h3 className="text-sm font-semibold text-foreground mb-2">Dados do Trecho</h3>
+                <OSDetail os={os} />
+              </div>
+            )}
+
             <div className="mt-3">
               <button
                 onClick={() => handleOpen(os.id)}

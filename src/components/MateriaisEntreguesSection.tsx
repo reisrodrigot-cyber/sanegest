@@ -95,6 +95,31 @@ export const MateriaisEntreguesSection = ({ osId, canEdit, dnValue }: Props) => 
     setSaving(false);
   };
 
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('materiais_entrega').delete().eq('id', id);
+    if (error) {
+      toast.error('Erro ao excluir: ' + error.message);
+    } else {
+      toast.success('Material excluído.');
+      fetchMateriais();
+    }
+  };
+
+  const handleUpdateField = async (id: string, field: string, value: string) => {
+    const update: any = {};
+    if (field === 'quantidade') {
+      update.quantidade = Number(value) || 0;
+    } else {
+      update[field] = value;
+    }
+    const { error } = await supabase.from('materiais_entrega').update(update).eq('id', id);
+    if (error) {
+      toast.error('Erro ao atualizar: ' + error.message);
+    } else {
+      fetchMateriais();
+    }
+  };
+
   return (
     <div className="bg-card rounded-xl border border-border shadow-sm p-6">
       <div className="flex items-center justify-between mb-3">
@@ -122,16 +147,41 @@ export const MateriaisEntreguesSection = ({ osId, canEdit, dnValue }: Props) => 
         <>
           {materiais.length > 0 && (
             <div className="space-y-0">
-              <div className="grid grid-cols-3 gap-2 pb-1 border-b border-border mb-1">
+              <div className={`grid ${canEdit ? 'grid-cols-4' : 'grid-cols-3'} gap-2 pb-1 border-b border-border mb-1`}>
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Descrição</span>
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Qtd</span>
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Unidade</span>
+                {canEdit && <span className="text-xs font-semibold text-muted-foreground uppercase text-right">Ações</span>}
               </div>
               {materiais.map(m => (
-                <div key={m.id} className="grid grid-cols-3 gap-2 py-1.5 border-b border-border last:border-0">
+                <div key={m.id} className={`grid ${canEdit ? 'grid-cols-4' : 'grid-cols-3'} gap-2 py-1.5 border-b border-border last:border-0 items-center`}>
                   <span className="text-sm text-foreground">{m.descricao}</span>
-                  <span className="text-sm text-foreground">{m.quantidade}</span>
-                  <span className="text-sm text-foreground">{m.unidade}</span>
+                  {canEdit ? (
+                    <input
+                      defaultValue={m.quantidade}
+                      onBlur={e => handleUpdateField(m.id, 'quantidade', e.target.value)}
+                      className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-20"
+                      type="number"
+                    />
+                  ) : (
+                    <span className="text-sm text-foreground">{m.quantidade}</span>
+                  )}
+                  {canEdit ? (
+                    <input
+                      defaultValue={m.unidade}
+                      onBlur={e => handleUpdateField(m.id, 'unidade', e.target.value)}
+                      className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-20"
+                    />
+                  ) : (
+                    <span className="text-sm text-foreground">{m.unidade}</span>
+                  )}
+                  {canEdit && (
+                    <div className="flex justify-end">
+                      <button onClick={() => handleDelete(m.id)} className="text-destructive hover:text-destructive/80 p-1" title="Excluir">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

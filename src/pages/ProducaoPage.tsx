@@ -190,10 +190,18 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
             {acumComprimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
           </p>
         </div>
-        <div className="bg-card border border-border rounded-lg p-3">
-          <p className="text-xs text-muted-foreground">Ligações acumuladas</p>
+        <button
+          type="button"
+          onClick={() => acumLigacoes > 0 && setPopupAcumOpen(true)}
+          disabled={acumLigacoes === 0}
+          className="bg-card border border-border rounded-lg p-3 text-left transition hover:border-secondary hover:bg-muted/40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
+        >
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            Ligações acumuladas
+            {acumLigacoes > 0 && <Eye size={11} className="opacity-60" />}
+          </p>
           <p className="text-xl font-bold text-foreground">{acumLigacoes}</p>
-        </div>
+        </button>
       </div>
 
       {/* Novo registro do dia */}

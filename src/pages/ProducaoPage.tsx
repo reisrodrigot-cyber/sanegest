@@ -342,7 +342,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
                       <MapPin size={12} />
                       <span className="text-foreground">Coordenada:</span>{' '}
                       {temCoord ? (
-                        <span className="text-green-700 dark:text-green-400">
+                        <span className="text-status-green">
                           ✓ {Number(l.latitude).toFixed(6)}, {Number(l.longitude).toFixed(6)}
                         </span>
                       ) : (
@@ -404,7 +404,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
                             </p>
                           </div>
                           {temCoord ? (
-                            <span className="text-xs font-medium text-green-700 dark:text-green-400 whitespace-nowrap">
+                            <span className="text-xs font-medium text-status-green whitespace-nowrap">
                               ✓ Preenchida
                             </span>
                           ) : (

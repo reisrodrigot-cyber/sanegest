@@ -630,14 +630,14 @@ const OSDetailPage = () => {
       {/* Ações da Sala Técnica */}
       {isSalaTecnica && (
         <div className="flex flex-wrap gap-3 mb-6">
-          {hasRealData && os.status === 'VERMELHO' && (
+          {canValidar && (
             <button
               onClick={handleValidar}
               disabled={validando}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-status-green text-white text-sm font-medium disabled:opacity-50"
             >
               {validando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-              ✓ Validar
+              ✓ Validar Produção
             </button>
           )}
           {!editing && (

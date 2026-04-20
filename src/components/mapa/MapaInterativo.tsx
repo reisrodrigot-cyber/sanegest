@@ -375,6 +375,93 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     didInitialFitRef.current = true;
   }, [redePoints.length, ligacoesPoints.length]);
 
+  // ======= Geolocalização (apenas quando showLocation) =======
+  useEffect(() => {
+    if (!showLocation) return;
+    const map = mapRef.current;
+    if (!map) return;
+    if (!('geolocation' in navigator)) {
+      toast.error('Geolocalização não suportada neste dispositivo');
+      return;
+    }
+
+    // Ícone pulsante azul
+    const pulseIcon = L.divIcon({
+      className: 'me-pulse-icon',
+      html: `<div style="position:relative;width:18px;height:18px;">
+        <span style="position:absolute;inset:0;border-radius:50%;background:#2563eb;opacity:0.35;animation:mePulse 1.6s ease-out infinite;"></span>
+        <span style="position:absolute;inset:4px;border-radius:50%;background:#2563eb;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.4);"></span>
+      </div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+
+    const onPos = (pos: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      const latlng: [number, number] = [latitude, longitude];
+      if (!meMarkerRef.current) {
+        meMarkerRef.current = L.marker(latlng, { icon: pulseIcon, zIndexOffset: 1000 })
+          .bindPopup('Sua localização atual')
+          .addTo(map);
+        meAccuracyRef.current = L.circle(latlng, {
+          radius: accuracy,
+          color: '#2563eb', weight: 1, fillColor: '#2563eb', fillOpacity: 0.08,
+        }).addTo(map);
+      } else {
+        meMarkerRef.current.setLatLng(latlng);
+        meAccuracyRef.current?.setLatLng(latlng);
+        meAccuracyRef.current?.setRadius(accuracy);
+      }
+      // Centraliza só na primeira leitura
+      if (!didCenterOnMeRef.current) {
+        didCenterOnMeRef.current = true;
+        if (!didInitialFitRef.current) {
+          map.setView(latlng, 16);
+          didInitialFitRef.current = true;
+        }
+      }
+    };
+
+    const onErr = (err: GeolocationPositionError) => {
+      console.warn('[MapaInterativo] geolocation error', err);
+      if (err.code === err.PERMISSION_DENIED) {
+        toast.error('Permissão de localização negada');
+      }
+    };
+
+    watchIdRef.current = navigator.geolocation.watchPosition(onPos, onErr, {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 15000,
+    });
+
+    return () => {
+      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+      if (meMarkerRef.current) { map.removeLayer(meMarkerRef.current); meMarkerRef.current = null; }
+      if (meAccuracyRef.current) { map.removeLayer(meAccuracyRef.current); meAccuracyRef.current = null; }
+      didCenterOnMeRef.current = false;
+    };
+  }, [showLocation]);
+
+  const centerOnMe = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (meMarkerRef.current) {
+      map.setView(meMarkerRef.current.getLatLng(), 17);
+      return;
+    }
+    if (!('geolocation' in navigator)) {
+      toast.error('Geolocalização não suportada');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 17),
+      () => toast.error('Não foi possível obter sua localização'),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
   const handleDelete = async (c: Camada) => {
     if (!confirm(`Excluir a camada "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
     try {

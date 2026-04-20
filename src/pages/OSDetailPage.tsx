@@ -3,7 +3,6 @@ import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck, Trash2 } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
-import { MateriaisEntreguesSection } from '@/components/MateriaisEntreguesSection';
 import { OSHistoricoSection } from '@/components/OSHistoricoSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
@@ -875,15 +874,6 @@ const OSDetailPage = () => {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Materiais Entregues — Sala Técnica/Admin sempre podem editar */}
-      <div className="mt-6">
-        <MateriaisEntreguesSection
-          osId={os.id}
-          canEdit={isSalaTecnica || effectiveRole === 'almoxarifado'}
-          dnValue={os.dn}
-        />
       </div>
 
       {/* Histórico — visível para Sala Técnica e Admin */}

@@ -391,114 +391,113 @@ export const MapaInterativo = () => {
 
   return (
     <div className="relative mb-6" style={{ height: 520 }}>
-        <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
+      <div ref={containerRef} style={{ height: '100%', width: '100%', borderRadius: '0.75rem', overflow: 'hidden' }} />
 
-        {/* Controle flutuante de camadas */}
-        <div className="absolute top-3 right-3 z-[500]">
-          <Popover open={layersOpen} onOpenChange={setLayersOpen}>
-            <PopoverTrigger asChild>
-              <button
-                className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
-                title="Camadas"
-                aria-label="Camadas"
-              >
-                <Layers size={18} className="text-foreground" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              sideOffset={6}
-              className="w-72 p-3 max-h-[480px] overflow-y-auto"
+      {/* Controle flutuante de camadas */}
+      <div className="absolute top-3 right-3 z-[500]">
+        <Popover open={layersOpen} onOpenChange={setLayersOpen}>
+          <PopoverTrigger asChild>
+            <button
+              className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+              title="Camadas"
+              aria-label="Camadas"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <Layers size={14} /> Camadas
-                </div>
-                {canManage && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2"
-                    onClick={() => { setEditing(null); setModalOpen(true); setLayersOpen(false); }}
-                  >
-                    <Plus size={14} className="mr-1" /> Adicionar
-                  </Button>
-                )}
+              <Layers size={18} className="text-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            sideOffset={6}
+            className="w-72 p-3 max-h-[480px] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <Layers size={14} /> Camadas
               </div>
-
-              {/* As-built */}
-              <div className="space-y-1 mb-3">
-                <button
-                  onClick={() => toggleVis('__rede')}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2"
+                  onClick={() => { setEditing(null); setModalOpen(true); setLayersOpen(false); }}
                 >
-                  {visivel.__rede ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
-                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: REDE_COLOR }} />
-                  <span className="flex-1">As-built Rede</span>
-                  <span className="text-xs text-muted-foreground">{redePoints.length}</span>
-                </button>
-                <button
-                  onClick={() => toggleVis('__ligacoes')}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
-                >
-                  {visivel.__ligacoes ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
-                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: LIGACAO_COLOR }} />
-                  <span className="flex-1">As-built Ligações</span>
-                  <span className="text-xs text-muted-foreground">{ligacoesPoints.length}</span>
-                </button>
-              </div>
-
-              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 px-2">KMZ</div>
-              {camadas.length === 0 && (
-                <p className="text-xs text-muted-foreground px-2 py-1">Nenhuma camada KMZ</p>
+                  <Plus size={14} className="mr-1" /> Adicionar
+                </Button>
               )}
-              <div className="space-y-1">
-                {camadas.map((c) => (
-                  <div key={c.id} className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
-                    <button onClick={() => toggleVis(c.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-                      {visivel[c.id] !== false
-                        ? <Eye size={14} />
-                        : <EyeOff size={14} className="text-muted-foreground" />}
-                      <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0" style={{ background: c.cor }} />
-                      <span
-                        className="truncate"
-                        title={c.nome}
-                        onDoubleClick={() => focusCamada(c.id)}
-                      >{c.nome}</span>
-                    </button>
-                    {canManage && (
-                      <div className="flex opacity-60 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => { setEditing(c); setModalOpen(true); setLayersOpen(false); }}
-                          className="p-1 rounded hover:bg-background"
-                          title="Editar"
-                        >
-                          <Pencil size={12} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(c)}
-                          className="p-1 rounded hover:bg-background text-destructive"
-                          title="Excluir"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {!loading && redePoints.length === 0 && ligacoesPoints.length === 0 && camadas.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400]">
-            <div className="bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border text-sm text-muted-foreground">
-              Nenhum dado ainda. {canManage && 'Adicione uma camada KMZ para começar.'}
             </div>
-          </div>
-        )}
+
+            {/* As-built */}
+            <div className="space-y-1 mb-3">
+              <button
+                onClick={() => toggleVis('__rede')}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
+              >
+                {visivel.__rede ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
+                <span className="inline-block w-3 h-3 rounded-full" style={{ background: REDE_COLOR }} />
+                <span className="flex-1">As-built Rede</span>
+                <span className="text-xs text-muted-foreground">{redePoints.length}</span>
+              </button>
+              <button
+                onClick={() => toggleVis('__ligacoes')}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
+              >
+                {visivel.__ligacoes ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
+                <span className="inline-block w-3 h-3 rounded-full" style={{ background: LIGACAO_COLOR }} />
+                <span className="flex-1">As-built Ligações</span>
+                <span className="text-xs text-muted-foreground">{ligacoesPoints.length}</span>
+              </button>
+            </div>
+
+            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 px-2">KMZ</div>
+            {camadas.length === 0 && (
+              <p className="text-xs text-muted-foreground px-2 py-1">Nenhuma camada KMZ</p>
+            )}
+            <div className="space-y-1">
+              {camadas.map((c) => (
+                <div key={c.id} className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
+                  <button onClick={() => toggleVis(c.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                    {visivel[c.id] !== false
+                      ? <Eye size={14} />
+                      : <EyeOff size={14} className="text-muted-foreground" />}
+                    <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0" style={{ background: c.cor }} />
+                    <span
+                      className="truncate"
+                      title={c.nome}
+                      onDoubleClick={() => focusCamada(c.id)}
+                    >{c.nome}</span>
+                  </button>
+                  {canManage && (
+                    <div className="flex opacity-60 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => { setEditing(c); setModalOpen(true); setLayersOpen(false); }}
+                        className="p-1 rounded hover:bg-background"
+                        title="Editar"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c)}
+                        className="p-1 rounded hover:bg-background text-destructive"
+                        title="Excluir"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
+
+      {!loading && redePoints.length === 0 && ligacoesPoints.length === 0 && camadas.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400]">
+          <div className="bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border text-sm text-muted-foreground">
+            Nenhum dado ainda. {canManage && 'Adicione uma camada KMZ para começar.'}
+          </div>
+        </div>
+      )}
 
       <CamadaModal
         open={modalOpen}

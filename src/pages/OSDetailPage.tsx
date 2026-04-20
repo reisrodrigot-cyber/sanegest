@@ -569,19 +569,46 @@ const OSDetailPage = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar alteração de status</AlertDialogTitle>
-            <AlertDialogDescription>
-              Confirmar alteração de status para <strong>{pendingStatus}</strong>?
-              {asBuiltWarning && (
-                <span className="flex items-center gap-2 mt-3 p-3 bg-amber-50 text-amber-800 rounded-lg border border-amber-200">
-                  <AlertTriangle size={16} className="shrink-0" />
-                  Esta OS não possui coordenadas as-built registradas.
-                </span>
-              )}
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  Confirmar alteração de status para <strong>{pendingStatus}</strong>?
+                </p>
+                {pendingStatus === 'VERDE' && checkingPendencias && (
+                  <span className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+                    <Loader2 size={14} className="animate-spin" />
+                    Verificando pendências de coordenadas...
+                  </span>
+                )}
+                {pendingStatus === 'VERDE' && !checkingPendencias && pendenciasCoord && (
+                  pendenciasCoord.estacas === -1 || pendenciasCoord.estacas > 0 || pendenciasCoord.ligacoes > 0 ? (
+                    <div className="flex items-start gap-2 mt-3 p-3 bg-status-yellow/10 text-foreground rounded-lg border border-status-yellow/40">
+                      <AlertTriangle size={16} className="shrink-0 mt-0.5 text-status-yellow" />
+                      <div className="text-sm">
+                        <p className="font-semibold mb-1">Pendências de coordenadas detectadas:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {pendenciasCoord.estacas === -1 && <li>Nenhuma estaca as-built registrada</li>}
+                          {pendenciasCoord.estacas > 0 && <li>{pendenciasCoord.estacas} estaca(s) sem latitude/longitude</li>}
+                          {pendenciasCoord.ligacoes > 0 && <li>{pendenciasCoord.ligacoes} ligação(ões) sem latitude/longitude</li>}
+                        </ul>
+                        <p className="mt-2 text-xs">
+                          Você está usando a <strong>exceção manual</strong> da Sala Técnica para concluir a NS sem todas as coordenadas. Esta ação ficará registrada no histórico.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="flex items-center gap-2 mt-3 p-3 bg-status-green/10 text-foreground rounded-lg border border-status-green/40 text-sm">
+                      <CheckCircle size={16} className="shrink-0 text-status-green" />
+                      Todas as coordenadas estão preenchidas. Pronto para concluir.
+                    </span>
+                  )
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={changingStatus}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStatusChange} disabled={changingStatus}>
+            <AlertDialogAction onClick={confirmStatusChange} disabled={changingStatus || checkingPendencias}>
               {changingStatus ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
               Confirmar
             </AlertDialogAction>

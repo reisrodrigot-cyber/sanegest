@@ -2,11 +2,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS, UserRole } from '@/types/sanegest';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, FileSpreadsheet, ClipboardList, HardHat, Package, Map, BarChart3, LogOut, Menu, X, Droplets, Users
+  LayoutDashboard, FileSpreadsheet, ClipboardList, HardHat, Package, Map, BarChart3, LogOut, Menu, X, Droplets, Users, UserCircle
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ViewAsSelector } from './ViewAsSelector';
 import { usePendingMateriaisCount } from '@/hooks/usePendingMateriais';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NavItem {
   label: string;
@@ -30,7 +31,25 @@ export const AppSidebar = () => {
   const { user, effectiveRole, logout } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const pendingCount = usePendingMateriaisCount();
+
+  // Load avatar
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const path = (data as any)?.avatar_url;
+      if (!path) { setAvatarUrl(null); return; }
+      const { data: signed } = await supabase.storage.from('avatars').createSignedUrl(path, 60 * 60);
+      setAvatarUrl(signed?.signedUrl ?? null);
+    };
+    load();
+  }, [user, location.pathname]);
 
   if (!user) return null;
 
@@ -95,11 +114,28 @@ export const AppSidebar = () => {
         })}
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border">
-        <div className="mb-3">
-          <p className="text-sm font-medium text-sidebar-foreground">{user.nome}</p>
-          <p className="text-xs text-sidebar-foreground/50">{ROLE_LABELS[user.role]}</p>
-        </div>
+      <div className="p-4 border-t border-sidebar-border space-y-3">
+        <Link
+          to="/perfil"
+          onClick={() => setMobileOpen(false)}
+          className={`flex items-center gap-3 p-2 -mx-1 rounded-lg transition-colors ${
+            location.pathname === '/perfil'
+              ? 'bg-sidebar-accent'
+              : 'hover:bg-sidebar-accent/50'
+          }`}
+        >
+          <div className="w-9 h-9 rounded-full bg-sidebar-accent overflow-hidden flex items-center justify-center shrink-0">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <UserCircle size={22} className="text-sidebar-foreground/60" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-sidebar-foreground truncate">{user.nome}</p>
+            <p className="text-xs text-sidebar-foreground/50 truncate">{ROLE_LABELS[user.role]}</p>
+          </div>
+        </Link>
         <button
           onClick={logout}
           className="flex items-center gap-2 text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"

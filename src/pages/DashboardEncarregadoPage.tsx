@@ -39,13 +39,13 @@ const formatDayLabel = (key: string) => {
 };
 
 const DashboardEncarregadoPage = () => {
-  const { user } = useAuth();
+  const { effectiveUser } = useAuth();
   const [allRegistros, setAllRegistros] = useState<RegistroRow[]>([]);
   const [myOS, setMyOS] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!effectiveUser) return;
     const load = async () => {
       const [regAll, osAll] = await Promise.all([
         supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, user_id'),
@@ -54,7 +54,7 @@ const DashboardEncarregadoPage = () => {
       setAllRegistros((regAll.data ?? []) as RegistroRow[]);
       // OS atribuídas a este encarregado: usa "executor" (encarregado da OS),
       // com fallback para "liberado_para" (display_name) por compatibilidade.
-      const myName = user.nome;
+      const myName = effectiveUser.nome;
       const mine = (osAll.data ?? []).filter(
         (o: any) => o.executor === myName || o.liberado_para === myName,
       ) as OSRow[];
@@ -62,7 +62,7 @@ const DashboardEncarregadoPage = () => {
       setLoading(false);
     };
     load();
-  }, [user]);
+  }, [effectiveUser]);
 
   // Card: produção geral mensal de TODOS encarregados no mês atual
   const totalMesAtual = useMemo(() => {
@@ -75,7 +75,7 @@ const DashboardEncarregadoPage = () => {
 
   // Burn Up: meta acumulada por data de liberação da OS, realizado acumulado por data de registro
   const chartData = useMemo(() => {
-    if (!user) return [] as { date: string; label: string; meta: number; realizado: number }[];
+    if (!effectiveUser) return [] as { date: string; label: string; meta: number; realizado: number }[];
 
     if (myOS.length === 0) return [];
 
@@ -89,7 +89,7 @@ const DashboardEncarregadoPage = () => {
     // Soma do realizado por dia
     const realByDay = new Map<string, number>();
     allRegistros
-      .filter((r) => r.user_id === user.id)
+      .filter((r) => r.user_id === effectiveUser.id)
       .forEach((r) => {
         realByDay.set(
           r.data_registro,
@@ -121,7 +121,7 @@ const DashboardEncarregadoPage = () => {
       cursor.setDate(cursor.getDate() + 1);
     }
     return rows;
-  }, [allRegistros, myOS, user]);
+  }, [allRegistros, myOS, effectiveUser]);
 
   if (loading) {
     return (
@@ -137,7 +137,7 @@ const DashboardEncarregadoPage = () => {
     <AppLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">Meu Painel</h1>
-        <p className="text-sm text-muted-foreground">{user?.nome} — Encarregado</p>
+        <p className="text-sm text-muted-foreground">{effectiveUser?.nome} — Encarregado</p>
       </div>
 
       <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">

@@ -55,7 +55,7 @@ const ReadField = ({ label, value }: { label: string; value: unknown }) => (
 );
 
 const OSPanel = ({ os }: { os: OrdemServico }) => {
-  const { user } = useAuth();
+  const { user, effectiveUser } = useAuth();
   const [registros, setRegistros] = useState<RegistroDia[]>([]);
   const [ligacoesAll, setLigacoesAll] = useState<LigacaoRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,25 +66,29 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
   const [popupRegistroId, setPopupRegistroId] = useState<string | null>(null);
   const [popupAcumOpen, setPopupAcumOpen] = useState(false);
 
+  // For data filters: respect "view as user" simulation
+  // For writes: always use real `user` (RLS enforces it)
+  const filterUserId = effectiveUser?.id ?? user?.id ?? '';
+
   const fetchRegistros = useCallback(async () => {
     const [regRes, ligRes] = await Promise.all([
       supabase
         .from('registros_producao')
         .select('id, data_registro, comprimento_dia, ligacoes_dia')
         .eq('os_id', os.id)
-        .eq('user_id', user?.id ?? '')
+        .eq('user_id', filterUserId)
         .order('data_registro', { ascending: false }),
       supabase
         .from('ligacoes')
         .select('id, comprimento, referencia, latitude, longitude, data_topografia, registro_producao_id, created_at')
         .eq('os_id', os.id)
-        .eq('encarregado_id', user?.id ?? '')
+        .eq('encarregado_id', filterUserId)
         .order('created_at', { ascending: true }),
     ]);
     setRegistros((regRes.data ?? []) as RegistroDia[]);
     setLigacoesAll((ligRes.data ?? []) as LigacaoRow[]);
     setLoading(false);
-  }, [os.id, user?.id]);
+  }, [os.id, filterUserId]);
 
   useEffect(() => {
     fetchRegistros();
@@ -427,14 +431,14 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
 };
 
 const ProducaoPage = () => {
-  const { user } = useAuth();
+  const { effectiveUser } = useAuth();
   const { ordens, loading } = useOrdensServico();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const minhasOS = ordens.filter((os) => {
     if (!os.liberado) return false;
-    if (user?.role === 'admin') return true;
-    return os.liberado_para === user?.nome;
+    if (effectiveUser?.role === 'admin') return true;
+    return os.liberado_para === effectiveUser?.nome || os.executor === effectiveUser?.nome;
   });
 
   if (loading) {

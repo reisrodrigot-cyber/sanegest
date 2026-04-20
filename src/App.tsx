@@ -15,6 +15,7 @@ import ImportarPage from "./pages/ImportarPage";
 import ProducaoPage from "./pages/ProducaoPage";
 import MateriaisPage from "./pages/MateriaisPage";
 import TopografiaPage from "./pages/TopografiaPage";
+import MeuPerfilPage from "./pages/MeuPerfilPage";
 
 import UsuariosPage from "./pages/UsuariosPage";
 import NotFound from "./pages/NotFound";
@@ -30,6 +31,7 @@ const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/materiais': ['admin', 'almoxarifado'],
   '/topografia': ['admin', 'topografo'],
   '/usuarios': ['admin'],
+  '/perfil': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'],
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -83,6 +85,7 @@ const AppRoutes = () => {
       <Route path="/topografia" element={<ProtectedRoute><TopografiaPage /></ProtectedRoute>} />
       
       <Route path="/usuarios" element={<ProtectedRoute><UsuariosPage /></ProtectedRoute>} />
+      <Route path="/perfil" element={<ProtectedRoute><MeuPerfilPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

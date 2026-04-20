@@ -5,7 +5,7 @@ import { ROLE_LABELS } from '@/types/sanegest';
 import { Eye, X } from 'lucide-react';
 
 export const AppLayout = ({ children }: { children: ReactNode }) => {
-  const { user, viewAsRole, setViewAsRole, effectiveRole } = useAuth();
+  const { user, viewAsRole, viewAsUserName, setViewAsRole, effectiveRole } = useAuth();
   const showBanner = user?.role === 'admin' && viewAsRole;
 
   return (
@@ -18,7 +18,15 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
               <Eye size={16} className="shrink-0" />
               <span>
                 Modo visualização: <strong>{ROLE_LABELS[effectiveRole]}</strong>
-                <span className="text-amber-600/70 ml-1">— você está simulando este perfil</span>
+                {viewAsUserName && (
+                  <>
+                    {' — '}
+                    <strong>{viewAsUserName}</strong>
+                  </>
+                )}
+                <span className="text-amber-600/70 ml-1">
+                  — você está simulando {viewAsUserName ? 'este usuário' : 'este perfil'}
+                </span>
               </span>
             </div>
             <button

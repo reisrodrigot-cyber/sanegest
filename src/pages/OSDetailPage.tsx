@@ -227,14 +227,38 @@ const OSDetailPage = () => {
   const isSalaTecnica = permissions.canEditOS(effectiveRole);
   const isEncarregado = permissions.canEditProducao(effectiveRole) && effectiveRole === 'encarregado';
 
-  const handleStatusChange = (newStatus: OSStatus) => {
+  const handleStatusChange = async (newStatus: OSStatus) => {
     if (!os || newStatus === os.status) return;
     setPendingStatus(newStatus);
-    // Check as-built warning for VERDE
-    if (newStatus === 'VERDE' && !os.as_built_lat) {
-      setAsBuiltWarning(true);
-    } else {
-      setAsBuiltWarning(false);
+    setPendenciasCoord(null);
+    // Para VERDE: verifica pendências reais de coordenadas (estacas + ligações sem lat/lng)
+    if (newStatus === 'VERDE') {
+      setCheckingPendencias(true);
+      const [estacasRes, ligacoesRes] = await Promise.all([
+        supabase
+          .from('topografia_asbuilt')
+          .select('id', { count: 'exact', head: true })
+          .eq('os_id', os.id)
+          .or('latitude.is.null,longitude.is.null'),
+        supabase
+          .from('ligacoes')
+          .select('id', { count: 'exact', head: true })
+          .eq('os_id', os.id)
+          .or('latitude.is.null,longitude.is.null'),
+      ]);
+      const estacasPend = estacasRes.count ?? 0;
+      const ligacoesPend = ligacoesRes.count ?? 0;
+      // Também conta como pendência se NÃO houver nenhuma estaca registrada
+      const { count: totalEstacas } = await supabase
+        .from('topografia_asbuilt')
+        .select('id', { count: 'exact', head: true })
+        .eq('os_id', os.id);
+      const semEstacas = (totalEstacas ?? 0) === 0;
+      setCheckingPendencias(false);
+      setPendenciasCoord({
+        estacas: estacasPend + (semEstacas ? -1 : 0), // -1 indica "nenhuma estaca"
+        ligacoes: ligacoesPend,
+      });
     }
     setStatusDialogOpen(true);
   };

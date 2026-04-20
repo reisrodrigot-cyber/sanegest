@@ -76,10 +76,8 @@ const DashboardPage = () => {
   if (effectiveRole === 'encarregado') {
     return <DashboardEncarregadoPage />;
   }
-  // Topógrafo: tela inicial é a página de Topografia (NS amarelo/verde + ações topográficas)
-  if (effectiveRole === 'topografo') {
-    return <Navigate to="/topografia" replace />;
-  }
+  // Topógrafo vê o dashboard com mapa, mas sem cards de produtividade dos encarregados
+  const isTopografo = effectiveRole === 'topografo';
   // Almoxarifado: tela inicial é a Entrega de Materiais
   if (effectiveRole === 'almoxarifado') {
     return <Navigate to="/materiais" replace />;
@@ -117,14 +115,18 @@ const DashboardPage = () => {
 
           <AvancoFisicoDetail ordens={ordens} />
 
-          <ProducaoPorEncarregado ordens={ordens} />
+          {!isTopografo && (
+            <>
+              <ProducaoPorEncarregado ordens={ordens} />
 
-          <ProducaoDiariaChart />
-          <ProducaoMensalChart />
+              <ProducaoDiariaChart />
+              <ProducaoMensalChart />
 
-          <MediaPorEncarregado />
+              <MediaPorEncarregado />
 
-          <ProdutividadeProfundidade />
+              <ProdutividadeProfundidade />
+            </>
+          )}
 
           {avancoPorBacia.length > 0 && (
             <div className="bg-card rounded-xl p-6 border border-border shadow-sm mb-6">

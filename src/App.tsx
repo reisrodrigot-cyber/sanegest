@@ -36,6 +36,13 @@ const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/perfil': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'],
 };
 
+/** Home page por perfil — onde o usuário deve cair ao logar ou ao tentar acessar rota sem permissão */
+const homeForRole = (role?: UserRole | null): string => {
+  if (!role) return '/dashboard';
+  if (role === 'almoxarifado') return '/materiais';
+  return '/dashboard';
+};
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, supabaseUser, loading, effectiveRole } = useAuth();
   const location = useLocation();
@@ -55,7 +62,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         // real role must be admin
         // effectiveRole doesn't matter for admin-only routes
       } else if (!allowed.includes(effectiveRole)) {
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to={homeForRole(effectiveRole)} replace />;
       }
     }
   }

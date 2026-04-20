@@ -16,6 +16,7 @@ import ProducaoPage from "./pages/ProducaoPage";
 import MateriaisPage from "./pages/MateriaisPage";
 import TopografiaPage from "./pages/TopografiaPage";
 import MeuPerfilPage from "./pages/MeuPerfilPage";
+import MapaPage from "./pages/MapaPage";
 
 import UsuariosPage from "./pages/UsuariosPage";
 import NotFound from "./pages/NotFound";
@@ -24,14 +25,22 @@ const queryClient = new QueryClient();
 
 /** Maps each route prefix to the roles allowed to access it */
 const ROUTE_ROLES: Record<string, UserRole[]> = {
-  '/dashboard': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'],
+  '/dashboard': ['admin', 'gerencia', 'sala_tecnica', 'encarregado', 'topografo'],
   '/importar': ['admin', 'sala_tecnica'],
   '/ordens': ['admin', 'gerencia', 'sala_tecnica'],
   '/producao': ['admin', 'encarregado'],
   '/materiais': ['admin', 'almoxarifado'],
   '/topografia': ['admin', 'topografo'],
+  '/mapa': ['admin', 'encarregado', 'topografo', 'almoxarifado'],
   '/usuarios': ['admin'],
   '/perfil': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'],
+};
+
+/** Home page por perfil — onde o usuário deve cair ao logar ou ao tentar acessar rota sem permissão */
+const homeForRole = (role?: UserRole | null): string => {
+  if (!role) return '/dashboard';
+  if (role === 'almoxarifado') return '/materiais';
+  return '/dashboard';
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -53,7 +62,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         // real role must be admin
         // effectiveRole doesn't matter for admin-only routes
       } else if (!allowed.includes(effectiveRole)) {
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to={homeForRole(effectiveRole)} replace />;
       }
     }
   }
@@ -62,7 +71,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated, supabaseUser, loading } = useAuth();
+  const { isAuthenticated, supabaseUser, loading, effectiveRole } = useAuth();
 
   if (loading) {
     return (
@@ -72,10 +81,12 @@ const AppRoutes = () => {
     );
   }
 
+  const home = homeForRole(effectiveRole);
+
   return (
     <Routes>
-      <Route path="/login" element={supabaseUser ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-      <Route path="/" element={<Navigate to={supabaseUser ? "/dashboard" : "/login"} replace />} />
+      <Route path="/login" element={supabaseUser ? <Navigate to={home} replace /> : <LoginPage />} />
+      <Route path="/" element={<Navigate to={supabaseUser ? home : "/login"} replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/ordens" element={<ProtectedRoute><OrdensPage /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetailPage /></ProtectedRoute>} />
@@ -83,7 +94,7 @@ const AppRoutes = () => {
       <Route path="/producao" element={<ProtectedRoute><ProducaoPage /></ProtectedRoute>} />
       <Route path="/materiais" element={<ProtectedRoute><MateriaisPage /></ProtectedRoute>} />
       <Route path="/topografia" element={<ProtectedRoute><TopografiaPage /></ProtectedRoute>} />
-      
+      <Route path="/mapa" element={<ProtectedRoute><MapaPage /></ProtectedRoute>} />
       <Route path="/usuarios" element={<ProtectedRoute><UsuariosPage /></ProtectedRoute>} />
       <Route path="/perfil" element={<ProtectedRoute><MeuPerfilPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

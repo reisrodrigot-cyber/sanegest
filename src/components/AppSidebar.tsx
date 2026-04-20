@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS, UserRole } from '@/types/sanegest';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ClipboardList, HardHat, Package, Map, BarChart3, LogOut, Menu, X, Droplets, Users, UserCircle
+  LayoutDashboard, ClipboardList, HardHat, Package, Map, MapPin, BarChart3, LogOut, Menu, X, Droplets, Users, UserCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ViewAsSelector } from './ViewAsSelector';
@@ -17,12 +17,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'] },
+  { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['admin', 'gerencia', 'sala_tecnica', 'encarregado', 'topografo'] },
   { label: 'Ordens de Serviço', path: '/ordens', icon: <ClipboardList size={20} />, roles: ['admin', 'gerencia', 'sala_tecnica'] },
   { label: 'Produção', path: '/producao', icon: <HardHat size={20} />, roles: ['admin', 'encarregado'] },
-  { label: 'Materiais', path: '/materiais', icon: <Package size={20} />, roles: ['admin', 'almoxarifado'] },
+  { label: 'Entrega de Materiais', path: '/materiais', icon: <Package size={20} />, roles: ['admin', 'almoxarifado'] },
   { label: 'Topografia', path: '/topografia', icon: <Map size={20} />, roles: ['admin', 'topografo'] },
-  
+  { label: 'Mapa', path: '/mapa', icon: <MapPin size={20} />, roles: ['admin', 'encarregado', 'topografo', 'almoxarifado'] },
   { label: 'Gestão de Usuários', path: '/usuarios', icon: <Users size={20} />, roles: ['admin'] },
 ];
 
@@ -54,11 +54,11 @@ export const AppSidebar = () => {
 
   // Explicit role → allowed paths mapping
   const ROLE_MENU: Record<UserRole, string[]> = {
-    admin: ['/dashboard', '/ordens', '/producao', '/materiais', '/topografia', '/usuarios'],
+    admin: ['/dashboard', '/ordens', '/producao', '/materiais', '/topografia', '/mapa', '/usuarios'],
     sala_tecnica: ['/dashboard', '/ordens'],
-    encarregado: ['/dashboard', '/producao'],
-    almoxarifado: ['/dashboard', '/materiais'],
-    topografo: ['/dashboard', '/topografia'],
+    encarregado: ['/dashboard', '/producao', '/mapa'],
+    almoxarifado: ['/materiais', '/mapa'],
+    topografo: ['/dashboard', '/topografia', '/mapa'],
     gerencia: ['/dashboard'],
   };
 

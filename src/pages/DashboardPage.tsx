@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Link } from 'react-router-dom';
@@ -74,6 +75,14 @@ const DashboardPage = () => {
   // Encarregado tem dashboard exclusivo (após todos os hooks)
   if (effectiveRole === 'encarregado') {
     return <DashboardEncarregadoPage />;
+  }
+  // Topógrafo: tela inicial é a página de Topografia (NS amarelo/verde + ações topográficas)
+  if (effectiveRole === 'topografo') {
+    return <Navigate to="/topografia" replace />;
+  }
+  // Almoxarifado: tela inicial é a Entrega de Materiais
+  if (effectiveRole === 'almoxarifado') {
+    return <Navigate to="/materiais" replace />;
   }
 
   if (loading) {

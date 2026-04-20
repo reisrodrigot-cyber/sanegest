@@ -164,8 +164,11 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     setEditingId(null);
   };
 
+  const estacasSemCoord = points.filter((p) => p.latitude == null || p.longitude == null).length;
+  const podeConcluir = points.length > 0 && estacasSemCoord === 0 && ligacoesPendentes === 0;
+
   const handleConclude = async () => {
-    if (points.length === 0) return;
+    if (!podeConcluir) return;
     setConcluding(true);
     const { error } = await supabase.from('ordens_servico').update({ status: 'VERDE' }).eq('id', os.id);
     setConcluding(false);

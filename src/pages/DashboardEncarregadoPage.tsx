@@ -32,8 +32,11 @@ interface OSRow {
   updated_at: string;
 }
 
-const dayDiff = (a: Date, b: Date) =>
-  Math.floor((a.getTime() - b.getTime()) / (24 * 60 * 60 * 1000));
+const toDateKey = (d: Date) => d.toISOString().slice(0, 10);
+const formatDayLabel = (key: string) => {
+  const [, m, day] = key.split('-');
+  return `${day}/${m}`;
+};
 
 const DashboardEncarregadoPage = () => {
   const { user } = useAuth();
@@ -70,62 +73,54 @@ const DashboardEncarregadoPage = () => {
       .reduce((s, r) => s + (Number(r.comprimento_dia) || 0), 0);
   }, [allRegistros]);
 
-  // Gráfico Meta vs Realizado
+  // Burn Up: meta acumulada por data de liberação da OS, realizado acumulado por data de registro
   const chartData = useMemo(() => {
-    if (!user) return { rows: [], maxDay: 0 };
-    const myReg = allRegistros
-      .filter((r) => r.user_id === user.id)
-      .sort((a, b) => a.data_registro.localeCompare(b.data_registro));
+    if (!user) return [] as { date: string; label: string; meta: number; realizado: number }[];
 
-    if (myOS.length === 0) return { rows: [], maxDay: 0 };
+    if (myOS.length === 0) return [];
 
-    // Dia 0 = primeira OS liberada
-    const firstReleaseDate = new Date(
-      Math.min(...myOS.map((o) => new Date(o.updated_at).getTime())),
-    );
-    firstReleaseDate.setHours(0, 0, 0, 0);
-
-    // META: para cada OS, distribuir comprimento ao longo de prazo*1.2 dias
-    const metaPerDay = new Map<number, number>();
+    // Soma das metas (comprimento previsto) por dia (data de liberação ≈ updated_at)
+    const metaByDay = new Map<string, number>();
     myOS.forEach((os) => {
-      const releaseDay = dayDiff(new Date(os.updated_at), firstReleaseDate);
-      const totalDays = Math.max(1, Math.ceil((os.prazo_previsto ?? 1) * 1.2));
-      const perDay = (os.comprimento_previsto ?? 0) / totalDays;
-      for (let d = 1; d <= totalDays; d++) {
-        const day = releaseDay + d;
-        metaPerDay.set(day, (metaPerDay.get(day) ?? 0) + perDay);
-      }
+      const key = toDateKey(new Date(os.updated_at));
+      metaByDay.set(key, (metaByDay.get(key) ?? 0) + (os.comprimento_previsto ?? 0));
     });
 
-    // REAL acumulado
-    const realPerDay = new Map<number, number>();
-    myReg.forEach((r) => {
-      const day = dayDiff(new Date(r.data_registro + 'T00:00:00'), firstReleaseDate);
-      realPerDay.set(day, (realPerDay.get(day) ?? 0) + (Number(r.comprimento_dia) || 0));
-    });
+    // Soma do realizado por dia
+    const realByDay = new Map<string, number>();
+    allRegistros
+      .filter((r) => r.user_id === user.id)
+      .forEach((r) => {
+        realByDay.set(
+          r.data_registro,
+          (realByDay.get(r.data_registro) ?? 0) + (Number(r.comprimento_dia) || 0),
+        );
+      });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const maxDay = Math.max(
-      dayDiff(today, firstReleaseDate),
-      ...Array.from(metaPerDay.keys()),
-      ...Array.from(realPerDay.keys()),
-      0,
-    );
+    // Intervalo: do primeiro evento (meta ou registro) até hoje
+    const allKeys = [...metaByDay.keys(), ...realByDay.keys()].sort();
+    if (allKeys.length === 0) return [];
+    const startDate = new Date(allKeys[0] + 'T00:00:00');
+    const endDate = new Date();
+    endDate.setHours(0, 0, 0, 0);
 
+    const rows: { date: string; label: string; meta: number; realizado: number }[] = [];
     let metaAcc = 0;
     let realAcc = 0;
-    const rows: { dia: number; meta: number; realizado: number }[] = [];
-    for (let d = 0; d <= maxDay; d++) {
-      metaAcc += metaPerDay.get(d) ?? 0;
-      realAcc += realPerDay.get(d) ?? 0;
+    const cursor = new Date(startDate);
+    while (cursor <= endDate) {
+      const key = toDateKey(cursor);
+      metaAcc += metaByDay.get(key) ?? 0;
+      realAcc += realByDay.get(key) ?? 0;
       rows.push({
-        dia: d,
+        date: key,
+        label: formatDayLabel(key),
         meta: Math.round(metaAcc * 10) / 10,
         realizado: Math.round(realAcc * 10) / 10,
       });
+      cursor.setDate(cursor.getDate() + 1);
     }
-    return { rows, maxDay };
+    return rows;
   }, [allRegistros, myOS, user]);
 
   if (loading) {
@@ -154,31 +149,37 @@ const DashboardEncarregadoPage = () => {
       </div>
 
       <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">
-        <h2 className="text-lg font-semibold text-foreground mb-1">Meta vs Realizado</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-1">Burn Up — Meta vs Realizado</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Dias desde a primeira NS liberada para você ({myOS.length} OS atribuídas)
+          Escopo acumulado conforme as N.S. são liberadas vs metragem executada ({myOS.length} OS atribuídas)
         </p>
-        {chartData.rows.length === 0 ? (
+        {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">
             Nenhuma OS liberada para você ainda.
           </p>
         ) : (
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData.rows}>
+              <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="dia" tick={{ fontSize: 11 }} label={{ value: 'Dia', position: 'insideBottom', offset: -5, fontSize: 11 }} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11 }}
+                  interval={Math.max(0, Math.floor(chartData.length / 8))}
+                />
                 <YAxis tick={{ fontSize: 11 }} unit="m" />
-                <Tooltip formatter={(v: number) => `${v} m`} labelFormatter={(l) => `Dia ${l}`} />
+                <Tooltip
+                  formatter={(v: number, name: string) => [`${v} m`, name === 'meta' ? 'Meta (escopo)' : 'Realizado']}
+                  labelFormatter={(l) => `Dia ${l}`}
+                />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Line
-                  type="stepAfter"
+                  type="monotone"
                   dataKey="meta"
                   stroke="#888780"
                   strokeWidth={2}
-                  strokeDasharray="6 4"
                   dot={false}
-                  name="Meta"
+                  name="Meta (escopo)"
                 />
                 <Line
                   type="monotone"

@@ -92,6 +92,8 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   const ligacoesLayerRef = useRef<L.LayerGroup | null>(null);
   const kmzLayersRef = useRef<Map<string, L.Layer>>(new Map());
   const kmzBoundsRef = useRef<Map<string, L.LatLngBounds>>(new Map());
+  // Assinatura por camada (cor|opacidade|storage_path) para saber quando refazer o layer
+  const kmzSigRef = useRef<Map<string, string>>(new Map());
   const didInitialFitRef = useRef(false);
   const meMarkerRef = useRef<L.Marker | null>(null);
   const meAccuracyRef = useRef<L.Circle | null>(null);

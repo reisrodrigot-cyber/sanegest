@@ -92,6 +92,8 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   const ligacoesLayerRef = useRef<L.LayerGroup | null>(null);
   const kmzLayersRef = useRef<Map<string, L.Layer>>(new Map());
   const kmzBoundsRef = useRef<Map<string, L.LatLngBounds>>(new Map());
+  // Assinatura por camada (cor|opacidade|storage_path) para saber quando refazer o layer
+  const kmzSigRef = useRef<Map<string, string>>(new Map());
   const didInitialFitRef = useRef(false);
   const meMarkerRef = useRef<L.Marker | null>(null);
   const meAccuracyRef = useRef<L.Circle | null>(null);
@@ -284,20 +286,36 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     const currentIds = new Set(camadas.map(c => c.id));
     for (const [id, layer] of kmzLayersRef.current.entries()) {
       if (!currentIds.has(id)) {
-        map.removeLayer(layer);
+        if (map.hasLayer(layer)) map.removeLayer(layer);
         kmzLayersRef.current.delete(id);
         kmzBoundsRef.current.delete(id);
+        kmzSigRef.current.delete(id);
       }
     }
 
     camadas.forEach(async (c) => {
-      // remover existente para refletir mudanças de cor/opacidade/visibilidade
-      const existing = kmzLayersRef.current.get(c.id);
-      if (existing) {
-        map.removeLayer(existing);
-        kmzLayersRef.current.delete(c.id);
-      }
       const shouldShow = visivel[c.id] !== false;
+      const sig = `${c.cor}|${c.opacidade}|${c.storage_path}`;
+      const cached = kmzLayersRef.current.get(c.id);
+      const cachedSig = kmzSigRef.current.get(c.id);
+
+      // Se já temos o layer e a assinatura não mudou, só alterna visibilidade
+      if (cached && cachedSig === sig) {
+        if (shouldShow) {
+          if (!map.hasLayer(cached)) cached.addTo(map);
+        } else {
+          if (map.hasLayer(cached)) map.removeLayer(cached);
+        }
+        return;
+      }
+
+      // Mudou cor/opacidade/arquivo → remover cache antigo
+      if (cached) {
+        if (map.hasLayer(cached)) map.removeLayer(cached);
+        kmzLayersRef.current.delete(c.id);
+        kmzSigRef.current.delete(c.id);
+      }
+
       if (!shouldShow) return;
 
       try {
@@ -314,6 +332,9 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
           console.warn('[MapaInterativo] KMZ vazio ou inválido:', c.nome);
           return;
         }
+
+        // Se enquanto carregava o usuário desligou a camada, não adiciona
+        if (visivel[c.id] === false) return;
 
         const styleOpts: L.PathOptions = {
           color: c.cor,
@@ -350,6 +371,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
 
         gjLayer.addTo(map);
         kmzLayersRef.current.set(c.id, gjLayer);
+        kmzSigRef.current.set(c.id, sig);
         try {
           const b = gjLayer.getBounds();
           if (b.isValid()) kmzBoundsRef.current.set(c.id, b);

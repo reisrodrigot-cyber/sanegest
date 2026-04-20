@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { UserRole, ROLE_LABELS } from '@/types/sanegest';
+import { UserRole } from '@/types/sanegest';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -7,6 +7,12 @@ interface AuthUser {
   id: string;
   nome: string;
   email: string;
+  role: UserRole;
+}
+
+interface EffectiveUser {
+  id: string;
+  nome: string;
   role: UserRole;
 }
 
@@ -21,8 +27,14 @@ interface AuthContextType {
   /** Admin: role being "viewed as" */
   viewAsRole: UserRole | null;
   setViewAsRole: (role: UserRole | null) => void;
+  /** Admin: specific user being "viewed as" (within a role) */
+  viewAsUserId: string | null;
+  viewAsUserName: string | null;
+  setViewAsUser: (params: { id: string; nome: string } | null) => void;
   /** Effective role (viewAs if set, otherwise real role) */
   effectiveRole: UserRole | undefined;
+  /** Effective user — used for data filters. When admin simulates a user, returns that user's id+nome+role; otherwise the real user. */
+  effectiveUser: EffectiveUser | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -71,9 +83,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewAsRole, setViewAsRole] = useState<UserRole | null>(null);
+  const [viewAsRole, setViewAsRoleState] = useState<UserRole | null>(null);
+  const [viewAsUserId, setViewAsUserId] = useState<string | null>(null);
+  const [viewAsUserName, setViewAsUserName] = useState<string | null>(null);
+
+  const setViewAsRole = (role: UserRole | null) => {
+    setViewAsRoleState(role);
+    // Always reset specific user when role changes
+    setViewAsUserId(null);
+    setViewAsUserName(null);
+  };
+
+  const setViewAsUser = (params: { id: string; nome: string } | null) => {
+    if (!params) {
+      setViewAsUserId(null);
+      setViewAsUserName(null);
+    } else {
+      setViewAsUserId(params.id);
+      setViewAsUserName(params.nome);
+    }
+  };
 
   const effectiveRole = user?.role === 'admin' && viewAsRole ? viewAsRole : user?.role;
+
+  const effectiveUser: EffectiveUser | null = (() => {
+    if (!user) return null;
+    // Admin simulating a specific user
+    if (user.role === 'admin' && viewAsRole && viewAsUserId && viewAsUserName) {
+      return { id: viewAsUserId, nome: viewAsUserName, role: viewAsRole };
+    }
+    // Admin simulating only a role (no specific user) — keep admin identity but with simulated role
+    if (user.role === 'admin' && viewAsRole) {
+      return { id: user.id, nome: user.nome, role: viewAsRole };
+    }
+    return { id: user.id, nome: user.nome, role: user.role };
+  })();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -128,14 +172,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     setUser(null);
     setSupabaseUser(null);
-    setViewAsRole(null);
+    setViewAsRoleState(null);
+    setViewAsUserId(null);
+    setViewAsUserName(null);
   };
 
   return (
     <AuthContext.Provider value={{
       user, supabaseUser, login, signup, logout,
       isAuthenticated: !!user, loading,
-      viewAsRole, setViewAsRole, effectiveRole,
+      viewAsRole, setViewAsRole,
+      viewAsUserId, viewAsUserName, setViewAsUser,
+      effectiveRole, effectiveUser,
     }}>
       {children}
     </AuthContext.Provider>

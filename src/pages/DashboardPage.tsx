@@ -115,14 +115,18 @@ const DashboardPage = () => {
 
           <AvancoFisicoDetail ordens={ordens} />
 
-          <ProducaoPorEncarregado ordens={ordens} />
+          {!isTopografo && (
+            <>
+              <ProducaoPorEncarregado ordens={ordens} />
 
-          <ProducaoDiariaChart />
-          <ProducaoMensalChart />
+              <ProducaoDiariaChart />
+              <ProducaoMensalChart />
 
-          <MediaPorEncarregado />
+              <MediaPorEncarregado />
 
-          <ProdutividadeProfundidade />
+              <ProdutividadeProfundidade />
+            </>
+          )}
 
           {avancoPorBacia.length > 0 && (
             <div className="bg-card rounded-xl p-6 border border-border shadow-sm mb-6">

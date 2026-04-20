@@ -236,8 +236,13 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   };
 
   return (
-    <div className="mt-4 pt-4 border-t border-border">
-      <div className="grid lg:grid-cols-2 gap-6">
+    <div className="mt-4 pt-4 border-t border-border space-y-6">
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-2">Dados do Trecho</h3>
+        <OSDetalhesTrecho os={os} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6 pt-2 border-t border-border">
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">

@@ -79,20 +79,28 @@ const MiniMap = ({ points }: { points: AsBuiltPoint[] }) => {
   return <div ref={containerRef} style={{ height: '100%', width: '100%' }} />;
 };
 
+const PV_MONTANTE_TAG = 'PV_MONTANTE';
+const PV_JUSANTE_TAG = 'PV_JUSANTE';
+
 const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: () => void; allowEditAll?: boolean }) => {
   const { user } = useAuth();
   const [points, setPoints] = useState<AsBuiltPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingMontante, setSavingMontante] = useState(false);
+  const [savingJusante, setSavingJusante] = useState(false);
+  const [savingInter, setSavingInter] = useState(false);
   const [concluding, setConcluding] = useState(false);
-  const [lat, setLat] = useState('');
-  const [lng, setLng] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editLat, setEditLat] = useState('');
-  const [editLng, setEditLng] = useState('');
-  const [ligacoesTotal, setLigacoesTotal] = useState(0);
   const [ligacoesPendentes, setLigacoesPendentes] = useState(0);
-  const [reordering, setReordering] = useState(false);
+
+  // Inputs PV Montante
+  const [montLat, setMontLat] = useState('');
+  const [montLng, setMontLng] = useState('');
+  // Inputs PV Jusante
+  const [jusLat, setJusLat] = useState('');
+  const [jusLng, setJusLng] = useState('');
+  // Input para novo intermediário
+  const [interLat, setInterLat] = useState('');
+  const [interLng, setInterLng] = useState('');
 
   const fetchPoints = useCallback(async () => {
     const { data } = await supabase
@@ -110,7 +118,6 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       .select('id, latitude')
       .eq('os_id', os.id);
     const rows = data ?? [];
-    setLigacoesTotal(rows.length);
     setLigacoesPendentes(rows.filter((r) => r.latitude == null).length);
   }, [os.id]);
 
@@ -125,97 +132,137 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     return () => { supabase.removeChannel(channel); };
   }, [os.id, fetchPoints, fetchLigacoesStatus]);
 
-  const handleAdd = async () => {
-    const latVal = parseFloat(lat);
-    const lngVal = parseFloat(lng);
+  // Separa em montante / intermediários / jusante
+  const montante = points.find((p) => p.nome_estaca === PV_MONTANTE_TAG) ?? null;
+  const jusante = points.find((p) => p.nome_estaca === PV_JUSANTE_TAG) ?? null;
+  const intermediarios = points.filter(
+    (p) => p.nome_estaca !== PV_MONTANTE_TAG && p.nome_estaca !== PV_JUSANTE_TAG
+  );
+
+  const pvMontanteLabel = os.pv_montante || 'PV Montante';
+  const pvJusanteLabel = os.pv_jusante || 'PV Jusante';
+
+  // ===== Salvar / atualizar PV Montante =====
+  const saveMontante = async () => {
+    const latVal = parseFloat(montLat);
+    const lngVal = parseFloat(montLng);
     if (isNaN(latVal) || isNaN(lngVal)) {
-      toast.error('Latitude e Longitude são obrigatórios.');
+      toast.error('Latitude e Longitude do PV Montante são obrigatórios.');
       return;
     }
-    setSaving(true);
-    const nextNumber = points.length + 1;
+    setSavingMontante(true);
+    if (montante) {
+      const { error } = await supabase.from('topografia_asbuilt').update({
+        latitude: latVal, longitude: lngVal,
+      }).eq('id', montante.id);
+      setSavingMontante(false);
+      if (error) { toast.error('Erro ao atualizar PV Montante.'); return; }
+      toast.success('PV Montante atualizado!');
+    } else {
+      // Inserir como o primeiro registro (created_at bem antigo para ficar à frente)
+      const ts = new Date(Date.now() - 1000 * 60 * 60 * 24 * 365).toISOString();
+      const { error } = await supabase.from('topografia_asbuilt').insert({
+        os_id: os.id,
+        nome_estaca: PV_MONTANTE_TAG,
+        latitude: latVal,
+        longitude: lngVal,
+        registrado_por: user?.id ?? null,
+        created_at: ts,
+      });
+      setSavingMontante(false);
+      if (error) { toast.error('Erro ao salvar PV Montante.'); return; }
+      toast.success('PV Montante registrado!');
+      setMontLat(''); setMontLng('');
+    }
+  };
+
+  // ===== Salvar / atualizar PV Jusante =====
+  const saveJusante = async () => {
+    const latVal = parseFloat(jusLat);
+    const lngVal = parseFloat(jusLng);
+    if (isNaN(latVal) || isNaN(lngVal)) {
+      toast.error('Latitude e Longitude do PV Jusante são obrigatórios.');
+      return;
+    }
+    setSavingJusante(true);
+    if (jusante) {
+      const { error } = await supabase.from('topografia_asbuilt').update({
+        latitude: latVal, longitude: lngVal,
+      }).eq('id', jusante.id);
+      setSavingJusante(false);
+      if (error) { toast.error('Erro ao atualizar PV Jusante.'); return; }
+      toast.success('PV Jusante atualizado!');
+    } else {
+      // Created_at no futuro para ficar sempre por último
+      const ts = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+      const { error } = await supabase.from('topografia_asbuilt').insert({
+        os_id: os.id,
+        nome_estaca: PV_JUSANTE_TAG,
+        latitude: latVal,
+        longitude: lngVal,
+        registrado_por: user?.id ?? null,
+        created_at: ts,
+      });
+      setSavingJusante(false);
+      if (error) { toast.error('Erro ao salvar PV Jusante.'); return; }
+      toast.success('PV Jusante registrado!');
+      setJusLat(''); setJusLng('');
+    }
+  };
+
+  // ===== Adicionar intermediário =====
+  const addIntermediario = async () => {
+    const latVal = parseFloat(interLat);
+    const lngVal = parseFloat(interLng);
+    if (isNaN(latVal) || isNaN(lngVal)) {
+      toast.error('Latitude e Longitude do ponto intermediário são obrigatórios.');
+      return;
+    }
+    setSavingInter(true);
+    const next = intermediarios.length + 1;
     const { error } = await supabase.from('topografia_asbuilt').insert({
       os_id: os.id,
-      nome_estaca: `Ponto ${nextNumber}`,
+      nome_estaca: `Intermediário ${next}`,
       latitude: latVal,
       longitude: lngVal,
       registrado_por: user?.id ?? null,
     });
-    setSaving(false);
-    if (error) { toast.error('Erro ao salvar coordenada.'); return; }
-    toast.success(`Ponto ${nextNumber} registrado!`);
-    setLat(''); setLng('');
+    setSavingInter(false);
+    if (error) { toast.error('Erro ao salvar ponto intermediário.'); return; }
+    toast.success(`Intermediário ${next} registrado!`);
+    setInterLat(''); setInterLng('');
   };
 
-  const handleDelete = async (id: string) => {
+  const deletePoint = async (id: string) => {
     const { error } = await supabase.from('topografia_asbuilt').delete().eq('id', id);
     if (error) toast.error('Erro ao excluir.');
   };
 
-  const startEdit = (p: AsBuiltPoint) => {
-    setEditingId(p.id);
-    setEditLat(p.latitude?.toString() ?? '');
-    setEditLng(p.longitude?.toString() ?? '');
-  };
-
-  const cancelEdit = () => setEditingId(null);
-
-  const saveEdit = async (id: string) => {
-    const latVal = parseFloat(editLat);
-    const lngVal = parseFloat(editLng);
-    if (isNaN(latVal) || isNaN(lngVal)) {
-      toast.error('Latitude e Longitude são obrigatórios.');
-      return;
-    }
-    const { error } = await supabase.from('topografia_asbuilt').update({
-      latitude: latVal,
-      longitude: lngVal,
-    }).eq('id', id);
-    if (error) { toast.error('Erro ao atualizar.'); return; }
-    toast.success('Coordenada atualizada!');
-    setEditingId(null);
-  };
-
-  // Reordenar: troca o created_at entre dois pontos para refletir nova ordem
-  const swapPoints = async (idxA: number, idxB: number) => {
-    if (idxA < 0 || idxB < 0 || idxA >= points.length || idxB >= points.length) return;
-    const a = points[idxA];
-    const b = points[idxB];
-    setReordering(true);
-    // Troca created_at entre os dois para inverter a ordem
-    const tempStamp = new Date(new Date(a.created_at).getTime() + 1).toISOString();
-    const [r1, r2] = await Promise.all([
-      supabase.from('topografia_asbuilt').update({ created_at: b.created_at, nome_estaca: `Ponto ${idxB + 1}` }).eq('id', a.id),
-      supabase.from('topografia_asbuilt').update({ created_at: tempStamp, nome_estaca: `Ponto ${idxA + 1}` }).eq('id', b.id),
-    ]);
-    // Renomeia o segundo de fato
-    await supabase.from('topografia_asbuilt').update({ created_at: a.created_at }).eq('id', b.id);
-    setReordering(false);
-    if (r1.error || r2.error) {
-      toast.error('Erro ao reordenar.');
-      return;
-    }
-    fetchPoints();
-  };
-
-  // Renumera todos os nomes após qualquer mudança de ordem ou exclusão
+  // Renumera nomes dos intermediários após exclusão
   useEffect(() => {
-    if (points.length === 0) return;
-    const needsRename = points.some((p, idx) => p.nome_estaca !== `Ponto ${idx + 1}`);
+    if (intermediarios.length === 0) return;
+    const needsRename = intermediarios.some((p, idx) => p.nome_estaca !== `Intermediário ${idx + 1}`);
     if (!needsRename) return;
     (async () => {
       await Promise.all(
-        points.map((p, idx) =>
-          p.nome_estaca === `Ponto ${idx + 1}`
+        intermediarios.map((p, idx) =>
+          p.nome_estaca === `Intermediário ${idx + 1}`
             ? Promise.resolve()
-            : supabase.from('topografia_asbuilt').update({ nome_estaca: `Ponto ${idx + 1}` }).eq('id', p.id)
+            : supabase.from('topografia_asbuilt').update({ nome_estaca: `Intermediário ${idx + 1}` }).eq('id', p.id)
         )
       );
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points]);
 
-  const estacasSemCoord = points.filter((p) => p.latitude == null || p.longitude == null).length;
-  const podeConcluir = points.length > 0 && estacasSemCoord === 0 && ligacoesPendentes === 0;
+  // Polyline segue ordem: Montante → Intermediários → Jusante
+  const orderedForMap: AsBuiltPoint[] = [
+    ...(montante ? [montante] : []),
+    ...intermediarios,
+    ...(jusante ? [jusante] : []),
+  ].filter((p) => p.latitude != null && p.longitude != null);
+
+  const podeConcluir = !!montante && !!jusante && ligacoesPendentes === 0;
 
   const handleConclude = async () => {
     if (!podeConcluir) return;
@@ -228,11 +275,71 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   };
 
   const isConcluded = os.status === 'VERDE';
-  const canAdd = allowEditAll || !isConcluded;
-  const canEditPoint = (_p: AsBuiltPoint) => {
-    if (allowEditAll) return true;
-    if (isConcluded) return false;
-    return true;
+  const canEdit = allowEditAll || !isConcluded;
+
+  // ===== Sub-componente: card de PV (Montante / Jusante) =====
+  const PVCard = ({
+    titulo, label, point, latState, lngState, onLat, onLng, onSave, saving,
+  }: {
+    titulo: string;
+    label: string;
+    point: AsBuiltPoint | null;
+    latState: string;
+    lngState: string;
+    onLat: (v: string) => void;
+    onLng: (v: string) => void;
+    onSave: () => void;
+    saving: boolean;
+  }) => {
+    const [editMode, setEditMode] = useState(false);
+    const showForm = !point || editMode;
+
+    return (
+      <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <MapPin size={13} className="text-status-green" /> {titulo}
+            <span className="text-muted-foreground font-normal normal-case">({label})</span>
+          </p>
+          {point && !showForm && canEdit && (
+            <button
+              onClick={() => { onLat(point.latitude?.toString() ?? ''); onLng(point.longitude?.toString() ?? ''); setEditMode(true); }}
+              className="text-muted-foreground hover:text-foreground p-1"
+              title="Editar"
+            >
+              <Pencil size={13} />
+            </button>
+          )}
+        </div>
+
+        {showForm && canEdit ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="Latitude *" type="number" step="any" value={latState} onChange={(e) => onLat(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="Longitude *" type="number" step="any" value={lngState} onChange={(e) => onLng(e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => { onSave(); setEditMode(false); }} disabled={saving} size="sm" className="flex-1">
+                {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Check size={14} className="mr-1" />}
+                {point ? 'Atualizar' : 'Salvar'}
+              </Button>
+              {point && (
+                <Button onClick={() => setEditMode(false)} variant="ghost" size="sm">
+                  <X size={14} />
+                </Button>
+              )}
+            </div>
+          </>
+        ) : point ? (
+          <p className="text-sm text-foreground">
+            <span className="text-status-green mr-1">✓</span>
+            {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground italic">Não registrado</p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -246,7 +353,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <MapPin size={16} /> Coordenadas do Trecho ({points.length})
+              <MapPin size={16} /> Coordenadas do Trecho
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
               Registre na ordem do traçado: PV montante → intermediários → PV jusante
@@ -257,87 +364,82 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
             <div className="flex justify-center py-4"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
           ) : (
             <>
-              {points.length > 0 && (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {points.map((p, idx) => (
-                    <div key={p.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2 text-sm">
-                      {editingId === p.id ? (
-                        <div className="flex-1 space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground">Ponto {idx + 1}</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Input value={editLat} onChange={e => setEditLat(e.target.value)} placeholder="Lat" type="number" step="any" className="h-8 text-sm" />
-                            <Input value={editLng} onChange={e => setEditLng(e.target.value)} placeholder="Lng" type="number" step="any" className="h-8 text-sm" />
-                          </div>
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => saveEdit(p.id)}>
-                              <Check size={14} className="text-status-green" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={cancelEdit}>
-                              <X size={14} className="text-muted-foreground" />
-                            </Button>
+              {/* PV Montante */}
+              <PVCard
+                titulo="PV Montante"
+                label={pvMontanteLabel}
+                point={montante}
+                latState={montLat}
+                lngState={montLng}
+                onLat={setMontLat}
+                onLng={setMontLng}
+                onSave={saveMontante}
+                saving={savingMontante}
+              />
+
+              {/* Intermediários */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                  Pontos Intermediários ({intermediarios.length})
+                </p>
+                {intermediarios.length > 0 && (
+                  <div className="space-y-2 max-h-52 overflow-y-auto">
+                    {intermediarios.map((p, idx) => (
+                      <div key={p.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2 text-sm">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-status-green/15 text-status-green text-xs font-semibold shrink-0">
+                            {idx + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <span className="font-medium text-foreground">Intermediário {idx + 1}</span>
+                            <span className="text-muted-foreground ml-2 text-xs">
+                              {p.latitude?.toFixed(6)}, {p.longitude?.toFixed(6)}
+                            </span>
                           </div>
                         </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-status-green/15 text-status-green text-xs font-semibold shrink-0">
-                              {idx + 1}
-                            </span>
-                            <div className="min-w-0">
-                              <span className="font-medium text-foreground">Ponto {idx + 1}</span>
-                              <span className="text-muted-foreground ml-2 text-xs">
-                                {p.latitude?.toFixed(6)}, {p.longitude?.toFixed(6)}
-                              </span>
-                            </div>
-                          </div>
-                          {canEditPoint(p) && (
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <button
-                                onClick={() => swapPoints(idx, idx - 1)}
-                                disabled={idx === 0 || reordering}
-                                className="text-muted-foreground hover:text-foreground p-1 disabled:opacity-30 disabled:cursor-not-allowed"
-                                title="Mover para cima"
-                              >
-                                <ArrowUp size={14} />
-                              </button>
-                              <button
-                                onClick={() => swapPoints(idx, idx + 1)}
-                                disabled={idx === points.length - 1 || reordering}
-                                className="text-muted-foreground hover:text-foreground p-1 disabled:opacity-30 disabled:cursor-not-allowed"
-                                title="Mover para baixo"
-                              >
-                                <ArrowDown size={14} />
-                              </button>
-                              <button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground p-1" title="Editar">
-                                <Pencil size={14} />
-                              </button>
-                              <button onClick={() => handleDelete(p.id)} className="text-destructive hover:text-destructive/80 p-1" title="Excluir">
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {canAdd && (
-                <div className="space-y-3 bg-muted/30 rounded-lg p-3">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Próximo: Ponto {points.length + 1}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input placeholder="Latitude *" type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} />
-                    <Input placeholder="Longitude *" type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} />
+                        {canEdit && (
+                          <button
+                            onClick={() => deletePoint(p.id)}
+                            className="text-destructive hover:text-destructive/80 p-1 shrink-0"
+                            title="Excluir"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <Button onClick={handleAdd} disabled={saving} size="sm" className="w-full">
-                    {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Plus size={14} className="mr-1" />}
-                    Adicionar Coordenada
-                  </Button>
-                </div>
-              )}
+                )}
+
+                {canEdit && (
+                  <div className="space-y-2 bg-muted/20 rounded-lg p-3 border border-dashed border-border">
+                    <p className="text-xs text-muted-foreground">
+                      Próximo: Intermediário {intermediarios.length + 1}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input placeholder="Latitude" type="number" step="any" value={interLat} onChange={(e) => setInterLat(e.target.value)} className="h-9 text-sm" />
+                      <Input placeholder="Longitude" type="number" step="any" value={interLng} onChange={(e) => setInterLng(e.target.value)} className="h-9 text-sm" />
+                    </div>
+                    <Button onClick={addIntermediario} disabled={savingInter} size="sm" variant="outline" className="w-full">
+                      {savingInter ? <Loader2 className="animate-spin mr-2" size={14} /> : <Plus size={14} className="mr-1" />}
+                      Adicionar Ponto Intermediário
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* PV Jusante */}
+              <PVCard
+                titulo="PV Jusante"
+                label={pvJusanteLabel}
+                point={jusante}
+                latState={jusLat}
+                lngState={jusLng}
+                onLat={setJusLat}
+                onLng={setJusLng}
+                onSave={saveJusante}
+                saving={savingJusante}
+              />
 
               {!isConcluded && !allowEditAll && podeConcluir && (
                 <Button onClick={handleConclude} disabled={concluding} variant="default" className="w-full bg-status-green hover:bg-status-green/90 text-white">
@@ -346,13 +448,12 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 </Button>
               )}
 
-              {!isConcluded && !allowEditAll && !podeConcluir && points.length > 0 && (
+              {!isConcluded && !allowEditAll && !podeConcluir && (montante || jusante || intermediarios.length > 0) && (
                 <div className="text-sm bg-status-yellow/10 border border-status-yellow/30 rounded-lg px-3 py-2 space-y-1">
                   <p className="font-medium text-foreground">⏳ Pendências para concluir esta NS:</p>
                   <ul className="list-disc list-inside text-muted-foreground">
-                    {estacasSemCoord > 0 && (
-                      <li>{estacasSemCoord} {estacasSemCoord === 1 ? 'coordenada sem' : 'coordenadas sem'} latitude/longitude</li>
-                    )}
+                    {!montante && <li>PV Montante não registrado</li>}
+                    {!jusante && <li>PV Jusante não registrado</li>}
                     {ligacoesPendentes > 0 && (
                       <li>{ligacoesPendentes} {ligacoesPendentes === 1 ? 'ligação aguardando coordenadas' : 'ligações aguardando coordenadas'}</li>
                     )}
@@ -373,7 +474,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
         </div>
 
         <div className="rounded-xl border border-border overflow-hidden" style={{ minHeight: 300 }}>
-          <MiniMap points={points} />
+          <MiniMap points={orderedForMap} />
         </div>
       </div>
 

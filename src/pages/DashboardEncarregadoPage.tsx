@@ -32,8 +32,11 @@ interface OSRow {
   updated_at: string;
 }
 
-const dayDiff = (a: Date, b: Date) =>
-  Math.floor((a.getTime() - b.getTime()) / (24 * 60 * 60 * 1000));
+const toDateKey = (d: Date) => d.toISOString().slice(0, 10);
+const formatDayLabel = (key: string) => {
+  const [, m, day] = key.split('-');
+  return `${day}/${m}`;
+};
 
 const DashboardEncarregadoPage = () => {
   const { user } = useAuth();

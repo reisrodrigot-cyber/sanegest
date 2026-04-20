@@ -85,6 +85,11 @@ export const AppSidebar = () => {
             >
               {item.icon}
               {item.label}
+              {item.path === '/materiais' && pendingCount > 0 && (
+                <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {pendingCount}
+                </span>
+              )}
             </Link>
           );
         })}

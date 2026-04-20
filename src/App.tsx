@@ -71,7 +71,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated, supabaseUser, loading } = useAuth();
+  const { isAuthenticated, supabaseUser, loading, effectiveRole } = useAuth();
 
   if (loading) {
     return (
@@ -81,10 +81,12 @@ const AppRoutes = () => {
     );
   }
 
+  const home = homeForRole(effectiveRole);
+
   return (
     <Routes>
-      <Route path="/login" element={supabaseUser ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-      <Route path="/" element={<Navigate to={supabaseUser ? "/dashboard" : "/login"} replace />} />
+      <Route path="/login" element={supabaseUser ? <Navigate to={home} replace /> : <LoginPage />} />
+      <Route path="/" element={<Navigate to={supabaseUser ? home : "/login"} replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/ordens" element={<ProtectedRoute><OrdensPage /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetailPage /></ProtectedRoute>} />

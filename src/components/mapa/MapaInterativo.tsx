@@ -223,10 +223,15 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
 
   // ======= Render rede =======
   useEffect(() => {
+    const map = mapRef.current;
     const layer = redeLayerRef.current;
-    if (!layer) return;
+    if (!map || !layer) return;
     layer.clearLayers();
-    if (!visivel.__rede) return;
+    if (!visivel.__rede) {
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+      return;
+    }
+    if (!map.hasLayer(layer)) layer.addTo(map);
     redePoints.forEach((m) => {
       const circle = L.circleMarker([m.latitude, m.longitude], {
         radius: 7, fillColor: REDE_COLOR, color: REDE_COLOR,
@@ -246,10 +251,15 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
 
   // ======= Render ligações =======
   useEffect(() => {
+    const map = mapRef.current;
     const layer = ligacoesLayerRef.current;
-    if (!layer) return;
+    if (!map || !layer) return;
     layer.clearLayers();
-    if (!visivel.__ligacoes) return;
+    if (!visivel.__ligacoes) {
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+      return;
+    }
+    if (!map.hasLayer(layer)) layer.addTo(map);
     ligacoesPoints.forEach((m) => {
       const square = L.circleMarker([m.latitude, m.longitude], {
         radius: 6, fillColor: LIGACAO_COLOR, color: '#ffffff',
@@ -513,8 +523,11 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
           </PopoverTrigger>
           <PopoverContent
             align="end"
+            side="bottom"
             sideOffset={6}
-            className="w-72 p-3 max-h-[480px] overflow-y-auto"
+            collisionPadding={12}
+            avoidCollisions
+            className="w-[min(18rem,calc(100vw-1.5rem))] p-3 max-h-[70vh] overflow-y-auto z-[1000]"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">

@@ -489,8 +489,18 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     <div className="relative mb-6" style={{ height: 520 }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', borderRadius: '0.75rem', overflow: 'hidden' }} />
 
-      {/* Controle flutuante de camadas */}
-      <div className="absolute top-3 right-3 z-[500]">
+      {/* Controle flutuante: camadas + minha localização */}
+      <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">
+        {showLocation && (
+          <button
+            onClick={centerOnMe}
+            className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+            title="Minha localização"
+            aria-label="Minha localização"
+          >
+            <Crosshair size={18} className="text-foreground" />
+          </button>
+        )}
         <Popover open={layersOpen} onOpenChange={setLayersOpen}>
           <PopoverTrigger asChild>
             <button

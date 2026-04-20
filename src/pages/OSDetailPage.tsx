@@ -174,7 +174,8 @@ const OSDetailPage = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<OSStatus | null>(null);
   const [changingStatus, setChangingStatus] = useState(false);
-  const [asBuiltWarning, setAsBuiltWarning] = useState(false);
+  const [pendenciasCoord, setPendenciasCoord] = useState<{ estacas: number; ligacoes: number } | null>(null);
+  const [checkingPendencias, setCheckingPendencias] = useState(false);
   const [savingEncarregado, setSavingEncarregado] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingOs, setDeletingOs] = useState(false);
@@ -226,14 +227,38 @@ const OSDetailPage = () => {
   const isSalaTecnica = permissions.canEditOS(effectiveRole);
   const isEncarregado = permissions.canEditProducao(effectiveRole) && effectiveRole === 'encarregado';
 
-  const handleStatusChange = (newStatus: OSStatus) => {
+  const handleStatusChange = async (newStatus: OSStatus) => {
     if (!os || newStatus === os.status) return;
     setPendingStatus(newStatus);
-    // Check as-built warning for VERDE
-    if (newStatus === 'VERDE' && !os.as_built_lat) {
-      setAsBuiltWarning(true);
-    } else {
-      setAsBuiltWarning(false);
+    setPendenciasCoord(null);
+    // Para VERDE: verifica pendências reais de coordenadas (estacas + ligações sem lat/lng)
+    if (newStatus === 'VERDE') {
+      setCheckingPendencias(true);
+      const [estacasRes, ligacoesRes] = await Promise.all([
+        supabase
+          .from('topografia_asbuilt')
+          .select('id', { count: 'exact', head: true })
+          .eq('os_id', os.id)
+          .or('latitude.is.null,longitude.is.null'),
+        supabase
+          .from('ligacoes')
+          .select('id', { count: 'exact', head: true })
+          .eq('os_id', os.id)
+          .or('latitude.is.null,longitude.is.null'),
+      ]);
+      const estacasPend = estacasRes.count ?? 0;
+      const ligacoesPend = ligacoesRes.count ?? 0;
+      // Também conta como pendência se NÃO houver nenhuma estaca registrada
+      const { count: totalEstacas } = await supabase
+        .from('topografia_asbuilt')
+        .select('id', { count: 'exact', head: true })
+        .eq('os_id', os.id);
+      const semEstacas = (totalEstacas ?? 0) === 0;
+      setCheckingPendencias(false);
+      setPendenciasCoord({
+        estacas: estacasPend + (semEstacas ? -1 : 0), // -1 indica "nenhuma estaca"
+        ligacoes: ligacoesPend,
+      });
     }
     setStatusDialogOpen(true);
   };
@@ -544,19 +569,46 @@ const OSDetailPage = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar alteração de status</AlertDialogTitle>
-            <AlertDialogDescription>
-              Confirmar alteração de status para <strong>{pendingStatus}</strong>?
-              {asBuiltWarning && (
-                <span className="flex items-center gap-2 mt-3 p-3 bg-amber-50 text-amber-800 rounded-lg border border-amber-200">
-                  <AlertTriangle size={16} className="shrink-0" />
-                  Esta OS não possui coordenadas as-built registradas.
-                </span>
-              )}
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  Confirmar alteração de status para <strong>{pendingStatus}</strong>?
+                </p>
+                {pendingStatus === 'VERDE' && checkingPendencias && (
+                  <span className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+                    <Loader2 size={14} className="animate-spin" />
+                    Verificando pendências de coordenadas...
+                  </span>
+                )}
+                {pendingStatus === 'VERDE' && !checkingPendencias && pendenciasCoord && (
+                  pendenciasCoord.estacas === -1 || pendenciasCoord.estacas > 0 || pendenciasCoord.ligacoes > 0 ? (
+                    <div className="flex items-start gap-2 mt-3 p-3 bg-status-yellow/10 text-foreground rounded-lg border border-status-yellow/40">
+                      <AlertTriangle size={16} className="shrink-0 mt-0.5 text-status-yellow" />
+                      <div className="text-sm">
+                        <p className="font-semibold mb-1">Pendências de coordenadas detectadas:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {pendenciasCoord.estacas === -1 && <li>Nenhuma estaca as-built registrada</li>}
+                          {pendenciasCoord.estacas > 0 && <li>{pendenciasCoord.estacas} estaca(s) sem latitude/longitude</li>}
+                          {pendenciasCoord.ligacoes > 0 && <li>{pendenciasCoord.ligacoes} ligação(ões) sem latitude/longitude</li>}
+                        </ul>
+                        <p className="mt-2 text-xs">
+                          Você está usando a <strong>exceção manual</strong> da Sala Técnica para concluir a NS sem todas as coordenadas. Esta ação ficará registrada no histórico.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="flex items-center gap-2 mt-3 p-3 bg-status-green/10 text-foreground rounded-lg border border-status-green/40 text-sm">
+                      <CheckCircle size={16} className="shrink-0 text-status-green" />
+                      Todas as coordenadas estão preenchidas. Pronto para concluir.
+                    </span>
+                  )
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={changingStatus}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStatusChange} disabled={changingStatus}>
+            <AlertDialogAction onClick={confirmStatusChange} disabled={changingStatus || checkingPendencias}>
               {changingStatus ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
               Confirmar
             </AlertDialogAction>

@@ -154,9 +154,10 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   const fetchAsBuilt = async () => {
     const { data: ab } = await supabase
       .from('topografia_asbuilt')
-      .select('id, os_id, latitude, longitude, nome_estaca')
+      .select('id, os_id, latitude, longitude, nome_estaca, created_at')
       .not('latitude', 'is', null)
-      .not('longitude', 'is', null);
+      .not('longitude', 'is', null)
+      .order('created_at', { ascending: true });
 
     if (!ab || ab.length === 0) {
       setRedePoints([]);
@@ -164,7 +165,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       const osIds = [...new Set(ab.map(r => r.os_id))];
       const { data: osData } = await supabase
         .from('ordens_servico')
-        .select('id, trecho, bacia, status')
+        .select('id, trecho, bacia, status, pv_montante, pv_jusante, comprimento_real, comprimento_previsto')
         .in('id', osIds);
       const osMap = new Map((osData ?? []).map(o => [o.id, o]));
       const result: RedePoint[] = [];
@@ -174,7 +175,9 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
           result.push({
             id: r.id, os_id: r.os_id, trecho: os.trecho, bacia: os.bacia,
             status: os.status, latitude: Number(r.latitude), longitude: Number(r.longitude),
-            nome_estaca: r.nome_estaca,
+            nome_estaca: r.nome_estaca, created_at: r.created_at,
+            pv_montante: os.pv_montante, pv_jusante: os.pv_jusante,
+            comprimento_real: os.comprimento_real, comprimento_previsto: os.comprimento_previsto,
           });
         }
       }

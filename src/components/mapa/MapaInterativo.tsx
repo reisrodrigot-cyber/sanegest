@@ -223,10 +223,15 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
 
   // ======= Render rede =======
   useEffect(() => {
+    const map = mapRef.current;
     const layer = redeLayerRef.current;
-    if (!layer) return;
+    if (!map || !layer) return;
     layer.clearLayers();
-    if (!visivel.__rede) return;
+    if (!visivel.__rede) {
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+      return;
+    }
+    if (!map.hasLayer(layer)) layer.addTo(map);
     redePoints.forEach((m) => {
       const circle = L.circleMarker([m.latitude, m.longitude], {
         radius: 7, fillColor: REDE_COLOR, color: REDE_COLOR,

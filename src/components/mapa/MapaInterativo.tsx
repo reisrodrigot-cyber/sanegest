@@ -390,15 +390,7 @@ export const MapaInterativo = () => {
   };
 
   return (
-    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6">
-      <div className="p-4 border-b border-border flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <MapPin size={18} className="text-muted-foreground" />
-          <h2 className="text-lg font-semibold text-foreground">Mapa Interativo</h2>
-        </div>
-      </div>
-
-      <div className="relative" style={{ height: 520 }}>
+    <div className="relative mb-6" style={{ height: 520 }}>
         <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
 
         {/* Controle flutuante de camadas */}

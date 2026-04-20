@@ -231,11 +231,6 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  // ======= Render rede =======
-  useEffect(() => {
-    const map = mapRef.current;
-    const layer = redeLayerRef.current;
-    if (!map || !layer) return;
   // ======= Render rede (polylines por OS + vértices) =======
   useEffect(() => {
     const map = mapRef.current;

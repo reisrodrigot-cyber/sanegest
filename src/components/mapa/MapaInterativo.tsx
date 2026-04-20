@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair } from 'lucide-react';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
 import 'leaflet/dist/leaflet.css';
@@ -77,7 +77,12 @@ async function loadKmzAsGeoJSON(url: string): Promise<GeoJSON.FeatureCollection 
   }
 }
 
-export const MapaInterativo = () => {
+interface MapaInterativoProps {
+  /** Mostra marcador da posição GPS atual e botão "Minha Localização" */
+  showLocation?: boolean;
+}
+
+export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
 
@@ -88,6 +93,10 @@ export const MapaInterativo = () => {
   const kmzLayersRef = useRef<Map<string, L.Layer>>(new Map());
   const kmzBoundsRef = useRef<Map<string, L.LatLngBounds>>(new Map());
   const didInitialFitRef = useRef(false);
+  const meMarkerRef = useRef<L.Marker | null>(null);
+  const meAccuracyRef = useRef<L.Circle | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const didCenterOnMeRef = useRef(false);
 
   const [camadas, setCamadas] = useState<Camada[]>([]);
   const [redePoints, setRedePoints] = useState<RedePoint[]>([]);

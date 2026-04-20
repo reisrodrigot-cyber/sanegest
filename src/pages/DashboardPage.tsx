@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { ROLE_LABELS } from '@/types/sanegest';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { OSMap } from '@/components/OSMap';
+import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { useMemo } from 'react';
 import { AvancoFisicoDetail } from '@/components/dashboard/AvancoFisicoDetail';
 import { ProducaoPorEncarregado } from '@/components/dashboard/ProducaoPorEncarregado';
@@ -93,7 +93,7 @@ const DashboardPage = () => {
         <p className="text-muted-foreground text-sm">{OBRA_NOME} • {effectiveRole && ROLE_LABELS[effectiveRole]}</p>
       </div>
 
-      <OSMap />
+      <MapaInterativo />
 
       {ordens.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground mt-6">

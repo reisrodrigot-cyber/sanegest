@@ -489,7 +489,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
 };
 
 const TopografiaPage = () => {
-  const { user } = useAuth();
+  const { effectiveUser } = useAuth();
   const { ordens, loading, refetch } = useOrdensServico();
   const [registeredOsIds, setRegisteredOsIds] = useState<Set<string>>(new Set());
   const [loadingRegistered, setLoadingRegistered] = useState(true);
@@ -497,17 +497,17 @@ const TopografiaPage = () => {
 
   useEffect(() => {
     const fetchRegistered = async () => {
-      if (!user) return;
+      if (!effectiveUser) return;
       const { data } = await supabase
         .from('topografia_asbuilt')
         .select('os_id')
-        .eq('registrado_por', user.id);
+        .eq('registrado_por', effectiveUser.id);
       const ids = new Set((data ?? []).map(d => d.os_id));
       setRegisteredOsIds(ids);
       setLoadingRegistered(false);
     };
     fetchRegistered();
-  }, [user]);
+  }, [effectiveUser]);
 
   const pendentes = ordens.filter(os => os.status === 'AMARELO');
   const registradas = ordens.filter(os => registeredOsIds.has(os.id));

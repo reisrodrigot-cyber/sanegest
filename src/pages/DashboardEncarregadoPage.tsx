@@ -13,6 +13,7 @@ import {
   Legend,
   CartesianGrid,
 } from 'recharts';
+import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 
 interface RegistroRow {
   os_id: string;

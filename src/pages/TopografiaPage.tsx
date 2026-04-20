@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LigacoesPanel } from '@/components/topografia/LigacoesPanel';
+import { OSDetalhesTrecho } from '@/components/OSDetalhesTrecho';
 
 interface AsBuiltPoint {
   id: string;

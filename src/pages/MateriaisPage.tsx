@@ -105,7 +105,7 @@ const MateriaisPage = () => {
       <p className="text-sm text-muted-foreground mb-6">Confirme a entrega de material para cada NS liberada</p>
 
       <div className="space-y-3">
-        {liberadas.map(os => {
+        {pendentes.map(os => {
           const dataEntrega = (os as any).material_entregue_em as string | null | undefined;
           const isStatusVermelho = os.status === 'VERMELHO';
           const isConfirming = confirmingId === os.id;
@@ -188,9 +188,9 @@ const MateriaisPage = () => {
             </div>
           );
         })}
-        {liberadas.length === 0 && (
+        {pendentes.length === 0 && (
           <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
-            Nenhuma NS liberada para entrega de materiais.
+            Nenhuma NS pendente de entrega de material.
           </div>
         )}
       </div>

@@ -257,17 +257,28 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 </div>
               )}
 
-              {!isConcluded && !allowEditAll && points.length > 0 && ligacoesPendentes === 0 && (
+              {!isConcluded && !allowEditAll && podeConcluir && (
                 <Button onClick={handleConclude} disabled={concluding} variant="default" className="w-full bg-status-green hover:bg-status-green/90 text-white">
                   {concluding ? <Loader2 className="animate-spin mr-2" size={14} /> : <CheckCircle2 size={14} className="mr-1" />}
                   Concluir NS (→ Verde)
                 </Button>
               )}
 
-              {!isConcluded && !allowEditAll && points.length > 0 && ligacoesPendentes > 0 && (
-                <p className="text-sm text-status-yellow bg-status-yellow/10 border border-status-yellow/30 rounded-lg px-3 py-2 flex items-center gap-2">
-                  ⏳ {ligacoesPendentes} {ligacoesPendentes === 1 ? 'ligação ainda aguarda coordenadas' : 'ligações ainda aguardam coordenadas'} para concluir esta NS
-                </p>
+              {!isConcluded && !allowEditAll && !podeConcluir && points.length > 0 && (
+                <div className="text-sm bg-status-yellow/10 border border-status-yellow/30 rounded-lg px-3 py-2 space-y-1">
+                  <p className="font-medium text-foreground">⏳ Pendências para concluir esta NS:</p>
+                  <ul className="list-disc list-inside text-muted-foreground">
+                    {estacasSemCoord > 0 && (
+                      <li>{estacasSemCoord} {estacasSemCoord === 1 ? 'estaca sem' : 'estacas sem'} latitude/longitude</li>
+                    )}
+                    {ligacoesPendentes > 0 && (
+                      <li>{ligacoesPendentes} {ligacoesPendentes === 1 ? 'ligação aguardando coordenadas' : 'ligações aguardando coordenadas'}</li>
+                    )}
+                  </ul>
+                  <p className="text-xs text-muted-foreground pt-1">
+                    Apenas a Sala Técnica pode concluir manualmente uma NS com pendências.
+                  </p>
+                </div>
               )}
 
               {isConcluded && !allowEditAll && (

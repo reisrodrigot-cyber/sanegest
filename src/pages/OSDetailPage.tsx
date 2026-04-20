@@ -518,7 +518,19 @@ const OSDetailPage = () => {
     );
   }
 
-  const hasRealData = os.comprimento_real != null || os.prof_media_real != null || os.pav_real != null;
+  const hasRealData =
+    os.comprimento_real != null ||
+    os.prof_media_real != null ||
+    os.pav_real != null ||
+    os.ligacoes_real != null ||
+    os.pav_m2_real != null ||
+    os.largura_vala_real != null ||
+    os.prof_montante_real != null ||
+    os.prof_jusante_real != null;
+  // Sala Técnica pode validar a partir do momento em que há produção registrada,
+  // independente de divergências com o previsto. Só não aparece quando já está
+  // em AMARELO (já validada) ou VERDE (concluída).
+  const canValidar = hasRealData && os.status !== 'AMARELO' && os.status !== 'VERDE';
 
   return (
     <AppLayout>

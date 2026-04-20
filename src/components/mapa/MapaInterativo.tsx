@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-// @ts-ignore - leaflet-kmz não tem tipos
-import 'leaflet-kmz';
+import JSZip from 'jszip';
+import { kml as kmlToGeoJson } from '@tmcw/togeojson';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
@@ -48,20 +49,45 @@ const STATUS_COLORS: Record<string, string> = {
   AMARELO: '#ca8a04', VERDE: '#16a34a',
 };
 
-const REDE_COLOR = '#16a34a'; // verde
-const LIGACAO_COLOR = '#2563eb'; // azul
+const REDE_COLOR = '#16a34a';
+const LIGACAO_COLOR = '#2563eb';
 const DEFAULT_CENTER: [number, number] = [-9.1167, -35.2667];
 const DEFAULT_ZOOM = 13;
 
+// Parse KMZ (zip with .kml inside) → GeoJSON
+async function loadKmzAsGeoJSON(url: string): Promise<GeoJSON.FeatureCollection | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = await res.arrayBuffer();
+    const zip = await JSZip.loadAsync(buf);
+    // localizar primeiro .kml dentro do zip
+    let kmlFile: JSZip.JSZipObject | null = null;
+    zip.forEach((_path, file) => {
+      if (!kmlFile && /\.kml$/i.test(file.name)) kmlFile = file;
+    });
+    if (!kmlFile) throw new Error('KMZ sem arquivo .kml');
+    const kmlText = await (kmlFile as JSZip.JSZipObject).async('text');
+    const dom = new DOMParser().parseFromString(kmlText, 'text/xml');
+    const geojson = kmlToGeoJson(dom);
+    return geojson as GeoJSON.FeatureCollection;
+  } catch (err) {
+    console.error('[MapaInterativo] erro ao parsear KMZ', err);
+    return null;
+  }
+}
+
 export const MapaInterativo = () => {
   const { effectiveRole } = useAuth();
-  const canManage = permissions.canEditOS(effectiveRole); // sala_tecnica/admin
+  const canManage = permissions.canEditOS(effectiveRole);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const redeLayerRef = useRef<L.LayerGroup | null>(null);
   const ligacoesLayerRef = useRef<L.LayerGroup | null>(null);
   const kmzLayersRef = useRef<Map<string, L.Layer>>(new Map());
+  const kmzBoundsRef = useRef<Map<string, L.LatLngBounds>>(new Map());
+  const didInitialFitRef = useRef(false);
 
   const [camadas, setCamadas] = useState<Camada[]>([]);
   const [redePoints, setRedePoints] = useState<RedePoint[]>([]);
@@ -74,11 +100,12 @@ export const MapaInterativo = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Camada | null>(null);
   const [loading, setLoading] = useState(true);
+  const [layersOpen, setLayersOpen] = useState(false);
 
   // Init mapa
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    const map = L.map(containerRef.current, { preferCanvas: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',
     }).addTo(map);
@@ -157,7 +184,6 @@ export const MapaInterativo = () => {
       .select('id, trecho')
       .in('id', osIds);
     const osMap = new Map((osData ?? []).map(o => [o.id, o]));
-    // numerar sequencialmente por OS conforme ordem de criação
     const counter = new Map<string, number>();
     const result: LigacaoPoint[] = [];
     for (const r of lg) {
@@ -189,8 +215,7 @@ export const MapaInterativo = () => {
   // ======= Render rede =======
   useEffect(() => {
     const layer = redeLayerRef.current;
-    const map = mapRef.current;
-    if (!layer || !map) return;
+    if (!layer) return;
     layer.clearLayers();
     if (!visivel.__rede) return;
     redePoints.forEach((m) => {
@@ -231,20 +256,7 @@ export const MapaInterativo = () => {
     });
   }, [ligacoesPoints, visivel.__ligacoes]);
 
-  // Auto-fit quando há dados
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const all = [
-      ...redePoints.map(r => [r.latitude, r.longitude] as [number, number]),
-      ...ligacoesPoints.map(r => [r.latitude, r.longitude] as [number, number]),
-    ];
-    if (all.length === 0) { map.setView(DEFAULT_CENTER, DEFAULT_ZOOM); return; }
-    const bounds = L.latLngBounds(all);
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
-  }, [redePoints.length, ligacoesPoints.length]);
-
-  // ======= Render KMZ camadas =======
+  // ======= Render KMZ camadas (custom: fetch+JSZip+togeojson) =======
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -255,54 +267,104 @@ export const MapaInterativo = () => {
       if (!currentIds.has(id)) {
         map.removeLayer(layer);
         kmzLayersRef.current.delete(id);
+        kmzBoundsRef.current.delete(id);
       }
     }
 
-    // Adicionar/atualizar
     camadas.forEach(async (c) => {
+      // remover existente para refletir mudanças de cor/opacidade/visibilidade
       const existing = kmzLayersRef.current.get(c.id);
-      const shouldShow = visivel[c.id] !== false;
-
-      // Sempre recriar para refletir mudanças de cor/opacidade
       if (existing) {
         map.removeLayer(existing);
         kmzLayersRef.current.delete(c.id);
       }
+      const shouldShow = visivel[c.id] !== false;
       if (!shouldShow) return;
 
       try {
-        const { data: signed } = await supabase.storage
+        const { data: signed, error: signErr } = await supabase.storage
           .from('mapa-kmz')
           .createSignedUrl(c.storage_path, 3600);
-        if (!signed?.signedUrl) return;
+        if (signErr || !signed?.signedUrl) {
+          console.error('[MapaInterativo] signed url falhou', c.nome, signErr);
+          return;
+        }
 
-        // @ts-ignore
-        const kmzLayer = L.kmzLayer({ ext: 'kmz' });
-        kmzLayer.on('load', (e: any) => {
-          const layer = e.layer || e.target;
-          // aplicar cor + opacidade
-          const applyStyle = (ly: any) => {
-            if (ly.setStyle) {
-              ly.setStyle({
-                color: c.cor,
-                fillColor: c.cor,
-                opacity: c.opacidade,
-                fillOpacity: c.opacidade * 0.5,
-                weight: 2,
-              });
+        const geojson = await loadKmzAsGeoJSON(signed.signedUrl);
+        if (!geojson || !geojson.features || geojson.features.length === 0) {
+          console.warn('[MapaInterativo] KMZ vazio ou inválido:', c.nome);
+          return;
+        }
+
+        const styleOpts: L.PathOptions = {
+          color: c.cor,
+          fillColor: c.cor,
+          opacity: c.opacidade,
+          fillOpacity: c.opacidade * 0.5,
+          weight: 2,
+        };
+
+        const gjLayer = L.geoJSON(geojson, {
+          style: () => styleOpts,
+          pointToLayer: (_feat, latlng) =>
+            L.circleMarker(latlng, {
+              radius: 5,
+              color: c.cor,
+              fillColor: c.cor,
+              opacity: c.opacidade,
+              fillOpacity: c.opacidade,
+              weight: 2,
+            }),
+          onEachFeature: (feature, layer) => {
+            const name = feature?.properties?.name;
+            const desc = feature?.properties?.description;
+            if (name || desc) {
+              layer.bindPopup(`
+                <div style="min-width:160px;font-size:13px;">
+                  ${name ? `<p style="font-weight:700;margin:0 0 4px">${name}</p>` : ''}
+                  ${desc ? `<p style="margin:2px 0;color:#555">${desc}</p>` : ''}
+                  <p style="margin:4px 0 0;font-size:11px;color:#888">${c.nome}</p>
+                </div>`);
             }
-            if (ly.eachLayer) ly.eachLayer(applyStyle);
-          };
-          applyStyle(layer);
+          },
         });
-        kmzLayer.load(signed.signedUrl);
-        kmzLayer.addTo(map);
-        kmzLayersRef.current.set(c.id, kmzLayer);
+
+        gjLayer.addTo(map);
+        kmzLayersRef.current.set(c.id, gjLayer);
+        try {
+          const b = gjLayer.getBounds();
+          if (b.isValid()) kmzBoundsRef.current.set(c.id, b);
+        } catch {/* sem bounds */}
+
+        // Auto-fit apenas na primeira camada KMZ carregada quando não há as-built
+        if (!didInitialFitRef.current && redePoints.length === 0 && ligacoesPoints.length === 0) {
+          try {
+            const b = gjLayer.getBounds();
+            if (b.isValid()) {
+              map.fitBounds(b, { padding: [40, 40], maxZoom: 17 });
+              didInitialFitRef.current = true;
+            }
+          } catch {/* ignore */}
+        }
       } catch (err) {
-        console.error('Erro carregando KMZ', c.nome, err);
+        console.error('[MapaInterativo] erro carregando camada', c.nome, err);
       }
     });
   }, [camadas, visivel]);
+
+  // Auto-fit para as-built quando há dados
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const all = [
+      ...redePoints.map(r => [r.latitude, r.longitude] as [number, number]),
+      ...ligacoesPoints.map(r => [r.latitude, r.longitude] as [number, number]),
+    ];
+    if (all.length === 0) return;
+    const bounds = L.latLngBounds(all);
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+    didInitialFitRef.current = true;
+  }, [redePoints.length, ligacoesPoints.length]);
 
   const handleDelete = async (c: Camada) => {
     if (!confirm(`Excluir a camada "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
@@ -318,6 +380,15 @@ export const MapaInterativo = () => {
 
   const toggleVis = (id: string) => setVisivel((v) => ({ ...v, [id]: !v[id] }));
 
+  const focusCamada = (id: string) => {
+    const map = mapRef.current;
+    const b = kmzBoundsRef.current.get(id);
+    if (map && b && b.isValid()) {
+      map.fitBounds(b, { padding: [40, 40], maxZoom: 17 });
+      setLayersOpen(false);
+    }
+  };
+
   return (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-6">
       <div className="p-4 border-b border-border flex items-center justify-between gap-2 flex-wrap">
@@ -325,89 +396,116 @@ export const MapaInterativo = () => {
           <MapPin size={18} className="text-muted-foreground" />
           <h2 className="text-lg font-semibold text-foreground">Mapa Interativo</h2>
         </div>
-        {canManage && (
-          <Button size="sm" onClick={() => { setEditing(null); setModalOpen(true); }}>
-            <Plus size={16} className="mr-1" /> Adicionar Camada
-          </Button>
-        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_240px]">
-        <div className="relative" style={{ height: 480 }}>
-          <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
-          {!loading && redePoints.length === 0 && ligacoesPoints.length === 0 && camadas.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400]">
-              <div className="bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border text-sm text-muted-foreground">
-                Nenhum dado ainda. {canManage && 'Adicione uma camada KMZ para começar.'}
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="relative" style={{ height: 520 }}>
+        <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
 
-        {/* Painel de camadas */}
-        <div className="border-t md:border-t-0 md:border-l border-border p-3 bg-muted/30 max-h-[480px] overflow-y-auto">
-          <div className="flex items-center gap-1.5 mb-3 text-sm font-semibold text-foreground">
-            <Layers size={14} /> Camadas
-          </div>
-
-          {/* As-built */}
-          <div className="space-y-1 mb-4">
-            <button
-              onClick={() => toggleVis('__rede')}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
+        {/* Controle flutuante de camadas */}
+        <div className="absolute top-3 right-3 z-[500]">
+          <Popover open={layersOpen} onOpenChange={setLayersOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+                title="Camadas"
+                aria-label="Camadas"
+              >
+                <Layers size={18} className="text-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={6}
+              className="w-72 p-3 max-h-[480px] overflow-y-auto"
             >
-              {visivel.__rede ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
-              <span className="inline-block w-3 h-3 rounded-full" style={{ background: REDE_COLOR }} />
-              <span className="flex-1">As-built Rede</span>
-              <span className="text-xs text-muted-foreground">{redePoints.length}</span>
-            </button>
-            <button
-              onClick={() => toggleVis('__ligacoes')}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
-            >
-              {visivel.__ligacoes ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
-              <span className="inline-block w-3 h-3 rounded-full" style={{ background: LIGACAO_COLOR }} />
-              <span className="flex-1">As-built Ligações</span>
-              <span className="text-xs text-muted-foreground">{ligacoesPoints.length}</span>
-            </button>
-          </div>
-
-          <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 px-2">KMZ</div>
-          {camadas.length === 0 && (
-            <p className="text-xs text-muted-foreground px-2 py-1">Nenhuma camada KMZ</p>
-          )}
-          <div className="space-y-1">
-            {camadas.map((c) => (
-              <div key={c.id} className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
-                <button onClick={() => toggleVis(c.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-                  {visivel[c.id] !== false
-                    ? <Eye size={14} />
-                    : <EyeOff size={14} className="text-muted-foreground" />}
-                  <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0" style={{ background: c.cor }} />
-                  <span className="truncate" title={c.nome}>{c.nome}</span>
-                </button>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Layers size={14} /> Camadas
+                </div>
                 {canManage && (
-                  <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => { setEditing(c); setModalOpen(true); }}
-                      className="p-1 rounded hover:bg-background"
-                      title="Editar"
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(c)}
-                      className="p-1 rounded hover:bg-background text-destructive"
-                      title="Excluir"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2"
+                    onClick={() => { setEditing(null); setModalOpen(true); setLayersOpen(false); }}
+                  >
+                    <Plus size={14} className="mr-1" /> Adicionar
+                  </Button>
                 )}
               </div>
-            ))}
-          </div>
+
+              {/* As-built */}
+              <div className="space-y-1 mb-3">
+                <button
+                  onClick={() => toggleVis('__rede')}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
+                >
+                  {visivel.__rede ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: REDE_COLOR }} />
+                  <span className="flex-1">As-built Rede</span>
+                  <span className="text-xs text-muted-foreground">{redePoints.length}</span>
+                </button>
+                <button
+                  onClick={() => toggleVis('__ligacoes')}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
+                >
+                  {visivel.__ligacoes ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: LIGACAO_COLOR }} />
+                  <span className="flex-1">As-built Ligações</span>
+                  <span className="text-xs text-muted-foreground">{ligacoesPoints.length}</span>
+                </button>
+              </div>
+
+              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 px-2">KMZ</div>
+              {camadas.length === 0 && (
+                <p className="text-xs text-muted-foreground px-2 py-1">Nenhuma camada KMZ</p>
+              )}
+              <div className="space-y-1">
+                {camadas.map((c) => (
+                  <div key={c.id} className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
+                    <button onClick={() => toggleVis(c.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                      {visivel[c.id] !== false
+                        ? <Eye size={14} />
+                        : <EyeOff size={14} className="text-muted-foreground" />}
+                      <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0" style={{ background: c.cor }} />
+                      <span
+                        className="truncate"
+                        title={c.nome}
+                        onDoubleClick={() => focusCamada(c.id)}
+                      >{c.nome}</span>
+                    </button>
+                    {canManage && (
+                      <div className="flex opacity-60 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => { setEditing(c); setModalOpen(true); setLayersOpen(false); }}
+                          className="p-1 rounded hover:bg-background"
+                          title="Editar"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(c)}
+                          className="p-1 rounded hover:bg-background text-destructive"
+                          title="Excluir"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
+
+        {!loading && redePoints.length === 0 && ligacoesPoints.length === 0 && camadas.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400]">
+            <div className="bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border text-sm text-muted-foreground">
+              Nenhum dado ainda. {canManage && 'Adicione uma camada KMZ para começar.'}
+            </div>
+          </div>
+        )}
       </div>
 
       <CamadaModal

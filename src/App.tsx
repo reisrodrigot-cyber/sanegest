@@ -16,6 +16,7 @@ import ProducaoPage from "./pages/ProducaoPage";
 import MateriaisPage from "./pages/MateriaisPage";
 import TopografiaPage from "./pages/TopografiaPage";
 import MeuPerfilPage from "./pages/MeuPerfilPage";
+import MapaPage from "./pages/MapaPage";
 
 import UsuariosPage from "./pages/UsuariosPage";
 import NotFound from "./pages/NotFound";
@@ -24,12 +25,13 @@ const queryClient = new QueryClient();
 
 /** Maps each route prefix to the roles allowed to access it */
 const ROUTE_ROLES: Record<string, UserRole[]> = {
-  '/dashboard': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'],
+  '/dashboard': ['admin', 'gerencia', 'sala_tecnica', 'encarregado', 'topografo'],
   '/importar': ['admin', 'sala_tecnica'],
   '/ordens': ['admin', 'gerencia', 'sala_tecnica'],
   '/producao': ['admin', 'encarregado'],
   '/materiais': ['admin', 'almoxarifado'],
   '/topografia': ['admin', 'topografo'],
+  '/mapa': ['admin', 'encarregado', 'topografo', 'almoxarifado'],
   '/usuarios': ['admin'],
   '/perfil': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'],
 };
@@ -83,7 +85,7 @@ const AppRoutes = () => {
       <Route path="/producao" element={<ProtectedRoute><ProducaoPage /></ProtectedRoute>} />
       <Route path="/materiais" element={<ProtectedRoute><MateriaisPage /></ProtectedRoute>} />
       <Route path="/topografia" element={<ProtectedRoute><TopografiaPage /></ProtectedRoute>} />
-      
+      <Route path="/mapa" element={<ProtectedRoute><MapaPage /></ProtectedRoute>} />
       <Route path="/usuarios" element={<ProtectedRoute><UsuariosPage /></ProtectedRoute>} />
       <Route path="/perfil" element={<ProtectedRoute><MeuPerfilPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { ViewAsSelector } from './ViewAsSelector';
+import { usePendingMateriaisCount } from '@/hooks/usePendingMateriais';
 
 interface NavItem {
   label: string;
@@ -29,6 +30,7 @@ export const AppSidebar = () => {
   const { user, effectiveRole, logout } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pendingCount = usePendingMateriaisCount();
 
   if (!user) return null;
 

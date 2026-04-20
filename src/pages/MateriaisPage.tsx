@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { Loader2, CheckCircle2, ChevronDown, ChevronUp, PackageCheck } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OrdemServico } from '@/types/sanegest';
@@ -65,45 +65,19 @@ const MateriaisPage = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
-  // Mapa: os_id -> data ISO da entrega (transição VERMELHO -> LARANJA)
-  const [entregas, setEntregas] = useState<Record<string, string>>({});
-  const [loadingEntregas, setLoadingEntregas] = useState(true);
-
-  const fetchEntregas = useCallback(async () => {
-    if (liberadas.length === 0) { setLoadingEntregas(false); return; }
-    const ids = liberadas.map(os => os.id);
-    // Buscar a transição mais recente para LARANJA por OS
-    const { data, error } = await supabase
-      .from('os_status_historico')
-      .select('os_id, status_novo, created_at')
-      .in('os_id', ids)
-      .eq('status_novo', 'LARANJA')
-      .order('created_at', { ascending: false });
-    if (!error && data) {
-      const map: Record<string, string> = {};
-      data.forEach((row: any) => {
-        // mantém a mais recente (primeiro item por estar ordenado desc)
-        if (!map[row.os_id]) map[row.os_id] = row.created_at;
-      });
-      setEntregas(map);
-    }
-    setLoadingEntregas(false);
-  }, [liberadas.length]);
-
-  useEffect(() => {
-    if (!loading && liberadas.length > 0) fetchEntregas();
-    else if (!loading) setLoadingEntregas(false);
-  }, [loading, liberadas.length]);
-
   const toggleExpand = (osId: string) => {
     setExpandedId(prev => prev === osId ? null : osId);
   };
 
   const handleConfirmEntrega = async (osId: string) => {
     setSavingId(osId);
+    const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase
       .from('ordens_servico')
-      .update({ status: 'LARANJA' })
+      .update({
+        material_entregue_em: new Date().toISOString(),
+        material_entregue_por: userData.user?.id ?? null,
+      } as any)
       .eq('id', osId);
     if (error) {
       toast.error('Erro ao registrar entrega: ' + error.message);
@@ -111,7 +85,6 @@ const MateriaisPage = () => {
       toast.success('Material registrado como entregue!');
       setConfirmingId(null);
       await refetch();
-      await fetchEntregas();
     }
     setSavingId(null);
   };
@@ -133,8 +106,8 @@ const MateriaisPage = () => {
 
       <div className="space-y-3">
         {liberadas.map(os => {
-          const dataEntrega = entregas[os.id];
-          const isVermelho = os.status === 'VERMELHO';
+          const dataEntrega = (os as any).material_entregue_em as string | null | undefined;
+          const naoEntregue = !dataEntrega;
           const isConfirming = confirmingId === os.id;
           const isSaving = savingId === os.id;
 
@@ -170,7 +143,7 @@ const MateriaisPage = () => {
               )}
 
               <div className="mt-3 pt-3 border-t border-border">
-                {isVermelho ? (
+                {naoEntregue ? (
                   isConfirming ? (
                     <div className="space-y-2">
                       <p className="text-sm text-foreground">
@@ -206,13 +179,7 @@ const MateriaisPage = () => {
                 ) : (
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 text-foreground text-sm">
                     <PackageCheck size={14} className="text-status-orange" />
-                    {loadingEntregas ? (
-                      <Loader2 size={12} className="animate-spin text-muted-foreground" />
-                    ) : dataEntrega ? (
-                      <span>Material entregue em <strong>{formatDate(dataEntrega)}</strong></span>
-                    ) : (
-                      <span className="text-muted-foreground">Material já entregue</span>
-                    )}
+                    <span>Material entregue em <strong>{formatDate(dataEntrega!)}</strong></span>
                   </div>
                 )}
               </div>

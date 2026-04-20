@@ -518,7 +518,19 @@ const OSDetailPage = () => {
     );
   }
 
-  const hasRealData = os.comprimento_real != null || os.prof_media_real != null || os.pav_real != null;
+  const hasRealData =
+    os.comprimento_real != null ||
+    os.prof_media_real != null ||
+    os.pav_real != null ||
+    os.ligacoes_real != null ||
+    os.pav_m2_real != null ||
+    os.largura_vala_real != null ||
+    os.prof_montante_real != null ||
+    os.prof_jusante_real != null;
+  // Sala Técnica pode validar a partir do momento em que há produção registrada,
+  // independente de divergências com o previsto. Só não aparece quando já está
+  // em AMARELO (já validada) ou VERDE (concluída).
+  const canValidar = hasRealData && os.status !== 'AMARELO' && os.status !== 'VERDE';
 
   return (
     <AppLayout>
@@ -618,14 +630,14 @@ const OSDetailPage = () => {
       {/* Ações da Sala Técnica */}
       {isSalaTecnica && (
         <div className="flex flex-wrap gap-3 mb-6">
-          {hasRealData && os.status === 'VERMELHO' && (
+          {canValidar && (
             <button
               onClick={handleValidar}
               disabled={validando}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-status-green text-white text-sm font-medium disabled:opacity-50"
             >
               {validando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-              ✓ Validar
+              ✓ Validar Produção
             </button>
           )}
           {!editing && (

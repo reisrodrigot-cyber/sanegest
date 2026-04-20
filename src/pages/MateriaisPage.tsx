@@ -107,7 +107,7 @@ const MateriaisPage = () => {
       <div className="space-y-3">
         {liberadas.map(os => {
           const dataEntrega = (os as any).material_entregue_em as string | null | undefined;
-          const naoEntregue = !dataEntrega;
+          const isStatusVermelho = os.status === 'VERMELHO';
           const isConfirming = confirmingId === os.id;
           const isSaving = savingId === os.id;
 
@@ -143,7 +143,7 @@ const MateriaisPage = () => {
               )}
 
               <div className="mt-3 pt-3 border-t border-border">
-                {naoEntregue ? (
+                {isStatusVermelho ? (
                   isConfirming ? (
                     <div className="space-y-2">
                       <p className="text-sm text-foreground">
@@ -177,10 +177,12 @@ const MateriaisPage = () => {
                     </button>
                   )
                 ) : (
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 text-foreground text-sm">
-                    <PackageCheck size={14} className="text-status-orange" />
-                    <span>Material entregue em <strong>{formatDate(dataEntrega!)}</strong></span>
-                  </div>
+                  dataEntrega && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 text-foreground text-sm">
+                      <PackageCheck size={14} className="text-status-orange" />
+                      <span>Material entregue em <strong>{formatDate(dataEntrega)}</strong></span>
+                    </div>
+                  )
                 )}
               </div>
             </div>

@@ -30,7 +30,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
             </button>
           </div>
         )}
-        <div className="p-4 pl-16 lg:p-8 lg:pl-8">
+        <div className="p-3 pt-14 lg:p-8">
           {children}
         </div>
       </main>

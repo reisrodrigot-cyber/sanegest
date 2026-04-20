@@ -425,16 +425,23 @@ const TopografiaPage = () => {
     <div className="space-y-3">
       {list.map(os => (
         <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-foreground">{os.trecho}</p>
-              <p className="text-xs text-muted-foreground">{os.bacia} • {os.comprimento_real ?? os.comprimento_previsto}m</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium text-foreground truncate">{os.trecho}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {os.bacia} • PV {os.pv_montante || '—'} → {os.pv_jusante || '—'}
+              </p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                Encarregado: <span className="font-medium text-foreground">{os.executor || os.liberado_para || '—'}</span>
+                <span className="mx-2">•</span>
+                {os.comprimento_real ?? os.comprimento_previsto ?? '—'}m
+              </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <StatusBadge status={os.status} size="sm" />
               <button
                 onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
-                className="text-sm text-secondary hover:underline"
+                className="text-sm text-secondary hover:underline whitespace-nowrap"
               >
                 {expandedId === os.id ? 'Fechar' : 'Registrar Coordenadas'}
               </button>

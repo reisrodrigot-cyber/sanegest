@@ -55,7 +55,6 @@
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
-    "leaflet-kmz": "^1.0.9",
     "lucide-react": "^1.8.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",

@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS, UserRole } from '@/types/sanegest';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, FileSpreadsheet, ClipboardList, HardHat, Package, Map, BarChart3, LogOut, Menu, X, Droplets, Users, UserCircle
+  LayoutDashboard, ClipboardList, HardHat, Package, Map, BarChart3, LogOut, Menu, X, Droplets, Users, UserCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ViewAsSelector } from './ViewAsSelector';
@@ -18,7 +18,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'] },
-  { label: 'Importar Planilhão', path: '/importar', icon: <FileSpreadsheet size={20} />, roles: ['admin', 'sala_tecnica'] },
   { label: 'Ordens de Serviço', path: '/ordens', icon: <ClipboardList size={20} />, roles: ['admin', 'gerencia', 'sala_tecnica'] },
   { label: 'Produção', path: '/producao', icon: <HardHat size={20} />, roles: ['admin', 'encarregado'] },
   { label: 'Materiais', path: '/materiais', icon: <Package size={20} />, roles: ['admin', 'almoxarifado'] },
@@ -55,8 +54,8 @@ export const AppSidebar = () => {
 
   // Explicit role → allowed paths mapping
   const ROLE_MENU: Record<UserRole, string[]> = {
-    admin: ['/dashboard', '/importar', '/ordens', '/producao', '/materiais', '/topografia', '/usuarios'],
-    sala_tecnica: ['/dashboard', '/importar', '/ordens'],
+    admin: ['/dashboard', '/ordens', '/producao', '/materiais', '/topografia', '/usuarios'],
+    sala_tecnica: ['/dashboard', '/ordens'],
     encarregado: ['/dashboard', '/producao'],
     almoxarifado: ['/dashboard', '/materiais'],
     topografo: ['/dashboard', '/topografia'],

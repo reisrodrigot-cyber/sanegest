@@ -60,8 +60,8 @@ function formatDate(dateStr: string): string {
 
 const MateriaisPage = () => {
   const { ordens, loading, refetch } = useOrdensServico();
-  // Mostrar todas as OS liberadas (independente do status)
-  const liberadas = ordens.filter(os => os.liberado);
+  // Mostrar apenas NS pendentes de material (status VERMELHO)
+  const pendentes = ordens.filter(os => os.liberado && os.status === 'VERMELHO');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);

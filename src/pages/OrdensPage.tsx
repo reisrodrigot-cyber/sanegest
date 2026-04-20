@@ -3,8 +3,9 @@ import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Loader2 } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet } from 'lucide-react';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
+import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
@@ -16,6 +17,9 @@ import {
 
 const OrdensPage = () => {
   const { ordens, loading } = useOrdensServico();
+  const { user, effectiveRole } = useAuth();
+  const role = effectiveRole || user?.role;
+  const canImport = role === 'admin' || role === 'sala_tecnica';
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [search, setSearch] = useState('');
@@ -95,13 +99,25 @@ const OrdensPage = () => {
           <h1 className="text-2xl font-bold text-foreground">Ordens de Serviço</h1>
           <p className="text-sm text-muted-foreground">{ordens.length} OS cadastradas</p>
         </div>
-        <Link
-          to="/ordens/nova"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
-        >
-          <Plus size={16} />
-          Nova OS
-        </Link>
+        <div className="flex items-center gap-2">
+          {canImport && (
+            <Link
+              to="/importar"
+              className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium text-sm hover:bg-muted transition-colors"
+              title="Importar Planilhão"
+            >
+              <FileSpreadsheet size={16} />
+              <span className="hidden sm:inline">Importar Planilhão</span>
+            </Link>
+          )}
+          <Link
+            to="/ordens/nova"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
+          >
+            <Plus size={16} />
+            Nova OS
+          </Link>
+        </div>
       </div>
 
       {/* Search + Bacia dropdown */}

@@ -251,10 +251,15 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
 
   // ======= Render ligações =======
   useEffect(() => {
+    const map = mapRef.current;
     const layer = ligacoesLayerRef.current;
-    if (!layer) return;
+    if (!map || !layer) return;
     layer.clearLayers();
-    if (!visivel.__ligacoes) return;
+    if (!visivel.__ligacoes) {
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+      return;
+    }
+    if (!map.hasLayer(layer)) layer.addTo(map);
     ligacoesPoints.forEach((m) => {
       const square = L.circleMarker([m.latitude, m.longitude], {
         radius: 6, fillColor: LIGACAO_COLOR, color: '#ffffff',

@@ -523,8 +523,11 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
           </PopoverTrigger>
           <PopoverContent
             align="end"
+            side="bottom"
             sideOffset={6}
-            className="w-72 p-3 max-h-[480px] overflow-y-auto"
+            collisionPadding={12}
+            avoidCollisions
+            className="w-[min(18rem,calc(100vw-1.5rem))] p-3 max-h-[70vh] overflow-y-auto z-[1000]"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">

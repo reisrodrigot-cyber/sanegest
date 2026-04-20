@@ -3,9 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserRole, ROLE_LABELS } from '@/types/sanegest';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
-import { Loader2, Shield, Users } from 'lucide-react';
+import { Loader2, Shield, Users, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 interface UserRow {
   user_id: string;
@@ -16,21 +17,23 @@ interface UserRow {
 
 const ALL_ROLES: UserRole[] = ['admin', 'sala_tecnica', 'encarregado', 'almoxarifado', 'topografo', 'gerencia'];
 
+const TEST_EMAILS_TO_DELETE = Array.from({ length: 9 }, (_, i) => `encarregado${i + 2}@sanegest.com`);
+
 const UsuariosPage = () => {
   const { user } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
-    // Fetch profiles
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, email, display_name')
       .order('created_at', { ascending: true });
 
-    // Fetch roles
     const { data: roles } = await supabase
       .from('user_roles')
       .select('user_id, role');
@@ -57,7 +60,6 @@ const UsuariosPage = () => {
     const existing = users.find(u => u.user_id === userId);
 
     if (existing?.role) {
-      // Update existing role
       const { error } = await supabase
         .from('user_roles')
         .update({ role } as any)
@@ -68,7 +70,6 @@ const UsuariosPage = () => {
         return;
       }
     } else {
-      // Insert new role
       const { error } = await supabase
         .from('user_roles')
         .insert({ user_id: userId, role } as any);
@@ -100,18 +101,63 @@ const UsuariosPage = () => {
     setSaving(null);
   };
 
+  const handleDeleteUser = async (userId: string, label: string) => {
+    if (!confirm(`Excluir DEFINITIVAMENTE o usuário "${label}"? Esta ação remove a conta e todos os dados vinculados (registros, ligações, topografia).`)) return;
+    setDeleting(userId);
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { user_id: userId },
+    });
+    if (error) {
+      toast.error('Erro: ' + error.message);
+    } else if ((data as any)?.error) {
+      toast.error((data as any).error);
+    } else {
+      toast.success('Usuário excluído.');
+      setUsers(prev => prev.filter(u => u.user_id !== userId));
+    }
+    setDeleting(null);
+  };
+
+  const handleBulkDeleteTestAccounts = async () => {
+    if (!confirm(`Excluir DEFINITIVAMENTE as contas de teste (${TEST_EMAILS_TO_DELETE.join(', ')})? Esta ação não pode ser desfeita.`)) return;
+    setBulkDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { emails: TEST_EMAILS_TO_DELETE },
+    });
+    if (error) {
+      toast.error('Erro: ' + error.message);
+    } else {
+      const results = (data as any)?.results ?? [];
+      const ok = results.filter((r: any) => r.ok).length;
+      toast.success(`${ok} conta(s) excluída(s) de ${results.length}.`);
+      fetchUsers();
+    }
+    setBulkDeleting(false);
+  };
+
   if (user?.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
   return (
     <AppLayout>
-      <div className="flex items-center gap-3 mb-6">
-        <Users size={24} className="text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Gestão de Usuários</h1>
-          <p className="text-sm text-muted-foreground">Atribua ou altere perfis dos usuários cadastrados</p>
+      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+        <div className="flex items-center gap-3">
+          <Users size={24} className="text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Gestão de Usuários</h1>
+            <p className="text-sm text-muted-foreground">Atribua ou altere perfis dos usuários cadastrados</p>
+          </div>
         </div>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={handleBulkDeleteTestAccounts}
+          disabled={bulkDeleting}
+        >
+          {bulkDeleting ? <Loader2 className="animate-spin mr-2" size={14} /> : <Trash2 size={14} className="mr-2" />}
+          Excluir contas de teste (encarregado2..10)
+        </Button>
       </div>
 
       {loading ? (
@@ -155,7 +201,7 @@ const UsuariosPage = () => {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <select
                           value={u.role ?? ''}
                           onChange={e => {
@@ -173,9 +219,19 @@ const UsuariosPage = () => {
                           <button
                             onClick={() => handleRemoveRole(u.user_id)}
                             disabled={saving === u.user_id}
-                            className="text-xs text-destructive hover:underline disabled:opacity-50"
+                            className="text-xs text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
                           >
-                            Remover
+                            Remover perfil
+                          </button>
+                        )}
+                        {u.user_id !== user?.id && (
+                          <button
+                            onClick={() => handleDeleteUser(u.user_id, u.display_name || u.email || u.user_id)}
+                            disabled={deleting === u.user_id}
+                            className="text-xs text-destructive hover:underline disabled:opacity-50 inline-flex items-center gap-1"
+                          >
+                            {deleting === u.user_id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                            Excluir conta
                           </button>
                         )}
                         {saving === u.user_id && <Loader2 size={14} className="animate-spin text-muted-foreground" />}

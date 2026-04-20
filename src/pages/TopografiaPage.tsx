@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LigacoesPanel } from '@/components/topografia/LigacoesPanel';
+import { OSDetalhesTrecho } from '@/components/OSDetalhesTrecho';
 
 interface AsBuiltPoint {
   id: string;
@@ -235,8 +236,13 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   };
 
   return (
-    <div className="mt-4 pt-4 border-t border-border">
-      <div className="grid lg:grid-cols-2 gap-6">
+    <div className="mt-4 pt-4 border-t border-border space-y-6">
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-2">Dados do Trecho</h3>
+        <OSDetalhesTrecho os={os} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6 pt-2 border-t border-border">
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -419,16 +425,23 @@ const TopografiaPage = () => {
     <div className="space-y-3">
       {list.map(os => (
         <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-foreground">{os.trecho}</p>
-              <p className="text-xs text-muted-foreground">{os.bacia} • {os.comprimento_real ?? os.comprimento_previsto}m</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium text-foreground truncate">{os.trecho}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {os.bacia} • PV {os.pv_montante || '—'} → {os.pv_jusante || '—'}
+              </p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                Encarregado: <span className="font-medium text-foreground">{os.executor || os.liberado_para || '—'}</span>
+                <span className="mx-2">•</span>
+                {os.comprimento_real ?? os.comprimento_previsto ?? '—'}m
+              </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <StatusBadge status={os.status} size="sm" />
               <button
                 onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
-                className="text-sm text-secondary hover:underline"
+                className="text-sm text-secondary hover:underline whitespace-nowrap"
               >
                 {expandedId === os.id ? 'Fechar' : 'Registrar Coordenadas'}
               </button>

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { ViewAsSelector } from './ViewAsSelector';
+import { usePendingMateriaisCount } from '@/hooks/usePendingMateriais';
 
 interface NavItem {
   label: string;
@@ -29,6 +30,7 @@ export const AppSidebar = () => {
   const { user, effectiveRole, logout } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pendingCount = usePendingMateriaisCount();
 
   if (!user) return null;
 
@@ -83,6 +85,11 @@ export const AppSidebar = () => {
             >
               {item.icon}
               {item.label}
+              {item.path === '/materiais' && pendingCount > 0 && (
+                <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {pendingCount}
+                </span>
+              )}
             </Link>
           );
         })}

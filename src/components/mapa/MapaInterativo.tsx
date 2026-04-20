@@ -32,6 +32,11 @@ interface RedePoint {
   latitude: number;
   longitude: number;
   nome_estaca: string | null;
+  created_at: string;
+  pv_montante: string | null;
+  pv_jusante: string | null;
+  comprimento_real: number | null;
+  comprimento_previsto: number | null;
 }
 
 interface LigacaoPoint {

@@ -22,7 +22,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Produção', path: '/producao', icon: <HardHat size={20} />, roles: ['admin', 'encarregado'] },
   { label: 'Entrega de Materiais', path: '/materiais', icon: <Package size={20} />, roles: ['admin', 'almoxarifado'] },
   { label: 'Topografia', path: '/topografia', icon: <Map size={20} />, roles: ['admin', 'topografo'] },
-  { label: 'Mapa', path: '/mapa', icon: <MapPin size={20} />, roles: ['admin', 'encarregado', 'topografo', 'almoxarifado'] },
   { label: 'Gestão de Usuários', path: '/usuarios', icon: <Users size={20} />, roles: ['admin'] },
 ];
 
@@ -54,11 +53,11 @@ export const AppSidebar = () => {
 
   // Explicit role → allowed paths mapping
   const ROLE_MENU: Record<UserRole, string[]> = {
-    admin: ['/dashboard', '/ordens', '/producao', '/materiais', '/topografia', '/mapa', '/usuarios'],
+    admin: ['/dashboard', '/ordens', '/producao', '/materiais', '/topografia', '/usuarios'],
     sala_tecnica: ['/dashboard', '/ordens'],
-    encarregado: ['/dashboard', '/producao', '/mapa'],
-    almoxarifado: ['/materiais', '/mapa'],
-    topografo: ['/dashboard', '/topografia', '/mapa'],
+    encarregado: ['/dashboard', '/producao'],
+    almoxarifado: ['/materiais'],
+    topografo: ['/dashboard', '/topografia'],
     gerencia: ['/dashboard'],
   };
 

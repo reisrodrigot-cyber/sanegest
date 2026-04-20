@@ -149,31 +149,37 @@ const DashboardEncarregadoPage = () => {
       </div>
 
       <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">
-        <h2 className="text-lg font-semibold text-foreground mb-1">Meta vs Realizado</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-1">Burn Up — Meta vs Realizado</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Dias desde a primeira NS liberada para você ({myOS.length} OS atribuídas)
+          Escopo acumulado conforme as N.S. são liberadas vs metragem executada ({myOS.length} OS atribuídas)
         </p>
-        {chartData.rows.length === 0 ? (
+        {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">
             Nenhuma OS liberada para você ainda.
           </p>
         ) : (
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData.rows}>
+              <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="dia" tick={{ fontSize: 11 }} label={{ value: 'Dia', position: 'insideBottom', offset: -5, fontSize: 11 }} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11 }}
+                  interval={Math.max(0, Math.floor(chartData.length / 8))}
+                />
                 <YAxis tick={{ fontSize: 11 }} unit="m" />
-                <Tooltip formatter={(v: number) => `${v} m`} labelFormatter={(l) => `Dia ${l}`} />
+                <Tooltip
+                  formatter={(v: number, name: string) => [`${v} m`, name === 'meta' ? 'Meta (escopo)' : 'Realizado']}
+                  labelFormatter={(l) => `Dia ${l}`}
+                />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Line
-                  type="stepAfter"
+                  type="monotone"
                   dataKey="meta"
                   stroke="#888780"
                   strokeWidth={2}
-                  strokeDasharray="6 4"
                   dot={false}
-                  name="Meta"
+                  name="Meta (escopo)"
                 />
                 <Line
                   type="monotone"

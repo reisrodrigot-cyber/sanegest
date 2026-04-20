@@ -76,10 +76,8 @@ const DashboardPage = () => {
   if (effectiveRole === 'encarregado') {
     return <DashboardEncarregadoPage />;
   }
-  // Topógrafo: tela inicial é a página de Topografia (NS amarelo/verde + ações topográficas)
-  if (effectiveRole === 'topografo') {
-    return <Navigate to="/topografia" replace />;
-  }
+  // Topógrafo vê o dashboard com mapa, mas sem cards de produtividade dos encarregados
+  const isTopografo = effectiveRole === 'topografo';
   // Almoxarifado: tela inicial é a Entrega de Materiais
   if (effectiveRole === 'almoxarifado') {
     return <Navigate to="/materiais" replace />;

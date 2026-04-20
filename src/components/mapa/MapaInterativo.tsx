@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair } from 'lucide-react';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
 import 'leaflet/dist/leaflet.css';
@@ -77,7 +77,12 @@ async function loadKmzAsGeoJSON(url: string): Promise<GeoJSON.FeatureCollection 
   }
 }
 
-export const MapaInterativo = () => {
+interface MapaInterativoProps {
+  /** Mostra marcador da posição GPS atual e botão "Minha Localização" */
+  showLocation?: boolean;
+}
+
+export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
 
@@ -88,6 +93,10 @@ export const MapaInterativo = () => {
   const kmzLayersRef = useRef<Map<string, L.Layer>>(new Map());
   const kmzBoundsRef = useRef<Map<string, L.LatLngBounds>>(new Map());
   const didInitialFitRef = useRef(false);
+  const meMarkerRef = useRef<L.Marker | null>(null);
+  const meAccuracyRef = useRef<L.Circle | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const didCenterOnMeRef = useRef(false);
 
   const [camadas, setCamadas] = useState<Camada[]>([]);
   const [redePoints, setRedePoints] = useState<RedePoint[]>([]);
@@ -366,6 +375,93 @@ export const MapaInterativo = () => {
     didInitialFitRef.current = true;
   }, [redePoints.length, ligacoesPoints.length]);
 
+  // ======= Geolocalização (apenas quando showLocation) =======
+  useEffect(() => {
+    if (!showLocation) return;
+    const map = mapRef.current;
+    if (!map) return;
+    if (!('geolocation' in navigator)) {
+      toast.error('Geolocalização não suportada neste dispositivo');
+      return;
+    }
+
+    // Ícone pulsante azul
+    const pulseIcon = L.divIcon({
+      className: 'me-pulse-icon',
+      html: `<div style="position:relative;width:18px;height:18px;">
+        <span style="position:absolute;inset:0;border-radius:50%;background:#2563eb;opacity:0.35;animation:mePulse 1.6s ease-out infinite;"></span>
+        <span style="position:absolute;inset:4px;border-radius:50%;background:#2563eb;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.4);"></span>
+      </div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+
+    const onPos = (pos: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      const latlng: [number, number] = [latitude, longitude];
+      if (!meMarkerRef.current) {
+        meMarkerRef.current = L.marker(latlng, { icon: pulseIcon, zIndexOffset: 1000 })
+          .bindPopup('Sua localização atual')
+          .addTo(map);
+        meAccuracyRef.current = L.circle(latlng, {
+          radius: accuracy,
+          color: '#2563eb', weight: 1, fillColor: '#2563eb', fillOpacity: 0.08,
+        }).addTo(map);
+      } else {
+        meMarkerRef.current.setLatLng(latlng);
+        meAccuracyRef.current?.setLatLng(latlng);
+        meAccuracyRef.current?.setRadius(accuracy);
+      }
+      // Centraliza só na primeira leitura
+      if (!didCenterOnMeRef.current) {
+        didCenterOnMeRef.current = true;
+        if (!didInitialFitRef.current) {
+          map.setView(latlng, 16);
+          didInitialFitRef.current = true;
+        }
+      }
+    };
+
+    const onErr = (err: GeolocationPositionError) => {
+      console.warn('[MapaInterativo] geolocation error', err);
+      if (err.code === err.PERMISSION_DENIED) {
+        toast.error('Permissão de localização negada');
+      }
+    };
+
+    watchIdRef.current = navigator.geolocation.watchPosition(onPos, onErr, {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 15000,
+    });
+
+    return () => {
+      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+      if (meMarkerRef.current) { map.removeLayer(meMarkerRef.current); meMarkerRef.current = null; }
+      if (meAccuracyRef.current) { map.removeLayer(meAccuracyRef.current); meAccuracyRef.current = null; }
+      didCenterOnMeRef.current = false;
+    };
+  }, [showLocation]);
+
+  const centerOnMe = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (meMarkerRef.current) {
+      map.setView(meMarkerRef.current.getLatLng(), 17);
+      return;
+    }
+    if (!('geolocation' in navigator)) {
+      toast.error('Geolocalização não suportada');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 17),
+      () => toast.error('Não foi possível obter sua localização'),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
   const handleDelete = async (c: Camada) => {
     if (!confirm(`Excluir a camada "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
     try {
@@ -393,8 +489,18 @@ export const MapaInterativo = () => {
     <div className="relative mb-6" style={{ height: 520 }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', borderRadius: '0.75rem', overflow: 'hidden' }} />
 
-      {/* Controle flutuante de camadas */}
-      <div className="absolute top-3 right-3 z-[500]">
+      {/* Controle flutuante: camadas + minha localização */}
+      <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">
+        {showLocation && (
+          <button
+            onClick={centerOnMe}
+            className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+            title="Minha localização"
+            aria-label="Minha localização"
+          >
+            <Crosshair size={18} className="text-foreground" />
+          </button>
+        )}
         <Popover open={layersOpen} onOpenChange={setLayersOpen}>
           <PopoverTrigger asChild>
             <button

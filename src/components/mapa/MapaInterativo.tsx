@@ -32,6 +32,11 @@ interface RedePoint {
   latitude: number;
   longitude: number;
   nome_estaca: string | null;
+  created_at: string;
+  pv_montante: string | null;
+  pv_jusante: string | null;
+  comprimento_real: number | null;
+  comprimento_previsto: number | null;
 }
 
 interface LigacaoPoint {
@@ -149,9 +154,10 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   const fetchAsBuilt = async () => {
     const { data: ab } = await supabase
       .from('topografia_asbuilt')
-      .select('id, os_id, latitude, longitude, nome_estaca')
+      .select('id, os_id, latitude, longitude, nome_estaca, created_at')
       .not('latitude', 'is', null)
-      .not('longitude', 'is', null);
+      .not('longitude', 'is', null)
+      .order('created_at', { ascending: true });
 
     if (!ab || ab.length === 0) {
       setRedePoints([]);
@@ -159,7 +165,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       const osIds = [...new Set(ab.map(r => r.os_id))];
       const { data: osData } = await supabase
         .from('ordens_servico')
-        .select('id, trecho, bacia, status')
+        .select('id, trecho, bacia, status, pv_montante, pv_jusante, comprimento_real, comprimento_previsto')
         .in('id', osIds);
       const osMap = new Map((osData ?? []).map(o => [o.id, o]));
       const result: RedePoint[] = [];
@@ -169,7 +175,9 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
           result.push({
             id: r.id, os_id: r.os_id, trecho: os.trecho, bacia: os.bacia,
             status: os.status, latitude: Number(r.latitude), longitude: Number(r.longitude),
-            nome_estaca: r.nome_estaca,
+            nome_estaca: r.nome_estaca, created_at: r.created_at,
+            pv_montante: os.pv_montante, pv_jusante: os.pv_jusante,
+            comprimento_real: os.comprimento_real, comprimento_previsto: os.comprimento_previsto,
           });
         }
       }
@@ -223,7 +231,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  // ======= Render rede =======
+  // ======= Render rede (polylines por OS + vértices) =======
   useEffect(() => {
     const map = mapRef.current;
     const layer = redeLayerRef.current;
@@ -234,20 +242,53 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       return;
     }
     if (!map.hasLayer(layer)) layer.addTo(map);
-    redePoints.forEach((m) => {
-      const circle = L.circleMarker([m.latitude, m.longitude], {
-        radius: 7, fillColor: REDE_COLOR, color: REDE_COLOR,
-        weight: 2, opacity: 1, fillOpacity: 0.85,
-      });
-      circle.bindPopup(`
-        <div style="min-width:160px;font-size:13px;">
-          <p style="font-weight:700;margin:0 0 4px">${m.trecho}</p>
+
+    // Agrupar por OS preservando ordem (já vem ordenado por created_at asc)
+    const grupos = new Map<string, RedePoint[]>();
+    redePoints.forEach((p) => {
+      const arr = grupos.get(p.os_id) ?? [];
+      arr.push(p);
+      grupos.set(p.os_id, arr);
+    });
+
+    grupos.forEach((pts) => {
+      if (pts.length === 0) return;
+      const first = pts[0];
+      const latlngs: [number, number][] = pts.map((p) => [p.latitude, p.longitude]);
+
+      const popupHtml = `
+        <div style="min-width:180px;font-size:13px;">
+          <p style="font-weight:700;margin:0 0 4px">${first.trecho}</p>
           <p style="margin:2px 0;color:${REDE_COLOR};font-weight:600">REDE — As-built</p>
-          ${m.nome_estaca ? `<p style="margin:2px 0">Estaca: ${m.nome_estaca}</p>` : ''}
-          <p style="margin:2px 0">Bacia: ${m.bacia}</p>
-          <p style="margin:2px 0">Status: <span style="color:${STATUS_COLORS[m.status]};font-weight:600">${m.status}</span></p>
-        </div>`);
-      circle.addTo(layer);
+          <p style="margin:2px 0">PV: ${first.pv_montante || '—'} → ${first.pv_jusante || '—'}</p>
+          <p style="margin:2px 0">Comp. executado: ${first.comprimento_real ?? first.comprimento_previsto ?? '—'}m</p>
+          <p style="margin:2px 0">Bacia: ${first.bacia}</p>
+          <p style="margin:2px 0">Status: <span style="color:${STATUS_COLORS[first.status]};font-weight:600">${first.status}</span></p>
+        </div>`;
+
+      // Polyline conectando os vértices
+      if (latlngs.length >= 2) {
+        const line = L.polyline(latlngs, {
+          color: REDE_COLOR, weight: 4, opacity: 0.9,
+        });
+        line.bindPopup(popupHtml);
+        line.addTo(layer);
+      }
+
+      // Marcadores pequenos nos vértices
+      pts.forEach((p, idx) => {
+        const circle = L.circleMarker([p.latitude, p.longitude], {
+          radius: 5, fillColor: REDE_COLOR, color: '#ffffff',
+          weight: 2, opacity: 1, fillOpacity: 1,
+        });
+        circle.bindPopup(`
+          <div style="min-width:160px;font-size:13px;">
+            <p style="font-weight:700;margin:0 0 4px">${first.trecho}</p>
+            <p style="margin:2px 0">${p.nome_estaca || `Ponto ${idx + 1}`}</p>
+            <p style="margin:2px 0;color:#555;font-size:12px">${p.latitude.toFixed(6)}, ${p.longitude.toFixed(6)}</p>
+          </div>`);
+        circle.addTo(layer);
+      });
     });
   }, [redePoints, visivel.__rede]);
 

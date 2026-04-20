@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Trash2, MapPin, Plus, CheckCircle2, Pencil, X, Check } from 'lucide-react';
+import { Loader2, Trash2, MapPin, Plus, CheckCircle2, Pencil, X, Check, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -24,11 +24,12 @@ interface AsBuiltPoint {
 }
 
 const DEFAULT_CENTER: [number, number] = [-9.1167, -35.2667];
+const REDE_COLOR = '#16a34a';
 
 const MiniMap = ({ points }: { points: AsBuiltPoint[] }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.CircleMarker[]>([]);
+  const layerRef = useRef<L.LayerGroup | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -36,14 +37,15 @@ const MiniMap = ({ points }: { points: AsBuiltPoint[] }) => {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OSM',
     }).addTo(mapRef.current);
+    layerRef.current = L.layerGroup().addTo(mapRef.current);
     return () => { mapRef.current?.remove(); mapRef.current = null; };
   }, []);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
+    const layer = layerRef.current;
+    if (!map || !layer) return;
+    layer.clearLayers();
 
     const valid = points.filter(p => p.latitude != null && p.longitude != null);
     if (valid.length === 0) {
@@ -51,14 +53,25 @@ const MiniMap = ({ points }: { points: AsBuiltPoint[] }) => {
       return;
     }
 
-    const bounds = L.latLngBounds(valid.map(p => [p.latitude!, p.longitude!]));
-    valid.forEach(p => {
+    const latlngs: [number, number][] = valid.map(p => [p.latitude!, p.longitude!]);
+
+    // Polyline conectando os pontos na ordem
+    if (latlngs.length >= 2) {
+      L.polyline(latlngs, {
+        color: REDE_COLOR, weight: 4, opacity: 0.85,
+      }).addTo(layer);
+    }
+
+    // Marcadores nos vértices
+    valid.forEach((p, idx) => {
       const circle = L.circleMarker([p.latitude!, p.longitude!], {
-        radius: 8, fillColor: '#16a34a', color: '#16a34a', weight: 2, opacity: 1, fillOpacity: 0.7,
-      }).addTo(map);
-      circle.bindPopup(`<b>${p.nome_estaca || 'Sem nome'}</b>`);
-      markersRef.current.push(circle);
+        radius: 6, fillColor: REDE_COLOR, color: '#ffffff', weight: 2, opacity: 1, fillOpacity: 1,
+      });
+      circle.bindPopup(`<b>${p.nome_estaca || `Ponto ${idx + 1}`}</b>`);
+      circle.addTo(layer);
     });
+
+    const bounds = L.latLngBounds(latlngs);
     map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
   }, [points]);
 
@@ -71,15 +84,14 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [concluding, setConcluding] = useState(false);
-  const [nome, setNome] = useState('');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editNome, setEditNome] = useState('');
   const [editLat, setEditLat] = useState('');
   const [editLng, setEditLng] = useState('');
   const [ligacoesTotal, setLigacoesTotal] = useState(0);
   const [ligacoesPendentes, setLigacoesPendentes] = useState(0);
+  const [reordering, setReordering] = useState(false);
 
   const fetchPoints = useCallback(async () => {
     const { data } = await supabase
@@ -120,17 +132,18 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       return;
     }
     setSaving(true);
+    const nextNumber = points.length + 1;
     const { error } = await supabase.from('topografia_asbuilt').insert({
       os_id: os.id,
-      nome_estaca: nome.trim() || null,
+      nome_estaca: `Ponto ${nextNumber}`,
       latitude: latVal,
       longitude: lngVal,
       registrado_por: user?.id ?? null,
     });
     setSaving(false);
-    if (error) { toast.error('Erro ao salvar estaca.'); return; }
-    toast.success('Estaca registrada!');
-    setNome(''); setLat(''); setLng('');
+    if (error) { toast.error('Erro ao salvar coordenada.'); return; }
+    toast.success(`Ponto ${nextNumber} registrado!`);
+    setLat(''); setLng('');
   };
 
   const handleDelete = async (id: string) => {
@@ -140,7 +153,6 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
 
   const startEdit = (p: AsBuiltPoint) => {
     setEditingId(p.id);
-    setEditNome(p.nome_estaca ?? '');
     setEditLat(p.latitude?.toString() ?? '');
     setEditLng(p.longitude?.toString() ?? '');
   };
@@ -155,14 +167,51 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       return;
     }
     const { error } = await supabase.from('topografia_asbuilt').update({
-      nome_estaca: editNome.trim() || null,
       latitude: latVal,
       longitude: lngVal,
     }).eq('id', id);
     if (error) { toast.error('Erro ao atualizar.'); return; }
-    toast.success('Estaca atualizada!');
+    toast.success('Coordenada atualizada!');
     setEditingId(null);
   };
+
+  // Reordenar: troca o created_at entre dois pontos para refletir nova ordem
+  const swapPoints = async (idxA: number, idxB: number) => {
+    if (idxA < 0 || idxB < 0 || idxA >= points.length || idxB >= points.length) return;
+    const a = points[idxA];
+    const b = points[idxB];
+    setReordering(true);
+    // Troca created_at entre os dois para inverter a ordem
+    const tempStamp = new Date(new Date(a.created_at).getTime() + 1).toISOString();
+    const [r1, r2] = await Promise.all([
+      supabase.from('topografia_asbuilt').update({ created_at: b.created_at, nome_estaca: `Ponto ${idxB + 1}` }).eq('id', a.id),
+      supabase.from('topografia_asbuilt').update({ created_at: tempStamp, nome_estaca: `Ponto ${idxA + 1}` }).eq('id', b.id),
+    ]);
+    // Renomeia o segundo de fato
+    await supabase.from('topografia_asbuilt').update({ created_at: a.created_at }).eq('id', b.id);
+    setReordering(false);
+    if (r1.error || r2.error) {
+      toast.error('Erro ao reordenar.');
+      return;
+    }
+    fetchPoints();
+  };
+
+  // Renumera todos os nomes após qualquer mudança de ordem ou exclusão
+  useEffect(() => {
+    if (points.length === 0) return;
+    const needsRename = points.some((p, idx) => p.nome_estaca !== `Ponto ${idx + 1}`);
+    if (!needsRename) return;
+    (async () => {
+      await Promise.all(
+        points.map((p, idx) =>
+          p.nome_estaca === `Ponto ${idx + 1}`
+            ? Promise.resolve()
+            : supabase.from('topografia_asbuilt').update({ nome_estaca: `Ponto ${idx + 1}` }).eq('id', p.id)
+        )
+      );
+    })();
+  }, [points]);
 
   const estacasSemCoord = points.filter((p) => p.latitude == null || p.longitude == null).length;
   const podeConcluir = points.length > 0 && estacasSemCoord === 0 && ligacoesPendentes === 0;
@@ -179,7 +228,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
 
   const isConcluded = os.status === 'VERDE';
   const canAdd = allowEditAll || !isConcluded;
-  const canEditPoint = (p: AsBuiltPoint) => {
+  const canEditPoint = (_p: AsBuiltPoint) => {
     if (allowEditAll) return true;
     if (isConcluded) return false;
     return true;
@@ -189,9 +238,14 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     <div className="mt-4 pt-4 border-t border-border">
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <MapPin size={16} /> Estacas Registradas ({points.length})
-          </h3>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <MapPin size={16} /> Coordenadas do Trecho ({points.length})
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Registre na ordem do traçado: PV montante → intermediários → PV jusante
+            </p>
+          </div>
 
           {loading ? (
             <div className="flex justify-center py-4"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
@@ -199,11 +253,11 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
             <>
               {points.length > 0 && (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {points.map(p => (
+                  {points.map((p, idx) => (
                     <div key={p.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2 text-sm">
                       {editingId === p.id ? (
                         <div className="flex-1 space-y-2">
-                          <Input value={editNome} onChange={e => setEditNome(e.target.value)} placeholder="Nome" className="h-8 text-sm" />
+                          <p className="text-xs font-medium text-muted-foreground">Ponto {idx + 1}</p>
                           <div className="grid grid-cols-2 gap-2">
                             <Input value={editLat} onChange={e => setEditLat(e.target.value)} placeholder="Lat" type="number" step="any" className="h-8 text-sm" />
                             <Input value={editLng} onChange={e => setEditLng(e.target.value)} placeholder="Lng" type="number" step="any" className="h-8 text-sm" />
@@ -219,18 +273,39 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                         </div>
                       ) : (
                         <>
-                          <div>
-                            <span className="font-medium text-foreground">{p.nome_estaca || '(sem nome)'}</span>
-                            <span className="text-muted-foreground ml-2">
-                              {p.latitude?.toFixed(6)}, {p.longitude?.toFixed(6)}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-status-green/15 text-status-green text-xs font-semibold shrink-0">
+                              {idx + 1}
                             </span>
+                            <div className="min-w-0">
+                              <span className="font-medium text-foreground">Ponto {idx + 1}</span>
+                              <span className="text-muted-foreground ml-2 text-xs">
+                                {p.latitude?.toFixed(6)}, {p.longitude?.toFixed(6)}
+                              </span>
+                            </div>
                           </div>
                           {canEditPoint(p) && (
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground p-1">
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <button
+                                onClick={() => swapPoints(idx, idx - 1)}
+                                disabled={idx === 0 || reordering}
+                                className="text-muted-foreground hover:text-foreground p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="Mover para cima"
+                              >
+                                <ArrowUp size={14} />
+                              </button>
+                              <button
+                                onClick={() => swapPoints(idx, idx + 1)}
+                                disabled={idx === points.length - 1 || reordering}
+                                className="text-muted-foreground hover:text-foreground p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="Mover para baixo"
+                              >
+                                <ArrowDown size={14} />
+                              </button>
+                              <button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground p-1" title="Editar">
                                 <Pencil size={14} />
                               </button>
-                              <button onClick={() => handleDelete(p.id)} className="text-destructive hover:text-destructive/80 p-1">
+                              <button onClick={() => handleDelete(p.id)} className="text-destructive hover:text-destructive/80 p-1" title="Excluir">
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -244,15 +319,16 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
 
               {canAdd && (
                 <div className="space-y-3 bg-muted/30 rounded-lg p-3">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nova Estaca</p>
-                  <Input placeholder="Nome (ex: PV-01, Estaca 1)" value={nome} onChange={e => setNome(e.target.value)} />
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Próximo: Ponto {points.length + 1}
+                  </p>
                   <div className="grid grid-cols-2 gap-3">
                     <Input placeholder="Latitude *" type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} />
                     <Input placeholder="Longitude *" type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} />
                   </div>
                   <Button onClick={handleAdd} disabled={saving} size="sm" className="w-full">
                     {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Plus size={14} className="mr-1" />}
-                    Adicionar Estaca
+                    Adicionar Coordenada
                   </Button>
                 </div>
               )}
@@ -269,7 +345,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                   <p className="font-medium text-foreground">⏳ Pendências para concluir esta NS:</p>
                   <ul className="list-disc list-inside text-muted-foreground">
                     {estacasSemCoord > 0 && (
-                      <li>{estacasSemCoord} {estacasSemCoord === 1 ? 'estaca sem' : 'estacas sem'} latitude/longitude</li>
+                      <li>{estacasSemCoord} {estacasSemCoord === 1 ? 'coordenada sem' : 'coordenadas sem'} latitude/longitude</li>
                     )}
                     {ligacoesPendentes > 0 && (
                       <li>{ligacoesPendentes} {ligacoesPendentes === 1 ? 'ligação aguardando coordenadas' : 'ligações aguardando coordenadas'}</li>
@@ -354,7 +430,7 @@ const TopografiaPage = () => {
                 onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
                 className="text-sm text-secondary hover:underline"
               >
-                {expandedId === os.id ? 'Fechar' : 'Registrar Estacas'}
+                {expandedId === os.id ? 'Fechar' : 'Registrar Coordenadas'}
               </button>
             </div>
           </div>
@@ -372,7 +448,7 @@ const TopografiaPage = () => {
   return (
     <AppLayout>
       <h1 className="text-2xl font-bold text-foreground mb-1">Registro Topográfico</h1>
-      <p className="text-sm text-muted-foreground mb-6">Registre as estacas as-built e coordenadas das ligações</p>
+      <p className="text-sm text-muted-foreground mb-6">Registre as coordenadas as-built do traçado e das ligações</p>
 
       <Tabs defaultValue="pendentes">
         <TabsList className="mb-4">

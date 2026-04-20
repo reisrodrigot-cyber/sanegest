@@ -148,6 +148,51 @@ export type Database = {
           },
         ]
       }
+      mapa_camadas: {
+        Row: {
+          arquivo_nome: string
+          cor: string
+          created_at: string
+          criado_por: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          opacidade: number
+          ordem: number
+          storage_path: string
+          updated_at: string
+          visivel_default: boolean
+        }
+        Insert: {
+          arquivo_nome: string
+          cor?: string
+          created_at?: string
+          criado_por?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          opacidade?: number
+          ordem?: number
+          storage_path: string
+          updated_at?: string
+          visivel_default?: boolean
+        }
+        Update: {
+          arquivo_nome?: string
+          cor?: string
+          created_at?: string
+          criado_por?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          opacidade?: number
+          ordem?: number
+          storage_path?: string
+          updated_at?: string
+          visivel_default?: boolean
+        }
+        Relationships: []
+      }
       materiais_entrega: {
         Row: {
           created_at: string

@@ -174,7 +174,8 @@ const OSDetailPage = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<OSStatus | null>(null);
   const [changingStatus, setChangingStatus] = useState(false);
-  const [asBuiltWarning, setAsBuiltWarning] = useState(false);
+  const [pendenciasCoord, setPendenciasCoord] = useState<{ estacas: number; ligacoes: number } | null>(null);
+  const [checkingPendencias, setCheckingPendencias] = useState(false);
   const [savingEncarregado, setSavingEncarregado] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingOs, setDeletingOs] = useState(false);

@@ -193,6 +193,11 @@ const DashboardEncarregadoPage = () => {
           </div>
         )}
       </div>
+
+      <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
+        <h2 className="text-lg font-semibold text-foreground mb-3 px-2">Mapa de Campo</h2>
+        <MapaInterativo showLocation />
+      </div>
     </AppLayout>
   );
 };

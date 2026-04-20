@@ -96,7 +96,7 @@ const MateriaisPage = () => {
               {expandedId === os.id && (
                 <div className="mt-3 pt-3 border-t border-border">
                   <h3 className="text-sm font-semibold text-foreground mb-2">Dados do Trecho</h3>
-                  <OSDetail os={os} />
+                  <OSDetalhesTrecho os={os} />
                 </div>
               )}
 

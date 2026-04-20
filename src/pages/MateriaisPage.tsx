@@ -146,6 +146,9 @@ const MateriaisPage = () => {
                   <p className="text-xs text-muted-foreground truncate">
                     {os.bacia} • PV {os.pv_montante} → {os.pv_jusante}
                   </p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    Encarregado: <span className="font-medium text-foreground">{os.executor || os.liberado_para || '—'}</span>
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <StatusBadge status={os.status} size="sm" />

@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
 import 'leaflet/dist/leaflet.css';
@@ -21,6 +22,13 @@ interface Camada {
   storage_path: string;
   arquivo_nome: string;
   visivel_default: boolean;
+  group_id: string | null;
+}
+
+interface LayerGroup {
+  id: string;
+  name: string;
+  ordem: number;
 }
 
 interface RedePoint {
@@ -106,6 +114,8 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   const didCenterOnMeRef = useRef(false);
 
   const [camadas, setCamadas] = useState<Camada[]>([]);
+  const [groups, setGroups] = useState<LayerGroup[]>([]);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [redePoints, setRedePoints] = useState<RedePoint[]>([]);
   const [ligacoesPoints, setLigacoesPoints] = useState<LigacaoPoint[]>([]);
   const [visivel, setVisivel] = useState<Record<string, boolean>>({
@@ -149,6 +159,15 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
         return next;
       });
     }
+  };
+
+  const fetchGroups = async () => {
+    const { data } = await supabase
+      .from('kmz_layer_groups')
+      .select('id, name, ordem')
+      .order('ordem', { ascending: true })
+      .order('created_at', { ascending: true });
+    if (data) setGroups(data as LayerGroup[]);
   };
 
   const fetchAsBuilt = async () => {
@@ -220,13 +239,14 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
 
   // Inicial + realtime
   useEffect(() => {
-    Promise.all([fetchCamadas(), fetchAsBuilt(), fetchLigacoes()]).finally(() => setLoading(false));
+    Promise.all([fetchCamadas(), fetchGroups(), fetchAsBuilt(), fetchLigacoes()]).finally(() => setLoading(false));
 
     const ch = supabase
       .channel('mapa-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'topografia_asbuilt' }, fetchAsBuilt)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ligacoes' }, fetchLigacoes)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_camadas' }, fetchCamadas)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kmz_layer_groups' }, fetchGroups)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
@@ -576,6 +596,84 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     }
   };
 
+  // ===== Group helpers =====
+  const handleCreateGroup = async () => {
+    const name = window.prompt('Nome do novo grupo:')?.trim();
+    if (!name) return;
+    const ordem = groups.length;
+    const { data, error } = await supabase
+      .from('kmz_layer_groups')
+      .insert({ name, ordem })
+      .select()
+      .single();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (data) setGroups((prev) => [...prev, data as LayerGroup]);
+    toast.success('Grupo criado');
+  };
+
+  const handleRenameGroup = async (g: LayerGroup) => {
+    const name = window.prompt('Renomear grupo:', g.name)?.trim();
+    if (!name || name === g.name) return;
+    const { error } = await supabase
+      .from('kmz_layer_groups')
+      .update({ name })
+      .eq('id', g.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setGroups((prev) => prev.map((x) => (x.id === g.id ? { ...x, name } : x)));
+  };
+
+  const handleDeleteGroup = async (g: LayerGroup) => {
+    if (!confirm(`Excluir o grupo "${g.name}"? As camadas dele serão movidas para "Sem grupo" (não serão deletadas).`)) return;
+    const { error } = await supabase.from('kmz_layer_groups').delete().eq('id', g.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setGroups((prev) => prev.filter((x) => x.id !== g.id));
+    setCamadas((prev) => prev.map((c) => (c.group_id === g.id ? { ...c, group_id: null } : c)));
+    toast.success('Grupo excluído');
+  };
+
+  const moveCamadaToGroup = async (camadaId: string, groupId: string | null) => {
+    const { error } = await supabase
+      .from('mapa_camadas')
+      .update({ group_id: groupId })
+      .eq('id', camadaId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setCamadas((prev) => prev.map((c) => (c.id === camadaId ? { ...c, group_id: groupId } : c)));
+  };
+
+  const toggleGroupCollapsed = (gid: string) =>
+    setCollapsedGroups((s) => ({ ...s, [gid]: !s[gid] }));
+
+  // 3-state group toggle
+  const getGroupVisState = (camadasOfGroup: Camada[]): 'all' | 'none' | 'partial' => {
+    if (camadasOfGroup.length === 0) return 'none';
+    const visCount = camadasOfGroup.filter((c) => visivel[c.id] !== false).length;
+    if (visCount === camadasOfGroup.length) return 'all';
+    if (visCount === 0) return 'none';
+    return 'partial';
+  };
+
+  const toggleGroupVis = (camadasOfGroup: Camada[]) => {
+    const state = getGroupVisState(camadasOfGroup);
+    const target = state === 'all' ? false : true;
+    setVisivel((v) => {
+      const next = { ...v };
+      for (const c of camadasOfGroup) next[c.id] = target;
+      return next;
+    });
+  };
+
   return (
     <div className="relative mb-6" style={{ height: 520 }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', borderRadius: '0.75rem', overflow: 'hidden' }} />
@@ -648,12 +746,25 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
               </button>
             </div>
 
-            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 px-2">KMZ</div>
-            {camadas.length === 0 && (
+            <div className="flex items-center justify-between mb-1.5 px-2">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">KMZ</div>
+              {canManage && (
+                <button
+                  onClick={handleCreateGroup}
+                  className="text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  title="Novo grupo"
+                >
+                  <FolderPlus size={12} /> Novo grupo
+                </button>
+              )}
+            </div>
+            {camadas.length === 0 && groups.length === 0 && (
               <p className="text-xs text-muted-foreground px-2 py-1">Nenhuma camada KMZ</p>
             )}
-            <div className="space-y-1">
-              {camadas.map((c) => (
+
+            {/* Render layer item helper */}
+            {(() => {
+              const renderCamada = (c: Camada) => (
                 <div key={c.id} className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
                   <button onClick={() => toggleVis(c.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {visivel[c.id] !== false
@@ -667,7 +778,43 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
                     >{c.nome}</span>
                   </button>
                   {canManage && (
-                    <div className="flex opacity-60 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center opacity-60 group-hover:opacity-100 transition-opacity">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1 rounded hover:bg-background" title="Mover para grupo">
+                            <MoreVertical size={12} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="z-[1100]">
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <FolderOpen size={12} className="mr-2" /> Mover para
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="z-[1100]">
+                              {groups.length === 0 && (
+                                <DropdownMenuItem disabled>Nenhum grupo</DropdownMenuItem>
+                              )}
+                              {groups.map((g) => (
+                                <DropdownMenuItem
+                                  key={g.id}
+                                  disabled={c.group_id === g.id}
+                                  onClick={() => moveCamadaToGroup(c.id, g.id)}
+                                >
+                                  {g.name}
+                                </DropdownMenuItem>
+                              ))}
+                              {c.group_id && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => moveCamadaToGroup(c.id, null)}>
+                                    Remover do grupo
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <button
                         onClick={() => { setEditing(c); setModalOpen(true); setLayersOpen(false); }}
                         className="p-1 rounded hover:bg-background"
@@ -685,8 +832,89 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+              );
+
+              const camadasByGroup = new Map<string, Camada[]>();
+              const ungrouped: Camada[] = [];
+              for (const c of camadas) {
+                if (c.group_id) {
+                  const arr = camadasByGroup.get(c.group_id) ?? [];
+                  arr.push(c);
+                  camadasByGroup.set(c.group_id, arr);
+                } else {
+                  ungrouped.push(c);
+                }
+              }
+
+              return (
+                <div className="space-y-2">
+                  {groups.map((g) => {
+                    const items = camadasByGroup.get(g.id) ?? [];
+                    const state = getGroupVisState(items);
+                    const collapsed = collapsedGroups[g.id];
+                    return (
+                      <div key={g.id} className="rounded border border-border/60">
+                        <div className="flex items-center gap-1 px-1.5 py-1 bg-muted/40 rounded-t">
+                          <button
+                            onClick={() => toggleGroupCollapsed(g.id)}
+                            className="p-0.5 rounded hover:bg-background"
+                            title={collapsed ? 'Expandir' : 'Recolher'}
+                          >
+                            {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <button
+                            onClick={() => toggleGroupVis(items)}
+                            className="p-0.5 rounded hover:bg-background"
+                            title="Visibilidade do grupo"
+                          >
+                            {state === 'all' && <Eye size={14} />}
+                            {state === 'none' && <EyeOff size={14} className="text-muted-foreground" />}
+                            {state === 'partial' && <Eye size={14} className="text-amber-500" />}
+                          </button>
+                          <span className="flex-1 text-xs font-semibold truncate" title={g.name}>{g.name}</span>
+                          <span className="text-[10px] text-muted-foreground">{items.length}</span>
+                          {canManage && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-0.5 rounded hover:bg-background opacity-60 hover:opacity-100" title="Opções">
+                                  <MoreVertical size={12} />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="z-[1100]">
+                                <DropdownMenuItem onClick={() => handleRenameGroup(g)}>
+                                  <Pencil size={12} className="mr-2" /> Renomear
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDeleteGroup(g)} className="text-destructive">
+                                  <Trash2 size={12} className="mr-2" /> Excluir grupo
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                        {!collapsed && (
+                          <div className="space-y-0.5 p-1">
+                            {items.length === 0 ? (
+                              <p className="text-[11px] text-muted-foreground px-2 py-1">Vazio</p>
+                            ) : items.map(renderCamada)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {ungrouped.length > 0 && (
+                    <div>
+                      {groups.length > 0 && (
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-2 mb-0.5">Sem grupo</div>
+                      )}
+                      <div className="space-y-0.5">
+                        {ungrouped.map(renderCamada)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </PopoverContent>
         </Popover>
       </div>

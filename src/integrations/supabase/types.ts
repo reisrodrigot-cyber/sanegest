@@ -88,6 +88,33 @@ export type Database = {
           },
         ]
       }
+      kmz_layer_groups: {
+        Row: {
+          created_at: string
+          criado_por: string | null
+          id: string
+          name: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          name: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          name?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ligacoes: {
         Row: {
           comprimento: number | null
@@ -155,6 +182,7 @@ export type Database = {
           created_at: string
           criado_por: string | null
           descricao: string | null
+          group_id: string | null
           id: string
           nome: string
           opacidade: number
@@ -169,6 +197,7 @@ export type Database = {
           created_at?: string
           criado_por?: string | null
           descricao?: string | null
+          group_id?: string | null
           id?: string
           nome: string
           opacidade?: number
@@ -183,6 +212,7 @@ export type Database = {
           created_at?: string
           criado_por?: string | null
           descricao?: string | null
+          group_id?: string | null
           id?: string
           nome?: string
           opacidade?: number
@@ -191,7 +221,15 @@ export type Database = {
           updated_at?: string
           visivel_default?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mapa_camadas_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "kmz_layer_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       materiais_entrega: {
         Row: {

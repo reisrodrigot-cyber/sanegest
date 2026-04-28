@@ -538,9 +538,27 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   const handleDelete = async (c: Camada) => {
     if (!confirm(`Excluir a camada "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
     try {
-      await supabase.storage.from('mapa-kmz').remove([c.storage_path]);
       const { error } = await supabase.from('mapa_camadas').delete().eq('id', c.id);
       if (error) throw error;
+      // Remove o arquivo do storage (best-effort, não bloqueia caso falhe)
+      await supabase.storage.from('mapa-kmz').remove([c.storage_path]).catch(() => {});
+
+      // Remove imediatamente o layer do mapa
+      const map = mapRef.current;
+      const cached = kmzLayersRef.current.get(c.id);
+      if (cached && map && map.hasLayer(cached)) map.removeLayer(cached);
+      kmzLayersRef.current.delete(c.id);
+      kmzBoundsRef.current.delete(c.id);
+      kmzSigRef.current.delete(c.id);
+
+      // Atualiza estado local (lista + visibilidade) sem esperar realtime
+      setCamadas((prev) => prev.filter((x) => x.id !== c.id));
+      setVisivel((prev) => {
+        const next = { ...prev };
+        delete next[c.id];
+        return next;
+      });
+
       toast.success('Camada excluída');
     } catch (e: any) {
       toast.error(e.message ?? 'Erro ao excluir');

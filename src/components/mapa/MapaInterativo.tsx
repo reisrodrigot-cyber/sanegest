@@ -114,6 +114,8 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   const didCenterOnMeRef = useRef(false);
 
   const [camadas, setCamadas] = useState<Camada[]>([]);
+  const [groups, setGroups] = useState<LayerGroup[]>([]);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [redePoints, setRedePoints] = useState<RedePoint[]>([]);
   const [ligacoesPoints, setLigacoesPoints] = useState<LigacaoPoint[]>([]);
   const [visivel, setVisivel] = useState<Record<string, boolean>>({

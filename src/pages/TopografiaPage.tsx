@@ -82,6 +82,95 @@ const MiniMap = ({ points }: { points: AsBuiltPoint[] }) => {
 const PV_MONTANTE_TAG = 'PV_MONTANTE';
 const PV_JUSANTE_TAG = 'PV_JUSANTE';
 
+// ===== Sub-componente top-level: card de PV (Montante / Jusante) =====
+interface PVCardProps {
+  titulo: string;
+  label: string;
+  point: AsBuiltPoint | null;
+  latState: string;
+  lngState: string;
+  onLat: (v: string) => void;
+  onLng: (v: string) => void;
+  onSave: () => Promise<void> | void;
+  onDelete: () => Promise<void> | void;
+  saving: boolean;
+  canEdit: boolean;
+}
+
+const PVCard = ({
+  titulo, label, point, latState, lngState, onLat, onLng, onSave, onDelete, saving, canEdit,
+}: PVCardProps) => {
+  const [editMode, setEditMode] = useState(false);
+  const showForm = !point || editMode;
+
+  const handleSave = async () => {
+    await onSave();
+    setEditMode(false);
+  };
+
+  const startEdit = () => {
+    onLat(point?.latitude?.toString() ?? '');
+    onLng(point?.longitude?.toString() ?? '');
+    setEditMode(true);
+  };
+
+  return (
+    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+          <MapPin size={13} className="text-status-green" /> {titulo}
+          <span className="text-muted-foreground font-normal normal-case">({label})</span>
+        </p>
+        {point && !showForm && canEdit && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={startEdit}
+              className="text-muted-foreground hover:text-foreground p-1"
+              title="Editar"
+            >
+              <Pencil size={13} />
+            </button>
+            <button
+              onClick={() => onDelete()}
+              className="text-destructive hover:text-destructive/80 p-1"
+              title="Excluir"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {showForm && canEdit ? (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Input placeholder="Latitude *" type="number" step="any" value={latState} onChange={(e) => onLat(e.target.value)} className="h-9 text-sm" />
+            <Input placeholder="Longitude *" type="number" step="any" value={lngState} onChange={(e) => onLng(e.target.value)} className="h-9 text-sm" />
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={saving} size="sm" className="flex-1">
+              {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Check size={14} className="mr-1" />}
+              {point ? 'Salvar alteração' : 'Salvar'}
+            </Button>
+            {point && (
+              <Button onClick={() => setEditMode(false)} variant="ghost" size="sm">
+                <X size={14} />
+              </Button>
+            )}
+          </div>
+        </>
+      ) : point ? (
+        <p className="text-sm text-foreground">
+          <span className="text-status-green mr-1">✓</span>
+          {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground italic">Não registrado</p>
+      )}
+    </div>
+  );
+};
+
 const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: () => void; allowEditAll?: boolean }) => {
   const { user } = useAuth();
   const [points, setPoints] = useState<AsBuiltPoint[]>([]);

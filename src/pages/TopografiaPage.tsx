@@ -82,6 +82,95 @@ const MiniMap = ({ points }: { points: AsBuiltPoint[] }) => {
 const PV_MONTANTE_TAG = 'PV_MONTANTE';
 const PV_JUSANTE_TAG = 'PV_JUSANTE';
 
+// ===== Sub-componente top-level: card de PV (Montante / Jusante) =====
+interface PVCardProps {
+  titulo: string;
+  label: string;
+  point: AsBuiltPoint | null;
+  latState: string;
+  lngState: string;
+  onLat: (v: string) => void;
+  onLng: (v: string) => void;
+  onSave: () => Promise<void> | void;
+  onDelete: () => Promise<void> | void;
+  saving: boolean;
+  canEdit: boolean;
+}
+
+const PVCard = ({
+  titulo, label, point, latState, lngState, onLat, onLng, onSave, onDelete, saving, canEdit,
+}: PVCardProps) => {
+  const [editMode, setEditMode] = useState(false);
+  const showForm = !point || editMode;
+
+  const handleSave = async () => {
+    await onSave();
+    setEditMode(false);
+  };
+
+  const startEdit = () => {
+    onLat(point?.latitude?.toString() ?? '');
+    onLng(point?.longitude?.toString() ?? '');
+    setEditMode(true);
+  };
+
+  return (
+    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+          <MapPin size={13} className="text-status-green" /> {titulo}
+          <span className="text-muted-foreground font-normal normal-case">({label})</span>
+        </p>
+        {point && !showForm && canEdit && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={startEdit}
+              className="text-muted-foreground hover:text-foreground p-1"
+              title="Editar"
+            >
+              <Pencil size={13} />
+            </button>
+            <button
+              onClick={() => onDelete()}
+              className="text-destructive hover:text-destructive/80 p-1"
+              title="Excluir"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {showForm && canEdit ? (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Input placeholder="Latitude *" type="number" step="any" value={latState} onChange={(e) => onLat(e.target.value)} className="h-9 text-sm" />
+            <Input placeholder="Longitude *" type="number" step="any" value={lngState} onChange={(e) => onLng(e.target.value)} className="h-9 text-sm" />
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={saving} size="sm" className="flex-1">
+              {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Check size={14} className="mr-1" />}
+              {point ? 'Salvar alteração' : 'Salvar'}
+            </Button>
+            {point && (
+              <Button onClick={() => setEditMode(false)} variant="ghost" size="sm">
+                <X size={14} />
+              </Button>
+            )}
+          </div>
+        </>
+      ) : point ? (
+        <p className="text-sm text-foreground">
+          <span className="text-status-green mr-1">✓</span>
+          {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground italic">Não registrado</p>
+      )}
+    </div>
+  );
+};
+
 const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: () => void; allowEditAll?: boolean }) => {
   const { user } = useAuth();
   const [points, setPoints] = useState<AsBuiltPoint[]>([]);
@@ -235,7 +324,23 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
 
   const deletePoint = async (id: string) => {
     const { error } = await supabase.from('topografia_asbuilt').delete().eq('id', id);
-    if (error) toast.error('Erro ao excluir.');
+    if (error) { toast.error('Erro ao excluir.'); return; }
+    toast.success('Ponto excluído.');
+    setPoints((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const confirmDeleteIntermediario = (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este ponto?')) {
+      deletePoint(id);
+    }
+  };
+
+  const deletePV = async (point: AsBuiltPoint, label: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o ${label}? As coordenadas serão apagadas.`)) return;
+    const { error } = await supabase.from('topografia_asbuilt').delete().eq('id', point.id);
+    if (error) { toast.error('Erro ao excluir.'); return; }
+    toast.success(`${label} removido.`);
+    setPoints((prev) => prev.filter((p) => p.id !== point.id));
   };
 
   // Renumera nomes dos intermediários após exclusão
@@ -277,70 +382,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const isConcluded = os.status === 'VERDE';
   const canEdit = allowEditAll || !isConcluded;
 
-  // ===== Sub-componente: card de PV (Montante / Jusante) =====
-  const PVCard = ({
-    titulo, label, point, latState, lngState, onLat, onLng, onSave, saving,
-  }: {
-    titulo: string;
-    label: string;
-    point: AsBuiltPoint | null;
-    latState: string;
-    lngState: string;
-    onLat: (v: string) => void;
-    onLng: (v: string) => void;
-    onSave: () => void;
-    saving: boolean;
-  }) => {
-    const [editMode, setEditMode] = useState(false);
-    const showForm = !point || editMode;
-
-    return (
-      <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <MapPin size={13} className="text-status-green" /> {titulo}
-            <span className="text-muted-foreground font-normal normal-case">({label})</span>
-          </p>
-          {point && !showForm && canEdit && (
-            <button
-              onClick={() => { onLat(point.latitude?.toString() ?? ''); onLng(point.longitude?.toString() ?? ''); setEditMode(true); }}
-              className="text-muted-foreground hover:text-foreground p-1"
-              title="Editar"
-            >
-              <Pencil size={13} />
-            </button>
-          )}
-        </div>
-
-        {showForm && canEdit ? (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Latitude *" type="number" step="any" value={latState} onChange={(e) => onLat(e.target.value)} className="h-9 text-sm" />
-              <Input placeholder="Longitude *" type="number" step="any" value={lngState} onChange={(e) => onLng(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={() => { onSave(); setEditMode(false); }} disabled={saving} size="sm" className="flex-1">
-                {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Check size={14} className="mr-1" />}
-                {point ? 'Atualizar' : 'Salvar'}
-              </Button>
-              {point && (
-                <Button onClick={() => setEditMode(false)} variant="ghost" size="sm">
-                  <X size={14} />
-                </Button>
-              )}
-            </div>
-          </>
-        ) : point ? (
-          <p className="text-sm text-foreground">
-            <span className="text-status-green mr-1">✓</span>
-            {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground italic">Não registrado</p>
-        )}
-      </div>
-    );
-  };
+  // (PVCard movido para fora do componente — ver abaixo)
 
   return (
     <div className="mt-4 pt-4 border-t border-border space-y-6">
@@ -359,7 +401,6 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
               Registre na ordem do traçado: PV montante → intermediários → PV jusante
             </p>
           </div>
-
           {loading ? (
             <div className="flex justify-center py-4"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
           ) : (
@@ -374,7 +415,9 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 onLat={setMontLat}
                 onLng={setMontLng}
                 onSave={saveMontante}
+                onDelete={() => montante && deletePV(montante, 'PV Montante')}
                 saving={savingMontante}
+                canEdit={canEdit}
               />
 
               {/* Intermediários */}
@@ -399,7 +442,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                         </div>
                         {canEdit && (
                           <button
-                            onClick={() => deletePoint(p.id)}
+                            onClick={() => confirmDeleteIntermediario(p.id)}
                             className="text-destructive hover:text-destructive/80 p-1 shrink-0"
                             title="Excluir"
                           >
@@ -438,7 +481,9 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 onLat={setJusLat}
                 onLng={setJusLng}
                 onSave={saveJusante}
+                onDelete={() => jusante && deletePV(jusante, 'PV Jusante')}
                 saving={savingJusante}
+                canEdit={canEdit}
               />
 
               {!isConcluded && !allowEditAll && podeConcluir && (

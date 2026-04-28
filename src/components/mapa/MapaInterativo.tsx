@@ -161,6 +161,15 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     }
   };
 
+  const fetchGroups = async () => {
+    const { data } = await supabase
+      .from('kmz_layer_groups')
+      .select('id, name, ordem')
+      .order('ordem', { ascending: true })
+      .order('created_at', { ascending: true });
+    if (data) setGroups(data as LayerGroup[]);
+  };
+
   const fetchAsBuilt = async () => {
     const { data: ab } = await supabase
       .from('topografia_asbuilt')

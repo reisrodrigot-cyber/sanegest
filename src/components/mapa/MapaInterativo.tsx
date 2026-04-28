@@ -980,6 +980,16 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
         camada={editing}
         onSaved={fetchCamadas}
       />
+
+      <AsBuiltConfigModal
+        open={editAsBuilt !== null}
+        onOpenChange={(v) => { if (!v) setEditAsBuilt(null); }}
+        layerKey={editAsBuilt ?? 'rede'}
+        title={editAsBuilt === 'ligacoes' ? 'As-built Ligações' : 'As-built Rede'}
+        initialCor={editAsBuilt === 'ligacoes' ? ligacoesColor : redeColor}
+        initialOpacidade={editAsBuilt === 'ligacoes' ? ligacoesOpacidade : redeOpacidade}
+        onSaved={fetchAsBuiltConfig}
+      />
     </div>
   );
 };

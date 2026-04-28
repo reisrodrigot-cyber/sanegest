@@ -334,7 +334,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     ligacoesPoints.forEach((m) => {
       const square = L.circleMarker([m.latitude, m.longitude], {
         radius: 6, fillColor: ligacoesColor, color: '#ffffff',
-        weight: 2, opacity: 1, fillOpacity: 0.9,
+        weight: 2, opacity: 1, fillOpacity: ligacoesOpacidade,
       });
       square.bindPopup(`
         <div style="min-width:160px;font-size:13px;">

@@ -144,6 +144,9 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',
     }).addTo(map);
+    // Pane dedicado às ligações com z-index acima da polyline (overlayPane=400)
+    const ligacoesPane = map.createPane('ligacoesPane');
+    ligacoesPane.style.zIndex = '650';
     redeLayerRef.current = L.layerGroup().addTo(map);
     ligacoesLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
@@ -363,10 +366,14 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       return;
     }
     if (!map.hasLayer(layer)) layer.addTo(map);
+    // Renderer SVG no pane das ligações (canvas global do mapa não respeita panes)
+    const ligacoesRenderer = L.svg({ pane: 'ligacoesPane' });
     ligacoesPoints.forEach((m) => {
       const square = L.circleMarker([m.latitude, m.longitude], {
         radius: 6, fillColor: ligacoesColor, color: '#ffffff',
         weight: 2, opacity: 1, fillOpacity: ligacoesOpacidade,
+        pane: 'ligacoesPane',
+        renderer: ligacoesRenderer,
       });
       square.bindPopup(`
         <div style="min-width:160px;font-size:13px;">

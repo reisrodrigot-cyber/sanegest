@@ -48,6 +48,9 @@ const MiniMap = ({ points, ligacoes = [] }: { points: AsBuiltPoint[]; ligacoes?:
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OSM',
     }).addTo(mapRef.current);
+    // Pane das ligações acima da polyline (overlayPane = 400)
+    const ligacoesPane = mapRef.current.createPane('ligacoesPane');
+    ligacoesPane.style.zIndex = '650';
     layerRef.current = L.layerGroup().addTo(mapRef.current);
     return () => { mapRef.current?.remove(); mapRef.current = null; };
   }, []);
@@ -100,6 +103,7 @@ const MiniMap = ({ points, ligacoes = [] }: { points: AsBuiltPoint[]; ligacoes?:
         weight: 1.5,
         opacity: 1,
         fillOpacity: 1,
+        pane: 'ligacoesPane',
       });
       const compTxt = l.comprimento != null ? `${l.comprimento}m` : '—';
       marker.bindPopup(`<b>Ligação ${l.numero}</b><br/>Comp.: ${compTxt}`);

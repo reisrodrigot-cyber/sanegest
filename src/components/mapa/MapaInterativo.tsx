@@ -63,8 +63,8 @@ const STATUS_COLORS: Record<string, string> = {
   AMARELO: '#ca8a04', VERDE: '#16a34a',
 };
 
-const DEFAULT_REDE_COLOR = '#16a34a';
-const DEFAULT_LIGACAO_COLOR = '#2563eb';
+const DEFAULT_redeColor = '#16a34a';
+const DEFAULT_ligacoesColor = '#2563eb';
 const DEFAULT_CENTER: [number, number] = [-9.1167, -35.2667];
 const DEFAULT_ZOOM = 13;
 
@@ -130,9 +130,9 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   const [layersOpen, setLayersOpen] = useState(false);
 
   // As-built fixed layers config
-  const [redeColor, setRedeColor] = useState(DEFAULT_REDE_COLOR);
+  const [redeColor, setRedeColor] = useState(DEFAULT_redeColor);
   const [redeOpacidade, setRedeOpacidade] = useState(0.9);
-  const [ligacoesColor, setLigacoesColor] = useState(DEFAULT_LIGACAO_COLOR);
+  const [ligacoesColor, setLigacoesColor] = useState(DEFAULT_ligacoesColor);
   const [ligacoesOpacidade, setLigacoesOpacidade] = useState(0.9);
   const [editAsBuilt, setEditAsBuilt] = useState<null | 'rede' | 'ligacoes'>(null);
 
@@ -287,7 +287,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       const popupHtml = `
         <div style="min-width:180px;font-size:13px;">
           <p style="font-weight:700;margin:0 0 4px">${first.trecho}</p>
-          <p style="margin:2px 0;color:${REDE_COLOR};font-weight:600">REDE — As-built</p>
+          <p style="margin:2px 0;color:${redeColor};font-weight:600">REDE — As-built</p>
           <p style="margin:2px 0">PV: ${first.pv_montante || '—'} → ${first.pv_jusante || '—'}</p>
           <p style="margin:2px 0">Comp. executado: ${first.comprimento_real ?? first.comprimento_previsto ?? '—'}m</p>
           <p style="margin:2px 0">Bacia: ${first.bacia}</p>
@@ -297,7 +297,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       // Polyline conectando os vértices
       if (latlngs.length >= 2) {
         const line = L.polyline(latlngs, {
-          color: REDE_COLOR, weight: 4, opacity: 0.9,
+          color: redeColor, weight: 4, opacity: 0.9,
         });
         line.bindPopup(popupHtml);
         line.addTo(layer);
@@ -306,7 +306,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       // Marcadores pequenos nos vértices
       pts.forEach((p, idx) => {
         const circle = L.circleMarker([p.latitude, p.longitude], {
-          radius: 5, fillColor: REDE_COLOR, color: '#ffffff',
+          radius: 5, fillColor: redeColor, color: '#ffffff',
           weight: 2, opacity: 1, fillOpacity: 1,
         });
         circle.bindPopup(`
@@ -333,12 +333,12 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     if (!map.hasLayer(layer)) layer.addTo(map);
     ligacoesPoints.forEach((m) => {
       const square = L.circleMarker([m.latitude, m.longitude], {
-        radius: 6, fillColor: LIGACAO_COLOR, color: '#ffffff',
+        radius: 6, fillColor: ligacoesColor, color: '#ffffff',
         weight: 2, opacity: 1, fillOpacity: 0.9,
       });
       square.bindPopup(`
         <div style="min-width:160px;font-size:13px;">
-          <p style="font-weight:700;margin:0 0 4px;color:${LIGACAO_COLOR}">Ligação ${m.numero}</p>
+          <p style="font-weight:700;margin:0 0 4px;color:${ligacoesColor}">Ligação ${m.numero}</p>
           <p style="margin:2px 0">NS: ${m.trecho}</p>
           ${m.referencia ? `<p style="margin:2px 0">Ref: ${m.referencia}</p>` : ''}
         </div>`);
@@ -739,7 +739,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
               >
                 {visivel.__rede ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
-                <span className="inline-block w-3 h-3 rounded-full" style={{ background: REDE_COLOR }} />
+                <span className="inline-block w-3 h-3 rounded-full" style={{ background: redeColor }} />
                 <span className="flex-1">As-built Rede</span>
                 <span className="text-xs text-muted-foreground">{redePoints.length}</span>
               </button>
@@ -748,7 +748,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
               >
                 {visivel.__ligacoes ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
-                <span className="inline-block w-3 h-3 rounded-full" style={{ background: LIGACAO_COLOR }} />
+                <span className="inline-block w-3 h-3 rounded-full" style={{ background: ligacoesColor }} />
                 <span className="flex-1">As-built Ligações</span>
                 <span className="text-xs text-muted-foreground">{ligacoesPoints.length}</span>
               </button>

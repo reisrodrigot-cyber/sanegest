@@ -746,12 +746,25 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
               </button>
             </div>
 
-            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 px-2">KMZ</div>
-            {camadas.length === 0 && (
+            <div className="flex items-center justify-between mb-1.5 px-2">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">KMZ</div>
+              {canManage && (
+                <button
+                  onClick={handleCreateGroup}
+                  className="text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  title="Novo grupo"
+                >
+                  <FolderPlus size={12} /> Novo grupo
+                </button>
+              )}
+            </div>
+            {camadas.length === 0 && groups.length === 0 && (
               <p className="text-xs text-muted-foreground px-2 py-1">Nenhuma camada KMZ</p>
             )}
-            <div className="space-y-1">
-              {camadas.map((c) => (
+
+            {/* Render layer item helper */}
+            {(() => {
+              const renderCamada = (c: Camada) => (
                 <div key={c.id} className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
                   <button onClick={() => toggleVis(c.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {visivel[c.id] !== false
@@ -765,7 +778,43 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
                     >{c.nome}</span>
                   </button>
                   {canManage && (
-                    <div className="flex opacity-60 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center opacity-60 group-hover:opacity-100 transition-opacity">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1 rounded hover:bg-background" title="Mover para grupo">
+                            <MoreVertical size={12} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="z-[1100]">
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <FolderOpen size={12} className="mr-2" /> Mover para
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="z-[1100]">
+                              {groups.length === 0 && (
+                                <DropdownMenuItem disabled>Nenhum grupo</DropdownMenuItem>
+                              )}
+                              {groups.map((g) => (
+                                <DropdownMenuItem
+                                  key={g.id}
+                                  disabled={c.group_id === g.id}
+                                  onClick={() => moveCamadaToGroup(c.id, g.id)}
+                                >
+                                  {g.name}
+                                </DropdownMenuItem>
+                              ))}
+                              {c.group_id && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => moveCamadaToGroup(c.id, null)}>
+                                    Remover do grupo
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <button
                         onClick={() => { setEditing(c); setModalOpen(true); setLayersOpen(false); }}
                         className="p-1 rounded hover:bg-background"
@@ -783,8 +832,89 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+              );
+
+              const camadasByGroup = new Map<string, Camada[]>();
+              const ungrouped: Camada[] = [];
+              for (const c of camadas) {
+                if (c.group_id) {
+                  const arr = camadasByGroup.get(c.group_id) ?? [];
+                  arr.push(c);
+                  camadasByGroup.set(c.group_id, arr);
+                } else {
+                  ungrouped.push(c);
+                }
+              }
+
+              return (
+                <div className="space-y-2">
+                  {groups.map((g) => {
+                    const items = camadasByGroup.get(g.id) ?? [];
+                    const state = getGroupVisState(items);
+                    const collapsed = collapsedGroups[g.id];
+                    return (
+                      <div key={g.id} className="rounded border border-border/60">
+                        <div className="flex items-center gap-1 px-1.5 py-1 bg-muted/40 rounded-t">
+                          <button
+                            onClick={() => toggleGroupCollapsed(g.id)}
+                            className="p-0.5 rounded hover:bg-background"
+                            title={collapsed ? 'Expandir' : 'Recolher'}
+                          >
+                            {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <button
+                            onClick={() => toggleGroupVis(items)}
+                            className="p-0.5 rounded hover:bg-background"
+                            title="Visibilidade do grupo"
+                          >
+                            {state === 'all' && <Eye size={14} />}
+                            {state === 'none' && <EyeOff size={14} className="text-muted-foreground" />}
+                            {state === 'partial' && <Eye size={14} className="text-amber-500" />}
+                          </button>
+                          <span className="flex-1 text-xs font-semibold truncate" title={g.name}>{g.name}</span>
+                          <span className="text-[10px] text-muted-foreground">{items.length}</span>
+                          {canManage && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-0.5 rounded hover:bg-background opacity-60 hover:opacity-100" title="Opções">
+                                  <MoreVertical size={12} />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="z-[1100]">
+                                <DropdownMenuItem onClick={() => handleRenameGroup(g)}>
+                                  <Pencil size={12} className="mr-2" /> Renomear
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDeleteGroup(g)} className="text-destructive">
+                                  <Trash2 size={12} className="mr-2" /> Excluir grupo
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                        {!collapsed && (
+                          <div className="space-y-0.5 p-1">
+                            {items.length === 0 ? (
+                              <p className="text-[11px] text-muted-foreground px-2 py-1">Vazio</p>
+                            ) : items.map(renderCamada)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {ungrouped.length > 0 && (
+                    <div>
+                      {groups.length > 0 && (
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-2 mb-0.5">Sem grupo</div>
+                      )}
+                      <div className="space-y-0.5">
+                        {ungrouped.map(renderCamada)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </PopoverContent>
         </Popover>
       </div>

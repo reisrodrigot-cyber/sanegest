@@ -235,7 +235,23 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
 
   const deletePoint = async (id: string) => {
     const { error } = await supabase.from('topografia_asbuilt').delete().eq('id', id);
-    if (error) toast.error('Erro ao excluir.');
+    if (error) { toast.error('Erro ao excluir.'); return; }
+    toast.success('Ponto excluído.');
+    setPoints((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const confirmDeleteIntermediario = (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este ponto?')) {
+      deletePoint(id);
+    }
+  };
+
+  const deletePV = async (point: AsBuiltPoint, label: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o ${label}? As coordenadas serão apagadas.`)) return;
+    const { error } = await supabase.from('topografia_asbuilt').delete().eq('id', point.id);
+    if (error) { toast.error('Erro ao excluir.'); return; }
+    toast.success(`${label} removido.`);
+    setPoints((prev) => prev.filter((p) => p.id !== point.id));
   };
 
   // Renumera nomes dos intermediários após exclusão

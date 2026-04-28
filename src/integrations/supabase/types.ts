@@ -175,6 +175,33 @@ export type Database = {
           },
         ]
       }
+      mapa_asbuilt_config: {
+        Row: {
+          cor: string
+          id: string
+          layer_key: string
+          opacidade: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cor: string
+          id?: string
+          layer_key: string
+          opacidade?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cor?: string
+          id?: string
+          layer_key?: string
+          opacidade?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       mapa_camadas: {
         Row: {
           arquivo_nome: string

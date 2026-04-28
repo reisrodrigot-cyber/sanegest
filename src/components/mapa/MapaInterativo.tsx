@@ -297,7 +297,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       // Polyline conectando os vértices
       if (latlngs.length >= 2) {
         const line = L.polyline(latlngs, {
-          color: redeColor, weight: 4, opacity: 0.9,
+          color: redeColor, weight: 4, opacity: redeOpacidade,
         });
         line.bindPopup(popupHtml);
         line.addTo(layer);
@@ -307,7 +307,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       pts.forEach((p, idx) => {
         const circle = L.circleMarker([p.latitude, p.longitude], {
           radius: 5, fillColor: redeColor, color: '#ffffff',
-          weight: 2, opacity: 1, fillOpacity: 1,
+          weight: 2, opacity: 1, fillOpacity: redeOpacidade,
         });
         circle.bindPopup(`
           <div style="min-width:160px;font-size:13px;">

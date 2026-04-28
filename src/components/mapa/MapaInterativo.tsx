@@ -596,6 +596,84 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     }
   };
 
+  // ===== Group helpers =====
+  const handleCreateGroup = async () => {
+    const name = window.prompt('Nome do novo grupo:')?.trim();
+    if (!name) return;
+    const ordem = groups.length;
+    const { data, error } = await supabase
+      .from('kmz_layer_groups')
+      .insert({ name, ordem })
+      .select()
+      .single();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (data) setGroups((prev) => [...prev, data as LayerGroup]);
+    toast.success('Grupo criado');
+  };
+
+  const handleRenameGroup = async (g: LayerGroup) => {
+    const name = window.prompt('Renomear grupo:', g.name)?.trim();
+    if (!name || name === g.name) return;
+    const { error } = await supabase
+      .from('kmz_layer_groups')
+      .update({ name })
+      .eq('id', g.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setGroups((prev) => prev.map((x) => (x.id === g.id ? { ...x, name } : x)));
+  };
+
+  const handleDeleteGroup = async (g: LayerGroup) => {
+    if (!confirm(`Excluir o grupo "${g.name}"? As camadas dele serão movidas para "Sem grupo" (não serão deletadas).`)) return;
+    const { error } = await supabase.from('kmz_layer_groups').delete().eq('id', g.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setGroups((prev) => prev.filter((x) => x.id !== g.id));
+    setCamadas((prev) => prev.map((c) => (c.group_id === g.id ? { ...c, group_id: null } : c)));
+    toast.success('Grupo excluído');
+  };
+
+  const moveCamadaToGroup = async (camadaId: string, groupId: string | null) => {
+    const { error } = await supabase
+      .from('mapa_camadas')
+      .update({ group_id: groupId })
+      .eq('id', camadaId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setCamadas((prev) => prev.map((c) => (c.id === camadaId ? { ...c, group_id: groupId } : c)));
+  };
+
+  const toggleGroupCollapsed = (gid: string) =>
+    setCollapsedGroups((s) => ({ ...s, [gid]: !s[gid] }));
+
+  // 3-state group toggle
+  const getGroupVisState = (camadasOfGroup: Camada[]): 'all' | 'none' | 'partial' => {
+    if (camadasOfGroup.length === 0) return 'none';
+    const visCount = camadasOfGroup.filter((c) => visivel[c.id] !== false).length;
+    if (visCount === camadasOfGroup.length) return 'all';
+    if (visCount === 0) return 'none';
+    return 'partial';
+  };
+
+  const toggleGroupVis = (camadasOfGroup: Camada[]) => {
+    const state = getGroupVisState(camadasOfGroup);
+    const target = state === 'all' ? false : true;
+    setVisivel((v) => {
+      const next = { ...v };
+      for (const c of camadasOfGroup) next[c.id] = target;
+      return next;
+    });
+  };
+
   return (
     <div className="relative mb-6" style={{ height: 520 }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', borderRadius: '0.75rem', overflow: 'hidden' }} />

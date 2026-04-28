@@ -179,7 +179,16 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       .select('id, name, ordem')
       .order('ordem', { ascending: true })
       .order('created_at', { ascending: true });
-    if (data) setGroups(data as LayerGroup[]);
+    if (data) {
+      setGroups(data as LayerGroup[]);
+      // Inicia todos os grupos (incluindo "Sem grupo") recolhidos por padrão
+      setCollapsedGroups((prev) => {
+        const next = { ...prev };
+        for (const g of data) if (next[g.id] === undefined) next[g.id] = true;
+        if (next['__nogroup'] === undefined) next['__nogroup'] = true;
+        return next;
+      });
+    }
   };
 
   const fetchAsBuiltConfig = async () => {
@@ -972,13 +981,23 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
                   })}
 
                   {ungrouped.length > 0 && (
-                    <div>
-                      {groups.length > 0 && (
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-2 mb-0.5">Sem grupo</div>
-                      )}
-                      <div className="space-y-0.5">
-                        {ungrouped.map(renderCamada)}
+                    <div className="rounded border border-border/60">
+                      <div className="flex items-center gap-1 px-1.5 py-1 bg-muted/40 rounded-t">
+                        <button
+                          onClick={() => toggleGroupCollapsed('__nogroup')}
+                          className="p-0.5 rounded hover:bg-background"
+                          title={collapsedGroups['__nogroup'] ? 'Expandir' : 'Recolher'}
+                        >
+                          {collapsedGroups['__nogroup'] ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                        <span className="flex-1 text-xs font-semibold truncate">Sem grupo</span>
+                        <span className="text-[10px] text-muted-foreground">{ungrouped.length}</span>
                       </div>
+                      {!collapsedGroups['__nogroup'] && (
+                        <div className="space-y-0.5 p-1">
+                          {ungrouped.map(renderCamada)}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

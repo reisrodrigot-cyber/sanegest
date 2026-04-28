@@ -751,24 +751,46 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
 
             {/* As-built */}
             <div className="space-y-1 mb-3">
-              <button
-                onClick={() => toggleVis('__rede')}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
-              >
-                {visivel.__rede ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
-                <span className="inline-block w-3 h-3 rounded-full" style={{ background: redeColor }} />
-                <span className="flex-1">As-built Rede</span>
-                <span className="text-xs text-muted-foreground">{redePoints.length}</span>
-              </button>
-              <button
-                onClick={() => toggleVis('__ligacoes')}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm"
-              >
-                {visivel.__ligacoes ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
-                <span className="inline-block w-3 h-3 rounded-full" style={{ background: ligacoesColor }} />
-                <span className="flex-1">As-built Ligações</span>
-                <span className="text-xs text-muted-foreground">{ligacoesPoints.length}</span>
-              </button>
+              <div className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
+                <button
+                  onClick={() => toggleVis('__rede')}
+                  className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                >
+                  {visivel.__rede ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
+                  <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: redeColor }} />
+                  <span className="flex-1 truncate">As-built Rede</span>
+                  <span className="text-xs text-muted-foreground">{redePoints.length}</span>
+                </button>
+                {canManage && (
+                  <button
+                    onClick={() => { setEditAsBuilt('rede'); setLayersOpen(false); }}
+                    className="p-1 rounded hover:bg-background opacity-60 group-hover:opacity-100 transition-opacity"
+                    title="Editar"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                )}
+              </div>
+              <div className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
+                <button
+                  onClick={() => toggleVis('__ligacoes')}
+                  className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                >
+                  {visivel.__ligacoes ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
+                  <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: ligacoesColor }} />
+                  <span className="flex-1 truncate">As-built Ligações</span>
+                  <span className="text-xs text-muted-foreground">{ligacoesPoints.length}</span>
+                </button>
+                {canManage && (
+                  <button
+                    onClick={() => { setEditAsBuilt('ligacoes'); setLayersOpen(false); }}
+                    className="p-1 rounded hover:bg-background opacity-60 group-hover:opacity-100 transition-opacity"
+                    title="Editar"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center justify-between mb-1.5 px-2">

@@ -241,27 +241,29 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     }
     setSavingMontante(true);
     if (montante) {
-      const { error } = await supabase.from('topografia_asbuilt').update({
+      const { data, error } = await supabase.from('topografia_asbuilt').update({
         latitude: latVal, longitude: lngVal,
-      }).eq('id', montante.id);
+      }).eq('id', montante.id).select().single();
       setSavingMontante(false);
       if (error) { toast.error('Erro ao atualizar PV Montante.'); return; }
       toast.success('PV Montante atualizado!');
+      if (data) setPoints((prev) => prev.map((p) => p.id === data.id ? (data as AsBuiltPoint) : p));
     } else {
       // Inserir como o primeiro registro (created_at bem antigo para ficar à frente)
       const ts = new Date(Date.now() - 1000 * 60 * 60 * 24 * 365).toISOString();
-      const { error } = await supabase.from('topografia_asbuilt').insert({
+      const { data, error } = await supabase.from('topografia_asbuilt').insert({
         os_id: os.id,
         nome_estaca: PV_MONTANTE_TAG,
         latitude: latVal,
         longitude: lngVal,
         registrado_por: user?.id ?? null,
         created_at: ts,
-      });
+      }).select().single();
       setSavingMontante(false);
       if (error) { toast.error('Erro ao salvar PV Montante.'); return; }
       toast.success('PV Montante registrado!');
       setMontLat(''); setMontLng('');
+      if (data) setPoints((prev) => [...prev, data as AsBuiltPoint]);
     }
   };
 

@@ -24,10 +24,19 @@ interface AsBuiltPoint {
   registrado_por: string | null;
 }
 
+interface LigacaoPoint {
+  id: string;
+  numero: number;
+  latitude: number;
+  longitude: number;
+  comprimento: number | null;
+}
+
 const DEFAULT_CENTER: [number, number] = [-9.1167, -35.2667];
 const REDE_COLOR = '#16a34a';
+const LIGACAO_COLOR = '#064e3b'; // verde escuro
 
-const MiniMap = ({ points }: { points: AsBuiltPoint[] }) => {
+const MiniMap = ({ points, ligacoes }: { points: AsBuiltPoint[]; ligacoes: LigacaoPoint[] }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -49,11 +58,6 @@ const MiniMap = ({ points }: { points: AsBuiltPoint[] }) => {
     layer.clearLayers();
 
     const valid = points.filter(p => p.latitude != null && p.longitude != null);
-    if (valid.length === 0) {
-      map.setView(DEFAULT_CENTER, 14);
-      return;
-    }
-
     const latlngs: [number, number][] = valid.map(p => [p.latitude!, p.longitude!]);
 
     // Polyline conectando os pontos na ordem
@@ -72,9 +76,35 @@ const MiniMap = ({ points }: { points: AsBuiltPoint[] }) => {
       circle.addTo(layer);
     });
 
-    const bounds = L.latLngBounds(latlngs);
+    // Marcadores das ligações (verde escuro, menores, em forma de losango/quadrado)
+    ligacoes.forEach((l) => {
+      const marker = L.circleMarker([l.latitude, l.longitude], {
+        radius: 4,
+        fillColor: LIGACAO_COLOR,
+        color: '#ffffff',
+        weight: 1.5,
+        opacity: 1,
+        fillOpacity: 1,
+      });
+      const compTxt = l.comprimento != null ? `${l.comprimento}m` : '—';
+      marker.bindPopup(`<b>Ligação ${l.numero}</b><br/>Comp.: ${compTxt}`);
+      marker.bindTooltip(`Ligação ${l.numero} — Comp.: ${compTxt}`, { direction: 'top' });
+      marker.addTo(layer);
+    });
+
+    const allLatLngs: [number, number][] = [
+      ...latlngs,
+      ...ligacoes.map(l => [l.latitude, l.longitude] as [number, number]),
+    ];
+
+    if (allLatLngs.length === 0) {
+      map.setView(DEFAULT_CENTER, 14);
+      return;
+    }
+
+    const bounds = L.latLngBounds(allLatLngs);
     map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
-  }, [points]);
+  }, [points, ligacoes]);
 
   return <div ref={containerRef} style={{ height: '100%', width: '100%' }} />;
 };

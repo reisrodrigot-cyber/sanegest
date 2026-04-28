@@ -22,6 +22,13 @@ interface Camada {
   storage_path: string;
   arquivo_nome: string;
   visivel_default: boolean;
+  group_id: string | null;
+}
+
+interface LayerGroup {
+  id: string;
+  name: string;
+  ordem: number;
 }
 
 interface RedePoint {

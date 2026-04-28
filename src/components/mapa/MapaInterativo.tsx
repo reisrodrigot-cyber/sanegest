@@ -318,7 +318,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
         circle.addTo(layer);
       });
     });
-  }, [redePoints, visivel.__rede]);
+  }, [redePoints, visivel.__rede, redeColor, redeOpacidade]);
 
   // ======= Render ligações =======
   useEffect(() => {

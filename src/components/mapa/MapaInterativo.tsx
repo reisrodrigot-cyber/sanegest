@@ -239,13 +239,14 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
 
   // Inicial + realtime
   useEffect(() => {
-    Promise.all([fetchCamadas(), fetchAsBuilt(), fetchLigacoes()]).finally(() => setLoading(false));
+    Promise.all([fetchCamadas(), fetchGroups(), fetchAsBuilt(), fetchLigacoes()]).finally(() => setLoading(false));
 
     const ch = supabase
       .channel('mapa-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'topografia_asbuilt' }, fetchAsBuilt)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ligacoes' }, fetchLigacoes)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_camadas' }, fetchCamadas)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kmz_layer_groups' }, fetchGroups)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);

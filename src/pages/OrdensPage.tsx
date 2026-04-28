@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Loader2, FileSpreadsheet } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
@@ -14,6 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Natural sort comparator: "1.2" < "1.10"
+function naturalCompare(a: string, b: string) {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+}
 
 const OrdensPage = () => {
   const { ordens, loading } = useOrdensServico();
@@ -22,9 +29,43 @@ const OrdensPage = () => {
   const canImport = role === 'admin' || role === 'sala_tecnica';
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
+  const [responsavelFilter, setResponsavelFilter] = useState('TODOS');
   const [search, setSearch] = useState('');
 
+  // Aggregated produção (sum comprimento_dia) per OS
+  const [producaoByOs, setProducaoByOs] = useState<Record<string, number>>({});
+  // Latest status change date per OS
+  const [statusSinceByOs, setStatusSinceByOs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [{ data: regs }, { data: hist }] = await Promise.all([
+        supabase.from('registros_producao').select('os_id, comprimento_dia'),
+        supabase
+          .from('os_status_historico')
+          .select('os_id, created_at')
+          .order('created_at', { ascending: false }),
+      ]);
+      if (cancelled) return;
+
+      const acc: Record<string, number> = {};
+      (regs || []).forEach((r: any) => {
+        acc[r.os_id] = (acc[r.os_id] || 0) + Number(r.comprimento_dia || 0);
+      });
+      setProducaoByOs(acc);
+
+      const since: Record<string, string> = {};
+      (hist || []).forEach((h: any) => {
+        if (!since[h.os_id]) since[h.os_id] = h.created_at;
+      });
+      setStatusSinceByOs(since);
+    })();
+    return () => { cancelled = true; };
+  }, [ordens.length]);
+
   const bacias = [...new Set(ordens.map(os => os.bacia).filter(Boolean))].sort();
+  const responsaveis = [...new Set(ordens.map(os => os.liberado_para).filter(Boolean) as string[])].sort();
 
   const matchSearch = (os: typeof ordens[0]) => {
     if (!search) return true;
@@ -35,18 +76,37 @@ const OrdensPage = () => {
   const matchBacia = (os: typeof ordens[0]) =>
     baciaFilter === 'TODAS' || os.bacia === baciaFilter;
 
-  const naoLiberadas = ordens.filter(os => !os.liberado && matchSearch(os) && matchBacia(os));
+  const matchResponsavel = (os: typeof ordens[0]) =>
+    responsavelFilter === 'TODOS' || os.liberado_para === responsavelFilter;
 
-  const liberadas = ordens.filter(os => {
-    if (!os.liberado) return false;
-    if (!matchSearch(os)) return false;
-    if (!matchBacia(os)) return false;
-    if (faseFilter !== 'TODAS' && os.status !== faseFilter) return false;
-    return true;
-  });
+  const naoLiberadas = useMemo(
+    () => ordens
+      .filter(os => !os.liberado && matchSearch(os) && matchBacia(os) && matchResponsavel(os))
+      .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
+    [ordens, search, baciaFilter, responsavelFilter]
+  );
+
+  const liberadas = useMemo(
+    () => ordens
+      .filter(os => {
+        if (!os.liberado) return false;
+        if (!matchSearch(os)) return false;
+        if (!matchBacia(os)) return false;
+        if (!matchResponsavel(os)) return false;
+        if (faseFilter !== 'TODAS' && os.status !== faseFilter) return false;
+        return true;
+      })
+      .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
+    [ordens, search, baciaFilter, responsavelFilter, faseFilter]
+  );
 
   const countByStatus = (status: OSStatus) =>
     ordens.filter(os => os.liberado && os.status === status).length;
+
+  const daysSince = (iso?: string) => {
+    if (!iso) return 0;
+    return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+  };
 
   const OSTable = ({ data }: { data: typeof ordens }) => (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
@@ -57,29 +117,67 @@ const OrdensPage = () => {
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Trecho</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Bacia</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Comp. (m)</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">DN (m)</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Prof. Média (m)</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Executor</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Executado (m)</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell w-[160px]">%</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Responsável</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
             </tr>
           </thead>
           <tbody>
-            {data.map(os => (
-              <tr key={os.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                <td className="px-4 py-3">
-                  <Link to={`/ordens/${os.id}`} className="font-medium text-secondary hover:underline">{os.trecho}</Link>
-                </td>
-                <td className="px-4 py-3 text-foreground">{os.bacia}</td>
-                <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.comprimento_previsto}</td>
-                <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.dn}</td>
-                <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.prof_media_prevista != null ? Number(os.prof_media_prevista).toFixed(2) : '—'}</td>
-                <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.executor || '—'}</td>
-                <td className="px-4 py-3"><StatusBadge status={os.status} size="sm" /></td>
-              </tr>
-            ))}
+            {data.map(os => {
+              const executado = producaoByOs[os.id] || 0;
+              const total = Number(os.comprimento_previsto || 0);
+              const pct = total > 0 ? Math.min(100, (executado / total) * 100) : 0;
+              const since = statusSinceByOs[os.id] || os.updated_at;
+              const dias = daysSince(since);
+              const parado = dias >= 5;
+              return (
+                <tr key={os.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                  <td className="px-4 py-3">
+                    <Link to={`/ordens/${os.id}`} className="font-medium text-secondary hover:underline">{os.trecho}</Link>
+                  </td>
+                  <td className="px-4 py-3 text-foreground">{os.bacia}</td>
+                  <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.comprimento_previsto ?? '—'}</td>
+                  <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.prof_media_prevista != null ? Number(os.prof_media_prevista).toFixed(2) : '—'}</td>
+                  <td className="px-4 py-3 text-foreground hidden md:table-cell">{executado.toFixed(2).replace('.', ',')}</td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <div className="flex items-center gap-2">
+                      <span className="text-foreground tabular-nums w-10">{pct.toFixed(0)}%</span>
+                      <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden min-w-[60px]">
+                        <div
+                          className="h-full bg-primary transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.liberado_para || '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={os.status} size="sm" />
+                      {parado && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center text-amber-500" aria-label={`Parado há ${dias} dias`}>
+                                <AlertTriangle size={14} />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <span>⚠️ Parado há {dias} dias</span>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {data.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   {ordens.length === 0
                     ? 'Nenhuma OS cadastrada. Importe o Planilhão para começar.'
                     : 'Nenhuma OS encontrada com os filtros aplicados.'}
@@ -120,7 +218,7 @@ const OrdensPage = () => {
         </div>
       </div>
 
-      {/* Search + Bacia dropdown */}
+      {/* Search + Bacia + Responsável */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -134,7 +232,7 @@ const OrdensPage = () => {
         </div>
         {bacias.length > 1 && (
           <Select value={baciaFilter} onValueChange={setBaciaFilter}>
-            <SelectTrigger className="w-full sm:w-[220px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Filtrar por bacia" />
             </SelectTrigger>
             <SelectContent>
@@ -145,6 +243,17 @@ const OrdensPage = () => {
             </SelectContent>
           </Select>
         )}
+        <Select value={responsavelFilter} onValueChange={setResponsavelFilter}>
+          <SelectTrigger className="w-full sm:w-[220px]">
+            <SelectValue placeholder="Filtrar por responsável" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="TODOS">Todos os responsáveis</SelectItem>
+            {responsaveis.map(r => (
+              <SelectItem key={r} value={r}>{r}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (

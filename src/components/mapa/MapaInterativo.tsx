@@ -263,7 +263,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
 
   // Inicial + realtime
   useEffect(() => {
-    Promise.all([fetchCamadas(), fetchGroups(), fetchAsBuilt(), fetchLigacoes()]).finally(() => setLoading(false));
+    Promise.all([fetchCamadas(), fetchGroups(), fetchAsBuilt(), fetchLigacoes(), fetchAsBuiltConfig()]).finally(() => setLoading(false));
 
     const ch = supabase
       .channel('mapa-realtime')
@@ -271,6 +271,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ligacoes' }, fetchLigacoes)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_camadas' }, fetchCamadas)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'kmz_layer_groups' }, fetchGroups)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_asbuilt_config' }, fetchAsBuiltConfig)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);

@@ -277,27 +277,29 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     }
     setSavingJusante(true);
     if (jusante) {
-      const { error } = await supabase.from('topografia_asbuilt').update({
+      const { data, error } = await supabase.from('topografia_asbuilt').update({
         latitude: latVal, longitude: lngVal,
-      }).eq('id', jusante.id);
+      }).eq('id', jusante.id).select().single();
       setSavingJusante(false);
       if (error) { toast.error('Erro ao atualizar PV Jusante.'); return; }
       toast.success('PV Jusante atualizado!');
+      if (data) setPoints((prev) => prev.map((p) => p.id === data.id ? (data as AsBuiltPoint) : p));
     } else {
       // Created_at no futuro para ficar sempre por último
       const ts = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
-      const { error } = await supabase.from('topografia_asbuilt').insert({
+      const { data, error } = await supabase.from('topografia_asbuilt').insert({
         os_id: os.id,
         nome_estaca: PV_JUSANTE_TAG,
         latitude: latVal,
         longitude: lngVal,
         registrado_por: user?.id ?? null,
         created_at: ts,
-      });
+      }).select().single();
       setSavingJusante(false);
       if (error) { toast.error('Erro ao salvar PV Jusante.'); return; }
       toast.success('PV Jusante registrado!');
       setJusLat(''); setJusLng('');
+      if (data) setPoints((prev) => [...prev, data as AsBuiltPoint]);
     }
   };
 

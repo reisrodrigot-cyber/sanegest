@@ -129,6 +129,13 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   const [loading, setLoading] = useState(true);
   const [layersOpen, setLayersOpen] = useState(false);
 
+  // As-built fixed layers config
+  const [redeColor, setRedeColor] = useState(DEFAULT_REDE_COLOR);
+  const [redeOpacidade, setRedeOpacidade] = useState(0.9);
+  const [ligacoesColor, setLigacoesColor] = useState(DEFAULT_LIGACAO_COLOR);
+  const [ligacoesOpacidade, setLigacoesOpacidade] = useState(0.9);
+  const [editAsBuilt, setEditAsBuilt] = useState<null | 'rede' | 'ligacoes'>(null);
+
   // Init mapa
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;

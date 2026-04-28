@@ -63,8 +63,8 @@ const STATUS_COLORS: Record<string, string> = {
   AMARELO: '#ca8a04', VERDE: '#16a34a',
 };
 
-const REDE_COLOR = '#16a34a';
-const LIGACAO_COLOR = '#2563eb';
+const DEFAULT_REDE_COLOR = '#16a34a';
+const DEFAULT_LIGACAO_COLOR = '#2563eb';
 const DEFAULT_CENTER: [number, number] = [-9.1167, -35.2667];
 const DEFAULT_ZOOM = 13;
 

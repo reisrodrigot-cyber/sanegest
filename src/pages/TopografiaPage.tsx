@@ -481,7 +481,9 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 onLat={setJusLat}
                 onLng={setJusLng}
                 onSave={saveJusante}
+                onDelete={() => jusante && deletePV(jusante, 'PV Jusante')}
                 saving={savingJusante}
+                canEdit={canEdit}
               />
 
               {!isConcluded && !allowEditAll && podeConcluir && (

@@ -11,6 +11,7 @@ import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRi
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
+import { AsBuiltConfigModal } from './AsBuiltConfigModal';
 import 'leaflet/dist/leaflet.css';
 
 interface Camada {

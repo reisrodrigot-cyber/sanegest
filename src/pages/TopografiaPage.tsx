@@ -566,7 +566,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
         </div>
 
         <div className="rounded-xl border border-border overflow-hidden" style={{ minHeight: 300 }}>
-          <MiniMap points={orderedForMap} />
+          <MiniMap points={orderedForMap} ligacoes={ligacoesPlot} />
         </div>
       </div>
 

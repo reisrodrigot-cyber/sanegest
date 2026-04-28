@@ -344,7 +344,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
         </div>`);
       square.addTo(layer);
     });
-  }, [ligacoesPoints, visivel.__ligacoes]);
+  }, [ligacoesPoints, visivel.__ligacoes, ligacoesColor, ligacoesOpacidade]);
 
   // ======= Render KMZ camadas (custom: fetch+JSZip+togeojson) =======
   useEffect(() => {

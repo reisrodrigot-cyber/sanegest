@@ -210,6 +210,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const [savingInter, setSavingInter] = useState(false);
   const [concluding, setConcluding] = useState(false);
   const [ligacoesPendentes, setLigacoesPendentes] = useState(0);
+  const [ligacoesPlot, setLigacoesPlot] = useState<LigacaoPoint[]>([]);
 
   // Inputs PV Montante
   const [montLat, setMontLat] = useState('');
@@ -234,10 +235,21 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const fetchLigacoesStatus = useCallback(async () => {
     const { data } = await supabase
       .from('ligacoes')
-      .select('id, latitude')
-      .eq('os_id', os.id);
+      .select('id, latitude, longitude, comprimento, created_at')
+      .eq('os_id', os.id)
+      .order('created_at', { ascending: true });
     const rows = data ?? [];
     setLigacoesPendentes(rows.filter((r) => r.latitude == null).length);
+    const plot: LigacaoPoint[] = rows
+      .map((r, idx) => ({
+        id: r.id as string,
+        numero: idx + 1,
+        latitude: r.latitude as number,
+        longitude: r.longitude as number,
+        comprimento: r.comprimento != null ? Number(r.comprimento) : null,
+      }))
+      .filter((r) => r.latitude != null && r.longitude != null);
+    setLigacoesPlot(plot);
   }, [os.id]);
 
   useEffect(() => {

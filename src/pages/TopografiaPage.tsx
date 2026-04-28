@@ -442,7 +442,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                         </div>
                         {canEdit && (
                           <button
-                            onClick={() => deletePoint(p.id)}
+                            onClick={() => confirmDeleteIntermediario(p.id)}
                             className="text-destructive hover:text-destructive/80 p-1 shrink-0"
                             title="Excluir"
                           >

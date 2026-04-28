@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
 import { AsBuiltConfigModal } from './AsBuiltConfigModal';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet-polylinedecorator';
 
 interface Camada {
   id: string;
@@ -311,13 +312,27 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
           <p style="margin:2px 0">Status: <span style="color:${STATUS_COLORS[first.status]};font-weight:600">${first.status}</span></p>
         </div>`;
 
-      // Polyline conectando os vértices
+      // Polyline conectando os vértices (Montante → Jusante)
       if (latlngs.length >= 2) {
         const line = L.polyline(latlngs, {
           color: redeColor, weight: 4, opacity: redeOpacidade,
         });
         line.bindPopup(popupHtml);
         line.addTo(layer);
+        // Setas de direcionamento do fluxo (gravidade: montante → jusante)
+        // @ts-ignore - plugin polylineDecorator
+        L.polylineDecorator(line, {
+          patterns: [{
+            offset: 25,
+            repeat: 60,
+            // @ts-ignore
+            symbol: L.Symbol.arrowHead({
+              pixelSize: 10,
+              polygon: false,
+              pathOptions: { stroke: true, color: redeColor, weight: 2.5, opacity: redeOpacidade },
+            }),
+          }],
+        }).addTo(layer);
       }
 
       // Marcadores pequenos nos vértices

@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet-polylinedecorator';
 import { LigacoesPanel } from '@/components/topografia/LigacoesPanel';
 import { OSDetalhesTrecho } from '@/components/OSDetalhesTrecho';
 
@@ -36,7 +37,7 @@ const DEFAULT_CENTER: [number, number] = [-9.1167, -35.2667];
 const REDE_COLOR = '#16a34a';
 const LIGACAO_COLOR = '#064e3b'; // verde escuro
 
-const MiniMap = ({ points, ligacoes }: { points: AsBuiltPoint[]; ligacoes: LigacaoPoint[] }) => {
+const MiniMap = ({ points, ligacoes = [] }: { points: AsBuiltPoint[]; ligacoes?: LigacaoPoint[] }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -60,10 +61,24 @@ const MiniMap = ({ points, ligacoes }: { points: AsBuiltPoint[]; ligacoes: Ligac
     const valid = points.filter(p => p.latitude != null && p.longitude != null);
     const latlngs: [number, number][] = valid.map(p => [p.latitude!, p.longitude!]);
 
-    // Polyline conectando os pontos na ordem
+    // Polyline conectando os pontos na ordem (Montante → Jusante)
     if (latlngs.length >= 2) {
-      L.polyline(latlngs, {
+      const line = L.polyline(latlngs, {
         color: REDE_COLOR, weight: 4, opacity: 0.85,
+      }).addTo(layer);
+      // Setas de direcionamento (sentido do fluxo: montante → jusante)
+      // @ts-ignore - plugin polylineDecorator
+      L.polylineDecorator(line, {
+        patterns: [{
+          offset: 25,
+          repeat: 60,
+          // @ts-ignore
+          symbol: L.Symbol.arrowHead({
+            pixelSize: 10,
+            polygon: false,
+            pathOptions: { stroke: true, color: REDE_COLOR, weight: 2.5, opacity: 0.95 },
+          }),
+        }],
       }).addTo(layer);
     }
 

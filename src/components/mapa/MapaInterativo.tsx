@@ -178,6 +178,22 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
     if (data) setGroups(data as LayerGroup[]);
   };
 
+  const fetchAsBuiltConfig = async () => {
+    const { data } = await supabase
+      .from('mapa_asbuilt_config')
+      .select('layer_key, cor, opacidade');
+    if (!data) return;
+    for (const row of data) {
+      if (row.layer_key === 'rede') {
+        setRedeColor(row.cor);
+        setRedeOpacidade(Number(row.opacidade));
+      } else if (row.layer_key === 'ligacoes') {
+        setLigacoesColor(row.cor);
+        setLigacoesOpacidade(Number(row.opacidade));
+      }
+    }
+  };
+
   const fetchAsBuilt = async () => {
     const { data: ab } = await supabase
       .from('topografia_asbuilt')

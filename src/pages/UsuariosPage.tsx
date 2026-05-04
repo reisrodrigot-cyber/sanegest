@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import { Loader2, Shield, Users, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 
 interface UserRow {
   user_id: string;
@@ -17,15 +16,12 @@ interface UserRow {
 
 const ALL_ROLES: UserRole[] = ['admin', 'sala_tecnica', 'encarregado', 'almoxarifado', 'topografo', 'gerencia'];
 
-const TEST_EMAILS_TO_DELETE = Array.from({ length: 9 }, (_, i) => `encarregado${i + 2}@sanegest.com`);
-
 const UsuariosPage = () => {
   const { user } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -118,46 +114,18 @@ const UsuariosPage = () => {
     setDeleting(null);
   };
 
-  const handleBulkDeleteTestAccounts = async () => {
-    if (!confirm(`Excluir DEFINITIVAMENTE as contas de teste (${TEST_EMAILS_TO_DELETE.join(', ')})? Esta ação não pode ser desfeita.`)) return;
-    setBulkDeleting(true);
-    const { data, error } = await supabase.functions.invoke('delete-user', {
-      body: { emails: TEST_EMAILS_TO_DELETE },
-    });
-    if (error) {
-      toast.error('Erro: ' + error.message);
-    } else {
-      const results = (data as any)?.results ?? [];
-      const ok = results.filter((r: any) => r.ok).length;
-      toast.success(`${ok} conta(s) excluída(s) de ${results.length}.`);
-      fetchUsers();
-    }
-    setBulkDeleting(false);
-  };
-
   if (user?.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Users size={24} className="text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Gestão de Usuários</h1>
-            <p className="text-sm text-muted-foreground">Atribua ou altere perfis dos usuários cadastrados</p>
-          </div>
+      <div className="flex items-center gap-3 mb-6">
+        <Users size={24} className="text-primary" />
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Gestão de Usuários</h1>
+          <p className="text-sm text-muted-foreground">Atribua ou altere perfis dos usuários cadastrados</p>
         </div>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={handleBulkDeleteTestAccounts}
-          disabled={bulkDeleting}
-        >
-          {bulkDeleting ? <Loader2 className="animate-spin mr-2" size={14} /> : <Trash2 size={14} className="mr-2" />}
-          Excluir contas de teste (encarregado2..10)
-        </Button>
       </div>
 
       {loading ? (

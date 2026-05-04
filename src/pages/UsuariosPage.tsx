@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import { Loader2, Shield, Users, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 
 interface UserRow {
   user_id: string;
@@ -17,15 +16,12 @@ interface UserRow {
 
 const ALL_ROLES: UserRole[] = ['admin', 'sala_tecnica', 'encarregado', 'almoxarifado', 'topografo', 'gerencia'];
 
-const TEST_EMAILS_TO_DELETE = Array.from({ length: 9 }, (_, i) => `encarregado${i + 2}@sanegest.com`);
-
 const UsuariosPage = () => {
   const { user } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);

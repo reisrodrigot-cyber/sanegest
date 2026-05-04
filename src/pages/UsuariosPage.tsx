@@ -127,7 +127,6 @@ const UsuariosPage = () => {
           <p className="text-sm text-muted-foreground">Atribua ou altere perfis dos usuários cadastrados</p>
         </div>
       </div>
-      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

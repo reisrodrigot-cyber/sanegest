@@ -1,4 +1,5 @@
 import { OrdemServico } from '@/types/sanegest';
+import { formatDN } from '@/lib/format';
 
 function fmt(val: unknown): string {
   if (val == null) return '—';

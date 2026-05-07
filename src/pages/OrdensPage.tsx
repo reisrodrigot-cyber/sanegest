@@ -145,10 +145,27 @@ const OrdensPage = () => {
     };
 
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('PLANILHÃO', { views: [{ state: 'normal', zoomScale: 70 }] });
+    const ws = wb.addWorksheet('PLANILHÃO', {
+      views: [{ state: 'normal', zoomScale: 70, showGridLines: false }],
+    });
 
     // Column widths
     Object.entries(widths).forEach(([col, w]) => { ws.getColumn(col).width = w; });
+
+    // Row heights
+    const rowHeights: Record<number, number> = {
+      2: 18.0, 3: 16.15, 4: 16.9, 5: 13.5, 6: 13.5, 7: 12.75, 8: 12.75,
+      9: 13.9, 10: 13.9, 11: 13.9, 12: 13.9, 13: 13.9, 14: 13.9,
+      16: 16.15, 17: 15.75, 18: 12.0, 19: 12.75, 20: 12.0, 21: 22.5,
+    };
+    Object.entries(rowHeights).forEach(([r, h]) => { ws.getRow(Number(r)).height = h; });
+
+    const thinBorder = {
+      top: { style: 'thin' as const },
+      bottom: { style: 'thin' as const },
+      left: { style: 'thin' as const },
+      right: { style: 'thin' as const },
+    };
 
     // Title row 17 (B17:AB17)
     ws.mergeCells('B17:AB17');
@@ -157,6 +174,11 @@ const OrdensPage = () => {
     title.font = { name: 'Arial', size: 10, bold: true };
     title.alignment = { horizontal: 'center', vertical: 'middle' };
     title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF99CCFF' } };
+    title.border = thinBorder;
+    // Apply borders to all merged title cells
+    for (let i = 0; i < 27; i++) {
+      ws.getCell(`${(() => { const n = i + 2; let s = ''; let x = n; while (x > 0) { const r = (x - 1) % 26; s = String.fromCharCode(65 + r) + s; x = Math.floor((x - 1) / 26); } return s; })()}17`).border = thinBorder;
+    }
 
     const colLetter = (i: number) => {
       // i=0 -> B, i=26 -> AB
@@ -177,21 +199,24 @@ const OrdensPage = () => {
       cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
       const fill = colorByIdx[i];
       if (fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
-      cell.border = {
-        top: { style: 'thin' }, bottom: { style: 'thin' },
-        left: { style: 'thin' }, right: { style: 'thin' },
-      };
+      cell.border = thinBorder;
+      ws.getCell(`${letter}19`).border = thinBorder;
 
       const sub = ws.getCell(`${letter}21`);
       sub.value = subHeaders[i];
       sub.font = { name: 'Arial', size: 8, italic: true };
       sub.alignment = { horizontal: 'center', vertical: 'middle' };
+      sub.border = thinBorder;
     });
+
+    // AutoFilter on row 21
+    ws.autoFilter = 'B21:AB21';
 
     // Data rows starting at row 22
     const sortedOrdens = [...ordens].sort((a, b) => naturalCompare(a.trecho, b.trecho));
     sortedOrdens.forEach((os, idx) => {
       const r = 22 + idx;
+      ws.getRow(r).height = 12.0;
       const values = [
         os.trecho, os.bacia, os.pv_montante, os.pv_jusante,
         os.comprimento_previsto, os.comprimento_real, os.largura_vala,
@@ -207,6 +232,7 @@ const OrdensPage = () => {
         cell.value = v as any;
         cell.font = { name: 'Arial', size: 10 };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = thinBorder;
       });
     });
 

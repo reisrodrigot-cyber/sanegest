@@ -4,7 +4,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { Link } from 'react-router-dom';
 import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -109,33 +109,115 @@ const OrdensPage = () => {
     return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const headers = [
-      'Item','Trecho','Bacia','PV Montante','PV Jusante',
-      'Comprimento Previsto (m)','Comprimento Real (m)','Largura Vala (m)',
-      'Prof. Média Executada (m)','Prof. Média Prevista (m)','Prof. Média Real (m)',
-      'DN','Prof. Montante (m)','Prof. Jusante (m)',
-      'Pavimento Previsto','Pavimento Real','Largura PAV Prevista (m)','Largura PAV Real (m)',
-      'PAV Previsto (m²)','PAV Real (m²)','Areia','Brita',
-      'Ligações Previstas','Ligações Real','Bomba Rebaixo',
-      'Prazo Previsto','Prazo Arredondado','BMs','Status',
+      'Trecho','BACIA','PV de Montante','PV de Jusante',
+      'Comprimento (m)','Comprimento REAL (m)','Largura de Vala',
+      'Prof. Média EXECUTADA  (m)','Prof. Média  (m)','Prof. Média REAL  (m)',
+      'DN (m)','Prof. Mont.  (m)','Prof. Jus.  (m)',
+      'PAV','PAV REAL','LARG. PAV.','LARG. PAV REAL','PAV. M2','PAV. REAL(M2)',
+      'AREIA','BRITA','Previsão de ligação por TR',' ligação por TR REAL',
+      'Bomba de Rebaixo','PRAZO               (dias)','PRAZO               (dias arrend)',"BM'S",
     ];
+    const subHeaders = [
+      'trecho','bacia','pv_montante','pv_jusante',
+      'comprimento_previsto','comprimento_real','largura_vala',
+      'prof_media_executada','prof_media_prevista','prof_media_real',
+      'dn','prof_montante','prof_jusante',
+      'pav_previsto','pav_real','largura_pav_prevista','largura_pav_real',
+      'pav_m2_previsto','pav_m2_real','areia','brita',
+      'ligacoes_previstas','ligacoes_real','bomba_rebaixo',
+      'prazo_previsto','prazo_arredondado','bms',
+    ];
+    // Color per column index (0=B ... 26=AB)
+    const YELLOW = 'FFFFFF00', LBLUE = 'FF99CCFF', LYELLOW = 'FFFFFFCC';
+    const colorByIdx: (string | null)[] = [
+      YELLOW,YELLOW,YELLOW,YELLOW,YELLOW,null,YELLOW,    // B-H
+      LBLUE,LBLUE,null,LYELLOW,YELLOW,YELLOW,            // I-N
+      null,null,null,null,null,null,                      // O-T
+      LYELLOW,LYELLOW,LYELLOW,null,LYELLOW,              // U-Y
+      LBLUE,LBLUE,LBLUE,                                  // Z,AA,AB
+    ];
+    const widths: Record<string, number> = {
+      A:4, B:13.71, C:14.71, D:16.86, E:10.29, F:11.14, H:8.43, I:14.43, J:10.43,
+      L:6.43, M:10.29, N:10.71, O:11, P:12.14, Q:7, R:7.71, T:9.14, U:8.86,
+      V:7.86, W:9, Y:7.71, AA:8.29, AB:6.14,
+    };
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('PLANILHÃO', { views: [{ state: 'normal', zoomScale: 70 }] });
+
+    // Column widths
+    Object.entries(widths).forEach(([col, w]) => { ws.getColumn(col).width = w; });
+
+    // Title row 17 (B17:AB17)
+    ws.mergeCells('B17:AB17');
+    const title = ws.getCell('B17');
+    title.value = 'Dados de Entrada';
+    title.font = { name: 'Arial', size: 10, bold: true };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF99CCFF' } };
+
+    const colLetter = (i: number) => {
+      // i=0 -> B, i=26 -> AB
+      const n = i + 2; // column number (1-based); B=2
+      let s = '';
+      let x = n;
+      while (x > 0) { const r = (x - 1) % 26; s = String.fromCharCode(65 + r) + s; x = Math.floor((x - 1) / 26); }
+      return s;
+    };
+
+    // Headers row 18 (merged with row 19) + sub-headers row 21
+    headers.forEach((h, i) => {
+      const letter = colLetter(i);
+      ws.mergeCells(`${letter}18:${letter}19`);
+      const cell = ws.getCell(`${letter}18`);
+      cell.value = h;
+      cell.font = { name: 'Arial', size: 10, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      const fill = colorByIdx[i];
+      if (fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+      cell.border = {
+        top: { style: 'thin' }, bottom: { style: 'thin' },
+        left: { style: 'thin' }, right: { style: 'thin' },
+      };
+
+      const sub = ws.getCell(`${letter}21`);
+      sub.value = subHeaders[i];
+      sub.font = { name: 'Arial', size: 8, italic: true };
+      sub.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    // Data rows starting at row 22
     const sortedOrdens = [...ordens].sort((a, b) => naturalCompare(a.trecho, b.trecho));
-    const rows = sortedOrdens.map((os, i) => [
-      i + 1, os.trecho, os.bacia, os.pv_montante, os.pv_jusante,
-      os.comprimento_previsto, os.comprimento_real, os.largura_vala,
-      os.prof_media_executada, os.prof_media_prevista, os.prof_media_real,
-      os.dn, os.prof_montante, os.prof_jusante,
-      os.pav_previsto, os.pav_real, os.largura_pav_prevista, os.largura_pav_real,
-      os.pav_m2_previsto, os.pav_m2_real, os.areia, os.brita,
-      os.ligacoes_previstas, os.ligacoes_real, os.bomba_rebaixo ? 'SIM' : 'NÃO',
-      os.prazo_previsto, os.prazo_arredondado, os.bms, os.status,
-    ]);
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'PLANILHÃO');
-    const today = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `Planilhao_${today}.xlsx`);
+    sortedOrdens.forEach((os, idx) => {
+      const r = 22 + idx;
+      const values = [
+        os.trecho, os.bacia, os.pv_montante, os.pv_jusante,
+        os.comprimento_previsto, os.comprimento_real, os.largura_vala,
+        os.prof_media_executada, os.prof_media_prevista, os.prof_media_real,
+        os.dn, os.prof_montante, os.prof_jusante,
+        os.pav_previsto, os.pav_real, os.largura_pav_prevista, os.largura_pav_real,
+        os.pav_m2_previsto, os.pav_m2_real, os.areia, os.brita,
+        os.ligacoes_previstas, os.ligacoes_real, os.bomba_rebaixo ? 'SIM' : 'NÃO',
+        os.prazo_previsto, os.prazo_arredondado, os.bms,
+      ];
+      values.forEach((v, i) => {
+        const cell = ws.getCell(`${colLetter(i)}${r}`);
+        cell.value = v as any;
+        cell.font = { name: 'Arial', size: 10 };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Planilhao_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const OSTable = ({ data }: { data: typeof ordens }) => (

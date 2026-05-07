@@ -154,9 +154,7 @@ const OrdensPage = () => {
 
     // Row heights
     const rowHeights: Record<number, number> = {
-      2: 18.0, 3: 16.15, 4: 16.9, 5: 13.5, 6: 13.5, 7: 12.75, 8: 12.75,
-      9: 13.9, 10: 13.9, 11: 13.9, 12: 13.9, 13: 13.9, 14: 13.9,
-      16: 16.15, 17: 15.75, 18: 12.0, 19: 12.75, 20: 12.0, 21: 22.5,
+      17: 15.75, 18: 12.0, 19: 12.75, 20: 12.0, 21: 22.5,
     };
     Object.entries(rowHeights).forEach(([r, h]) => { ws.getRow(Number(r)).height = h; });
 

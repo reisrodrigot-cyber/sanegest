@@ -1,0 +1,1 @@
+ALTER TABLE public.registros_producao ADD COLUMN IF NOT EXISTS tipo_pavimento text;

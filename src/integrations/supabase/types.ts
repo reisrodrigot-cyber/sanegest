@@ -544,6 +544,7 @@ export type Database = {
           ligacoes_dia: number
           observacao: string | null
           os_id: string
+          tipo_pavimento: string | null
           updated_at: string
           user_id: string
         }
@@ -555,6 +556,7 @@ export type Database = {
           ligacoes_dia?: number
           observacao?: string | null
           os_id: string
+          tipo_pavimento?: string | null
           updated_at?: string
           user_id: string
         }
@@ -566,6 +568,7 @@ export type Database = {
           ligacoes_dia?: number
           observacao?: string | null
           os_id?: string
+          tipo_pavimento?: string | null
           updated_at?: string
           user_id?: string
         }

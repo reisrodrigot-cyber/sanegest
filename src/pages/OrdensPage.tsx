@@ -200,14 +200,24 @@ const OrdensPage = () => {
         </div>
         <div className="flex items-center gap-2">
           {canImport && (
-            <Link
-              to="/importar"
-              className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium text-sm hover:bg-muted transition-colors"
-              title="Importar Planilhão"
-            >
-              <FileSpreadsheet size={16} />
-              <span className="hidden sm:inline">Importar Planilhão</span>
-            </Link>
+            <>
+              <button
+                onClick={handleExport}
+                className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium text-sm hover:bg-muted transition-colors"
+                title="Exportar Planilhão"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">Exportar Planilhão</span>
+              </button>
+              <Link
+                to="/importar"
+                className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium text-sm hover:bg-muted transition-colors"
+                title="Importar Planilhão"
+              >
+                <FileSpreadsheet size={16} />
+                <span className="hidden sm:inline">Importar Planilhão</span>
+              </Link>
+            </>
           )}
           <Link
             to="/ordens/nova"

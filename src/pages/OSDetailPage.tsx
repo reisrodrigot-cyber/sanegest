@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { permissions } from '@/lib/permissions';
+import { formatDN } from '@/lib/format';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertDialog,
@@ -852,7 +853,7 @@ const OSDetailPage = () => {
               </div>
               <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
               <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
-              <DataRow label="DN (m)" previsto={os.dn} real={os.dn_real} />
+              <DataRow label="DN" previsto={formatDN(os.dn)} real={os.dn_real != null ? formatDN(os.dn_real) : null} />
               <DataRow label="Largura Vala (m)" previsto={os.largura_vala} real={os.largura_vala_real} />
               <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} real={os.prof_montante_real} />
               <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} real={os.prof_jusante_real} />

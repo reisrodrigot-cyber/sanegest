@@ -3,7 +3,8 @@ import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -108,6 +109,35 @@ const OrdensPage = () => {
     return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
   };
 
+  const handleExport = () => {
+    const headers = [
+      'Item','Trecho','Bacia','PV Montante','PV Jusante',
+      'Comprimento Previsto (m)','Comprimento Real (m)','Largura Vala (m)',
+      'Prof. Média Executada (m)','Prof. Média Prevista (m)','Prof. Média Real (m)',
+      'DN','Prof. Montante (m)','Prof. Jusante (m)',
+      'Pavimento Previsto','Pavimento Real','Largura PAV Prevista (m)','Largura PAV Real (m)',
+      'PAV Previsto (m²)','PAV Real (m²)','Areia','Brita',
+      'Ligações Previstas','Ligações Real','Bomba Rebaixo',
+      'Prazo Previsto','Prazo Arredondado','BMs','Status',
+    ];
+    const sortedOrdens = [...ordens].sort((a, b) => naturalCompare(a.trecho, b.trecho));
+    const rows = sortedOrdens.map((os, i) => [
+      i + 1, os.trecho, os.bacia, os.pv_montante, os.pv_jusante,
+      os.comprimento_previsto, os.comprimento_real, os.largura_vala,
+      os.prof_media_executada, os.prof_media_prevista, os.prof_media_real,
+      os.dn, os.prof_montante, os.prof_jusante,
+      os.pav_previsto, os.pav_real, os.largura_pav_prevista, os.largura_pav_real,
+      os.pav_m2_previsto, os.pav_m2_real, os.areia, os.brita,
+      os.ligacoes_previstas, os.ligacoes_real, os.bomba_rebaixo ? 'SIM' : 'NÃO',
+      os.prazo_previsto, os.prazo_arredondado, os.bms, os.status,
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'PLANILHÃO');
+    const today = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `Planilhao_${today}.xlsx`);
+  };
+
   const OSTable = ({ data }: { data: typeof ordens }) => (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -199,14 +229,24 @@ const OrdensPage = () => {
         </div>
         <div className="flex items-center gap-2">
           {canImport && (
-            <Link
-              to="/importar"
-              className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium text-sm hover:bg-muted transition-colors"
-              title="Importar Planilhão"
-            >
-              <FileSpreadsheet size={16} />
-              <span className="hidden sm:inline">Importar Planilhão</span>
-            </Link>
+            <>
+              <button
+                onClick={handleExport}
+                className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium text-sm hover:bg-muted transition-colors"
+                title="Exportar Planilhão"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">Exportar Planilhão</span>
+              </button>
+              <Link
+                to="/importar"
+                className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium text-sm hover:bg-muted transition-colors"
+                title="Importar Planilhão"
+              >
+                <FileSpreadsheet size={16} />
+                <span className="hidden sm:inline">Importar Planilhão</span>
+              </Link>
+            </>
           )}
           <Link
             to="/ordens/nova"

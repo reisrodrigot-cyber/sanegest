@@ -3,12 +3,20 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
-import { Loader2, Save, MapPin, Eye } from 'lucide-react';
+import { Loader2, Save, MapPin, Eye, Pencil, X, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OrdemServico } from '@/types/sanegest';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { formatDN } from '@/lib/format';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -17,11 +25,22 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
+const PAV_OPTIONS = [
+  'Solo Natural',
+  'Asfalto',
+  'Paralelepípedo',
+  'Solo Natural / Asfalto',
+  'Solo Natural / Paralelepípedo',
+  'Asfalto / Paralelepípedo',
+  'Solo Natural / Asfalto / Paralelepípedo',
+];
+
 interface RegistroDia {
   id: string;
   data_registro: string;
   comprimento_dia: number;
   ligacoes_dia: number;
+  tipo_pavimento: string | null;
 }
 
 interface LigacaoRow {
@@ -32,6 +51,7 @@ interface LigacaoRow {
   longitude: number | null;
   data_topografia: string | null;
   registro_producao_id: string | null;
+  encarregado_id: string;
   created_at: string;
 }
 
@@ -56,31 +76,38 @@ const ReadField = ({ label, value }: { label: string; value: unknown }) => (
 
 const OSPanel = ({ os }: { os: OrdemServico }) => {
   const { user, effectiveUser } = useAuth();
+  const isEncarregado = effectiveUser?.role === 'encarregado';
   const [registros, setRegistros] = useState<RegistroDia[]>([]);
   const [ligacoesAll, setLigacoesAll] = useState<LigacaoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [comprimento, setComprimento] = useState('');
   const [numLigacoes, setNumLigacoes] = useState('');
+  const [tipoPavimento, setTipoPavimento] = useState<string>('');
   const [ligacoes, setLigacoes] = useState<LigacaoNova[]>([]);
   const [saving, setSaving] = useState(false);
   const [popupRegistroId, setPopupRegistroId] = useState<string | null>(null);
   const [popupAcumOpen, setPopupAcumOpen] = useState(false);
 
-  // For data filters: respect "view as user" simulation
-  // For writes: always use real `user` (RLS enforces it)
+  // Inline edit state for ligações no modal
+  const [editingLigId, setEditingLigId] = useState<string | null>(null);
+  const [editLig, setEditLig] = useState<{ comprimento: string; referencia: string; latitude: string; longitude: string }>({
+    comprimento: '', referencia: '', latitude: '', longitude: '',
+  });
+  const [savingLig, setSavingLig] = useState(false);
+
   const filterUserId = effectiveUser?.id ?? user?.id ?? '';
 
   const fetchRegistros = useCallback(async () => {
     const [regRes, ligRes] = await Promise.all([
       supabase
         .from('registros_producao')
-        .select('id, data_registro, comprimento_dia, ligacoes_dia')
+        .select('id, data_registro, comprimento_dia, ligacoes_dia, tipo_pavimento')
         .eq('os_id', os.id)
         .eq('user_id', filterUserId)
         .order('data_registro', { ascending: false }),
       supabase
         .from('ligacoes')
-        .select('id, comprimento, referencia, latitude, longitude, data_topografia, registro_producao_id, created_at')
+        .select('id, comprimento, referencia, latitude, longitude, data_topografia, registro_producao_id, encarregado_id, created_at')
         .eq('os_id', os.id)
         .eq('encarregado_id', filterUserId)
         .order('created_at', { ascending: true }),
@@ -94,7 +121,6 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
     fetchRegistros();
   }, [fetchRegistros]);
 
-  // Update ligacoes array when count changes
   useEffect(() => {
     const n = parseInt(numLigacoes) || 0;
     setLigacoes((prev) => {
@@ -119,6 +145,10 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       toast.error('Informe comprimento ou ligações.');
       return;
     }
+    if (!tipoPavimento) {
+      toast.error('Selecione o Tipo de Pavimento.');
+      return;
+    }
     if (!user) return;
     setSaving(true);
 
@@ -129,7 +159,8 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         user_id: user.id,
         comprimento_dia: compNum,
         ligacoes_dia: ligNum,
-      })
+        tipo_pavimento: tipoPavimento,
+      } as any)
       .select('id')
       .single();
 
@@ -153,20 +184,49 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       }
     }
 
-    // Atualiza acumulado na OS
     const novoAcumComp = acumComprimento + compNum;
     const novoAcumLig = acumLigacoes + ligNum;
     await supabase
       .from('ordens_servico')
-      .update({ comprimento_real: novoAcumComp, ligacoes_real: novoAcumLig })
+      .update({ comprimento_real: novoAcumComp, ligacoes_real: novoAcumLig, pav_real: tipoPavimento })
       .eq('id', os.id);
 
     toast.success('Produção do dia registrada!');
     setComprimento('');
     setNumLigacoes('');
+    setTipoPavimento('');
     setLigacoes([]);
     fetchRegistros();
     setSaving(false);
+  };
+
+  const startEditLig = (l: LigacaoRow) => {
+    setEditingLigId(l.id);
+    setEditLig({
+      comprimento: l.comprimento != null ? String(l.comprimento) : '',
+      referencia: l.referencia ?? '',
+      latitude: l.latitude != null ? String(l.latitude) : '',
+      longitude: l.longitude != null ? String(l.longitude) : '',
+    });
+  };
+
+  const saveEditLig = async (id: string) => {
+    setSavingLig(true);
+    const update: any = {
+      comprimento: editLig.comprimento ? Number(editLig.comprimento) : null,
+      referencia: editLig.referencia.trim() || null,
+      latitude: editLig.latitude ? Number(editLig.latitude) : null,
+      longitude: editLig.longitude ? Number(editLig.longitude) : null,
+    };
+    const { error } = await supabase.from('ligacoes').update(update).eq('id', id);
+    if (error) {
+      toast.error('Erro ao salvar: ' + error.message);
+    } else {
+      toast.success('Ligação atualizada!');
+      setEditingLigId(null);
+      await fetchRegistros();
+    }
+    setSavingLig(false);
   };
 
   return (
@@ -176,11 +236,11 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         <h3 className="text-sm font-semibold text-foreground mb-2">Dados da OS</h3>
         <div className="grid md:grid-cols-2 gap-x-6">
           <ReadField label="Comprimento (m)" value={os.comprimento_previsto} />
-          <ReadField label="DN (m)" value={os.dn} />
+          <ReadField label="DN" value={formatDN(os.dn)} />
           <ReadField label="Prof. Média (m)" value={os.prof_media_prevista} />
           <ReadField label="Prof. Montante (m)" value={os.prof_montante} />
           <ReadField label="Prof. Jusante (m)" value={os.prof_jusante} />
-          <ReadField label="Largura Vala (m)" value={os.largura_vala} />
+          {!isEncarregado && <ReadField label="Largura Vala (m)" value={os.largura_vala} />}
           <ReadField label="Pavimento" value={os.pav_previsto} />
           <ReadField label="Ligações previstas" value={os.ligacoes_previstas} />
         </div>
@@ -232,6 +292,19 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
               placeholder="0"
             />
           </div>
+          <div className="md:col-span-2">
+            <label className="text-xs text-muted-foreground">Tipo de Pavimento *</label>
+            <Select value={tipoPavimento} onValueChange={setTipoPavimento}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo de pavimento" />
+              </SelectTrigger>
+              <SelectContent>
+                {PAV_OPTIONS.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {ligacoes.length > 0 && (
@@ -279,6 +352,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
                 <th className="py-1 font-medium">Data</th>
                 <th className="py-1 font-medium text-right">Comp. (m)</th>
                 <th className="py-1 font-medium text-right">Ligações</th>
+                <th className="py-1 font-medium">Pavimento</th>
                 <th className="py-1 font-medium text-right w-12"></th>
               </tr>
             </thead>
@@ -290,6 +364,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
                   </td>
                   <td className="py-1 text-right text-foreground">{Number(r.comprimento_dia).toFixed(2)}</td>
                   <td className="py-1 text-right text-foreground">{r.ligacoes_dia}</td>
+                  <td className="py-1 text-foreground text-xs">{r.tipo_pavimento || '—'}</td>
                   <td className="py-1 text-right">
                     {r.ligacoes_dia > 0 && (
                       <button
@@ -310,7 +385,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       </div>
 
       {/* Popup: ligações de um registro específico */}
-      <Dialog open={!!popupRegistroId} onOpenChange={(o) => !o && setPopupRegistroId(null)}>
+      <Dialog open={!!popupRegistroId} onOpenChange={(o) => { if (!o) { setPopupRegistroId(null); setEditingLigId(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Ligações do registro</DialogTitle>
@@ -331,9 +406,60 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
               }
               return ligs.map((l, i) => {
                 const temCoord = l.latitude != null && l.longitude != null;
+                const isEditing = editingLigId === l.id;
+                const canEdit = isEncarregado && l.encarregado_id === user?.id;
+                if (isEditing) {
+                  return (
+                    <div key={l.id} className="bg-muted/40 rounded-lg p-3 text-sm space-y-2">
+                      <p className="font-semibold text-foreground">Ligação {i + 1}</p>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Comprimento (m)</label>
+                        <Input type="number" step="any" value={editLig.comprimento}
+                          onChange={(e) => setEditLig((p) => ({ ...p, comprimento: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Referência</label>
+                        <Input value={editLig.referencia}
+                          onChange={(e) => setEditLig((p) => ({ ...p, referencia: e.target.value }))} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground">Latitude</label>
+                          <Input type="number" step="any" value={editLig.latitude}
+                            onChange={(e) => setEditLig((p) => ({ ...p, latitude: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Longitude</label>
+                          <Input type="number" step="any" value={editLig.longitude}
+                            onChange={(e) => setEditLig((p) => ({ ...p, longitude: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end pt-1">
+                        <Button size="sm" variant="outline" onClick={() => setEditingLigId(null)} disabled={savingLig}>
+                          <X size={14} className="mr-1" /> Cancelar
+                        </Button>
+                        <Button size="sm" onClick={() => saveEditLig(l.id)} disabled={savingLig}>
+                          {savingLig ? <Loader2 className="animate-spin mr-1" size={14} /> : <Check size={14} className="mr-1" />}
+                          Salvar
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div key={l.id} className="bg-muted/40 rounded-lg p-3 text-sm">
-                    <p className="font-semibold text-foreground mb-1">Ligação {i + 1}</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-semibold text-foreground">Ligação {i + 1}</p>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => startEditLig(l)}
+                          className="text-secondary hover:text-secondary/80 inline-flex items-center gap-1 text-xs"
+                        >
+                          <Pencil size={12} /> Editar
+                        </button>
+                      )}
+                    </div>
                     <p className="text-muted-foreground">
                       <span className="text-foreground">Comprimento:</span>{' '}
                       {l.comprimento != null ? `${Number(l.comprimento).toFixed(2)} m` : '—'}
@@ -372,7 +498,6 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           </DialogHeader>
           <div className="space-y-4 max-h-[65vh] overflow-y-auto">
             {(() => {
-              // Agrupar por data do registro de produção
               const regById = new Map(registros.map((r) => [r.id, r.data_registro]));
               const groups = new Map<string, LigacaoRow[]>();
               ligacoesAll.forEach((l) => {

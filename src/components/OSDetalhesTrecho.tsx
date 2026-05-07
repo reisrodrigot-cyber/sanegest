@@ -1,4 +1,5 @@
 import { OrdemServico } from '@/types/sanegest';
+import { formatDN } from '@/lib/format';
 
 function fmt(val: unknown): string {
   if (val == null) return '—';
@@ -26,7 +27,7 @@ export const OSDetalhesTrecho = ({ os }: { os: OrdemServico }) => (
     </div>
     <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
     <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
-    <DataRow label="DN (m)" previsto={os.dn} />
+    <DataRow label="DN" previsto={formatDN(os.dn)} />
     <DataRow label="Largura Vala (m)" previsto={os.largura_vala} />
     <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} />
     <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />

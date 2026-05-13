@@ -329,9 +329,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="dc-root flex flex-col gap-3">
       {/* Row 1 — KPIs */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="dc-kpis grid grid-cols-5 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico"

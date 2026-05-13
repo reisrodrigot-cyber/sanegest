@@ -533,7 +533,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       </div>
 
       {/* Row 3 — Bacia (50%) + NS em Execução (20%) + Activity Feed (30%) */}
-      <div className="grid grid-cols-10 gap-3 items-stretch">
+      <div className="dc-row3 grid grid-cols-10 gap-3 items-stretch">
         {/* Avanço por Bacia — 50% */}
         {(() => {
           const filtered = porTrecho.filter(b => {
@@ -543,7 +543,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           });
           const innerHeight = Math.max(160, filtered.length * 22 + 30);
           return (
-            <div className="col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-[420px]" style={darkCardStyle}>
+            <div className="dc-bacia col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-[420px]" style={darkCardStyle}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <h3 className="text-sm font-semibold text-white">Avanço por Bacia</h3>
                 <div className="flex items-center gap-2">

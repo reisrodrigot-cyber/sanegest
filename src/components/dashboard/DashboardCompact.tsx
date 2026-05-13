@@ -504,7 +504,7 @@ const MOCK_EVENTS: FeedEvent[] = (() => {
     { type: 'producao',     who: 'Cleiber',        description: 'registrou 14m na TR-2.8',                              offset: 2 * 24 * h + 2 * h },
     { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-4.1 atribuída a Encarregado 2',                  offset: 2 * 24 * h + 4 * h },
     { type: 'almoxarifado', who: 'João Almoxarife', description: 'Entrega: cimento (20 sacos) para frente TR-1',        offset: 2 * 24 * h + 6 * h },
-  ] as any;
+  ];
   return raw.map((r, i) => ({
     id: String(i),
     type: r.type,

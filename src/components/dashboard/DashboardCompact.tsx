@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -43,6 +43,70 @@ interface OSRow {
 const MES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const formatDayLabel = (d: Date) =>
   `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+const useMobileChartWidth = (minWidth = 260) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const media = window.matchMedia('(max-width: 1023px)');
+    const measure = () => {
+      if (!media.matches) {
+        setWidth(0);
+        return;
+      }
+      const rectWidth = el.getBoundingClientRect().width || el.clientWidth || window.innerWidth - 48;
+      setWidth(Math.max(minWidth, Math.floor(rectWidth)));
+    };
+    measure();
+    const raf = window.requestAnimationFrame(measure);
+    const timers = [100, 300, 700].map((ms) => window.setTimeout(measure, ms));
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', measure);
+    media.addEventListener?.('change', measure);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      timers.forEach(window.clearTimeout);
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+      media.removeEventListener?.('change', measure);
+    };
+  }, [minWidth]);
+
+  return [ref, width] as const;
+};
+
+const ChartFrame = ({
+  className,
+  mobileHeight,
+  desktopHeight,
+  children,
+}: {
+  className: string;
+  mobileHeight: number;
+  desktopHeight?: number;
+  children: (width?: number, height?: number) => React.ReactElement;
+}) => {
+  const [ref, mobileWidth] = useMobileChartWidth();
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{ width: '100%', height: mobileWidth > 0 ? mobileHeight : desktopHeight, minHeight: 150, display: 'block' }}
+    >
+      {mobileWidth > 0 ? (
+        children(mobileWidth, mobileHeight)
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          {children()}
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+};
 
 const FAIXAS = [
   { label: 'Até 1,15m', max: 1.15 },
@@ -396,9 +460,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Diária <span className="text-[10px] text-white/60 font-normal">(30d)</span>
             </h3>
-            <div className="dc-chart-box h-[150px]" style={{ width: '100%', minHeight: 150, display: 'block' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+            <ChartFrame className="dc-chart-box h-[150px]" mobileHeight={180}>
+              {(chartWidth, chartHeight) => (
+                <LineChart width={chartWidth} height={chartHeight} data={dailyData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: DARK_AXIS }} interval={4} stroke={DARK_GRID} />
                   <YAxis tick={{ fontSize: 9, fill: DARK_AXIS }} stroke={DARK_GRID} />
@@ -416,16 +480,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     activeDot={{ r: 5, fill: TEAL, stroke: '#fff', strokeWidth: 1 }}
                   />
                 </LineChart>
-              </ResponsiveContainer>
-            </div>
+              )}
+            </ChartFrame>
           </div>
           <div className="dc-chart dc-chart-monthly rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Mensal <span className="text-[10px] text-white/60 font-normal">(4 meses)</span>
             </h3>
-            <div className="dc-chart-box h-[150px]" style={{ width: '100%', minHeight: 150, display: 'block' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyData} margin={{ top: 18, right: 16, bottom: 0, left: -16 }}>
+            <ChartFrame className="dc-chart-box h-[150px]" mobileHeight={160}>
+              {(chartWidth, chartHeight) => (
+                <LineChart width={chartWidth} height={chartHeight} data={monthlyData} margin={{ top: 18, right: 16, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
                   <YAxis tick={{ fontSize: 9, fill: DARK_AXIS }} stroke={DARK_GRID} />
@@ -452,8 +516,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     />
                   </Line>
                 </LineChart>
-              </ResponsiveContainer>
-            </div>
+              )}
+            </ChartFrame>
           </div>
         </div>
 
@@ -551,6 +615,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             return true;
           });
           const innerHeight = Math.max(160, filtered.length * 22 + 30);
+          const mobileBaciaHeight = Math.max(200, Math.min(360, innerHeight));
           return (
             <div className="dc-bacia col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-[420px]" style={darkCardStyle}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
@@ -584,9 +649,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
               ) : (
                 <div className="overflow-y-auto flex-1 min-h-0">
-                  <div style={{ height: innerHeight, width: '100%', minHeight: 180, display: 'block' }}>
-                    <ResponsiveContainer width="100%" height="100%">
+                  <ChartFrame className="dc-chart-box" mobileHeight={mobileBaciaHeight} desktopHeight={innerHeight}>
+                    {(chartWidth, chartHeight) => (
                       <BarChart
+                        width={chartWidth}
+                        height={chartHeight}
                         data={filtered}
                         layout="vertical"
                         margin={{ top: 4, right: 56, bottom: 4, left: 8 }}
@@ -634,8 +701,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                           />
                         </Bar>
                       </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                    )}
+                  </ChartFrame>
                 </div>
               )}
             </div>

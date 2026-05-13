@@ -192,7 +192,13 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       setCamadas(data as Camada[]);
       setVisivel((prev) => {
         const next = { ...prev };
-        for (const c of data) if (next[c.id] === undefined) next[c.id] = c.visivel_default;
+        const stored = visStorageRef.current;
+        for (const c of data) {
+          if (next[c.id] === undefined) {
+            // Default: visível (a menos que esteja explicitamente oculto no localStorage por nome)
+            next[c.id] = stored[c.nome] !== undefined ? !!stored[c.nome] : true;
+          }
+        }
         return next;
       });
     }

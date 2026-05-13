@@ -884,14 +884,7 @@ ${placemarks.join('\n')}
 
       {/* Controle flutuante: camadas + minha localização */}
       <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">
-        <button
-          onClick={exportKmz}
-          className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
-          title="Exportar KMZ"
-          aria-label="Exportar KMZ"
-        >
-          <FolderOpen size={18} className="text-foreground" />
-        </button>
+        {/* Removido: Exportar/Inserir KMZ — agora dentro do painel de Camadas */}
         {showLocation && (
           <button
             onClick={centerOnMe}

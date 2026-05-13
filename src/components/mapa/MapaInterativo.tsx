@@ -47,6 +47,9 @@ interface RedePoint {
   pv_jusante: string | null;
   comprimento_real: number | null;
   comprimento_previsto: number | null;
+  encarregado: string | null;
+  profundidade: number | null;
+  ns_relacionada: string | null;
 }
 
 interface LigacaoPoint {

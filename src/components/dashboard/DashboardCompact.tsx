@@ -7,10 +7,10 @@ import {
   CalendarDays,
   TrendingUp,
   ListChecks,
-  Users,
   Gauge,
   Layers,
   Loader2,
+  Radio,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -256,7 +256,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   return (
     <div className="flex flex-col gap-3">
       {/* Row 1 — KPIs */}
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico"
@@ -284,13 +284,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           value={kpis.nsExec}
           sub={divergenciasCount > 0 ? `${divergenciasCount} divergência(s)` : 'sem divergências'}
           accent={accent.amber}
-        />
-        <KpiCard
-          icon={<Users size={16} />}
-          label="Encarregados Ativos"
-          value={kpis.ativos}
-          sub="últimos 30 dias"
-          accent={accent.purple}
         />
         <KpiCard
           icon={<Gauge size={16} />}
@@ -461,6 +454,128 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Row 4 — Activity Feed */}
+      <ActivityFeed />
+    </div>
+  );
+};
+
+type EventType = 'producao' | 'topografia' | 'ns' | 'almoxarifado';
+
+interface FeedEvent {
+  id: string;
+  type: EventType;
+  ts: Date;
+  who: string;
+  description: string;
+}
+
+const EVENT_META: Record<EventType, { label: string; color: string; bg: string; dot: string }> = {
+  producao:     { label: 'Produção',     color: '#16A34A', bg: 'rgba(22,163,74,0.10)',  dot: '🟢' },
+  topografia:   { label: 'Topografia',   color: '#185FA5', bg: 'rgba(24,95,165,0.10)',  dot: '🔵' },
+  ns:           { label: 'NS Aplicada',  color: '#CA8A04', bg: 'rgba(202,138,4,0.12)',  dot: '🟡' },
+  almoxarifado: { label: 'Almoxarifado', color: '#EA580C', bg: 'rgba(234,88,12,0.10)',  dot: '🟠' },
+};
+
+const MOCK_EVENTS: FeedEvent[] = (() => {
+  const now = Date.now();
+  const min = 60 * 1000;
+  const h = 60 * min;
+  const raw: Array<{ type: EventType; who: string; description: string; offset: number }> = [
+    { type: 'producao',     who: 'Cleiber',        description: 'registrou 12m na TR-1.3',                              offset: 8 * min },
+    { type: 'topografia',   who: 'Maria Topógrafa', description: 'estaqueou TR-2.1 — 45 pontos',                         offset: 22 * min },
+    { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-1.10 atribuída a Jonas',                         offset: 47 * min },
+    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Entrega: 50 tubos DN200 para Encarregado 1',          offset: 1 * h + 12 * min },
+    { type: 'producao',     who: 'Jonas',           description: 'registrou 18m na TR-1.10',                            offset: 1 * h + 50 * min },
+    { type: 'producao',     who: 'Encarregado 2',   description: 'registrou 9,5m na TR-3.4',                            offset: 2 * h + 5 * min },
+    { type: 'topografia',   who: 'Maria Topógrafa', description: 'cadastrou 12 ligações em TR-2.1',                     offset: 2 * h + 40 * min },
+    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Entrega: 80m de PVC DN150 para Cleiber',              offset: 3 * h + 18 * min },
+    { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-3.7 atribuída a Encarregado 2',                  offset: 4 * h + 2 * min },
+    { type: 'producao',     who: 'Cleiber',        description: 'registrou 15m na TR-1.3 (profundidade 2,4m)',          offset: 4 * h + 35 * min },
+    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Divergência: faltam 4 tampões TR-2.5',                offset: 5 * h + 10 * min },
+    { type: 'topografia',   who: 'Maria Topógrafa', description: 'estaqueou TR-3.7 — 28 pontos',                        offset: 6 * h + 5 * min },
+    { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-2.8 atribuída a Cleiber',                        offset: 7 * h + 22 * min },
+    { type: 'producao',     who: 'Encarregado 2',   description: 'registrou 11m na TR-3.4',                             offset: 1 * 24 * h + 1 * h },
+    { type: 'producao',     who: 'Jonas',           description: 'registrou 22m na TR-1.10',                            offset: 1 * 24 * h + 3 * h },
+    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Entrega: 30 anéis de borracha para Jonas',            offset: 1 * 24 * h + 5 * h },
+    { type: 'topografia',   who: 'Maria Topógrafa', description: 'as-built carregado para TR-1.3',                      offset: 1 * 24 * h + 7 * h },
+    { type: 'producao',     who: 'Cleiber',        description: 'registrou 14m na TR-2.8',                              offset: 2 * 24 * h + 2 * h },
+    { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-4.1 atribuída a Encarregado 2',                  offset: 2 * 24 * h + 4 * h },
+    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Entrega: cimento (20 sacos) para frente TR-1',        offset: 2 * 24 * h + 6 * h },
+  ];
+  return raw.map((r, i) => ({
+    id: String(i),
+    type: r.type,
+    who: r.who,
+    description: r.description,
+    ts: new Date(now - r.offset),
+  }));
+})();
+
+const formatRelative = (d: Date) => {
+  const diff = Date.now() - d.getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'agora';
+  if (min < 60) return `há ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `há ${h}h`;
+  const days = Math.floor(h / 24);
+  return `há ${days}d`;
+};
+
+const formatStamp = (d: Date) =>
+  `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+const ActivityFeed = () => {
+  const events = MOCK_EVENTS.slice(0, 20);
+  return (
+    <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+          <Radio size={14} className="text-secondary" />
+          O que está acontecendo?
+        </h3>
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+          {(Object.keys(EVENT_META) as EventType[]).map((t) => (
+            <span key={t} className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: EVENT_META[t].color }} />
+              {EVENT_META[t].label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="overflow-y-auto max-h-[320px] pr-1">
+        <ul className="space-y-1.5">
+          {events.map((e) => {
+            const meta = EVENT_META[e.type];
+            return (
+              <li
+                key={e.id}
+                className="flex items-start gap-3 rounded-md py-1.5 pl-2.5 pr-2 bg-muted/20 hover:bg-muted/40 transition-colors"
+                style={{ borderLeft: `3px solid ${meta.color}` }}
+              >
+                <div className="flex flex-col min-w-[88px]">
+                  <span className="text-[10px] font-semibold text-foreground">{formatStamp(e.ts)}</span>
+                  <span className="text-[10px] text-muted-foreground">{formatRelative(e.ts)}</span>
+                </div>
+                <span
+                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide whitespace-nowrap"
+                  style={{ color: meta.color, backgroundColor: meta.bg }}
+                >
+                  {meta.label}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-foreground">
+                    <span className="font-semibold">{e.who}</span>{' '}
+                    <span className="text-muted-foreground">— {e.description}</span>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </div>
   );

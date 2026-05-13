@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck, Trash2, MapPin } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { OSHistoricoSection } from '@/components/OSHistoricoSection';
 import { useAuth } from '@/contexts/AuthContext';
@@ -221,6 +221,21 @@ const OSDetailPage = () => {
         user_id: p.user_id,
         name: p.display_name || p.email || 'Sem nome',
       }));
+    },
+  });
+
+  // Whether this OS has at least 2 as-built points (PV montante + jusante coords filled)
+  const { data: locatable = false } = useQuery({
+    queryKey: ['os-locatable', id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('topografia_asbuilt')
+        .select('id', { count: 'exact', head: true })
+        .eq('os_id', id!)
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null);
+      return (count ?? 0) >= 2;
     },
   });
 
@@ -551,6 +566,16 @@ const OSDetailPage = () => {
             <span className="text-xs px-2 py-1 rounded-full bg-status-green/20 text-status-green font-medium">
               Liberada para {os.liberado_para}
             </span>
+          )}
+          {locatable && (
+            <button
+              onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-primary/40 hover:bg-primary/10 transition-colors"
+              style={{ color: '#4dd9ac' }}
+              title="Localizar no mapa"
+            >
+              <MapPin size={14} /> Localizar
+            </button>
           )}
         </div>
         <p className="text-sm text-muted-foreground mt-1">{os.bacia} • PV {os.pv_montante} → {os.pv_jusante}</p>

@@ -158,3 +158,9 @@
   100% { transform: scale(1.8); opacity: 0; }
 }
 .me-pulse-icon { background: transparent !important; border: none !important; }
+
+@keyframes nsHighlightPulse {
+  0%, 100% { stroke-opacity: 1; stroke-width: 5; filter: drop-shadow(0 0 0 rgba(77, 217, 172, 0)); }
+  50%      { stroke-opacity: 1; stroke-width: 10; filter: drop-shadow(0 0 8px rgba(77, 217, 172, 0.95)); }
+}
+.ns-highlight-pulse { animation: nsHighlightPulse 0.9s ease-in-out 0s 3; }

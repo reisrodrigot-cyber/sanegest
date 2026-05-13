@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical, Upload, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
@@ -102,9 +102,11 @@ interface MapaInterativoProps {
   height?: number | string;
   /** Margem inferior. Default mb-6. */
   className?: string;
+  /** OS ID para focar (flyToBounds + popup + pulse) */
+  focusOsId?: string | null;
 }
 
-export const MapaInterativo = ({ showLocation = false, height = 520, className = 'mb-6' }: MapaInterativoProps) => {
+export const MapaInterativo = ({ showLocation = false, height = 520, className = 'mb-6', focusOsId = null }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
 
@@ -112,6 +114,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   const mapRef = useRef<L.Map | null>(null);
   const redeLayerRef = useRef<L.LayerGroup | null>(null);
   const ligacoesLayerRef = useRef<L.LayerGroup | null>(null);
+  const osPolylineRef = useRef<Map<string, L.Polyline>>(new Map());
   const kmzLayersRef = useRef<Map<string, L.Layer>>(new Map());
   const kmzBoundsRef = useRef<Map<string, L.LatLngBounds>>(new Map());
   // Assinatura por camada (cor|opacidade|storage_path) para saber quando refazer o layer
@@ -305,6 +308,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     const layer = redeLayerRef.current;
     if (!map || !layer) return;
     layer.clearLayers();
+    osPolylineRef.current.clear();
     if (!visivel.__rede) {
       if (map.hasLayer(layer)) map.removeLayer(layer);
       return;
@@ -341,6 +345,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
         });
         line.bindPopup(popupHtml);
         line.addTo(layer);
+        osPolylineRef.current.set(first.os_id, line);
         // Setas de direcionamento do fluxo (gravidade: montante → jusante)
         // @ts-ignore - plugin polylineDecorator
         L.polylineDecorator(line, {
@@ -536,6 +541,39 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
     didInitialFitRef.current = true;
   }, [redePoints.length, ligacoesPoints.length]);
+
+  // Focus on a specific OS (flyToBounds + popup + pulse)
+  useEffect(() => {
+    if (!focusOsId) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const pts = redePoints.filter((p) => p.os_id === focusOsId);
+    if (pts.length < 2) return;
+    const bounds = L.latLngBounds(pts.map((p) => [p.latitude, p.longitude] as [number, number]));
+    if (!bounds.isValid()) return;
+    try {
+      map.flyToBounds(bounds, { padding: [60, 60], maxZoom: 18, duration: 1.0 });
+    } catch {
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 18 });
+    }
+    const line = osPolylineRef.current.get(focusOsId);
+    if (line) {
+      setTimeout(() => {
+        try { line.openPopup(bounds.getCenter()); } catch {/* ignore */}
+        const start = Date.now();
+        const interval = window.setInterval(() => {
+          const t = (Date.now() - start) / 1000;
+          if (t >= 3) {
+            window.clearInterval(interval);
+            try { line.setStyle({ weight: 4, color: redeColor, opacity: redeOpacidade }); } catch {/* ignore */}
+            return;
+          }
+          const w = 5 + Math.abs(Math.sin(t * Math.PI * 1.6)) * 7;
+          try { line.setStyle({ weight: w, color: '#4dd9ac', opacity: 1 }); } catch {/* ignore */}
+        }, 60);
+      }, 1100);
+    }
+  }, [focusOsId, redePoints]);
 
   // ======= Geolocalização (apenas quando showLocation) =======
   useEffect(() => {
@@ -846,14 +884,7 @@ ${placemarks.join('\n')}
 
       {/* Controle flutuante: camadas + minha localização */}
       <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">
-        <button
-          onClick={exportKmz}
-          className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
-          title="Exportar KMZ"
-          aria-label="Exportar KMZ"
-        >
-          <FolderOpen size={18} className="text-foreground" />
-        </button>
+        {/* Removido: Exportar/Inserir KMZ — agora dentro do painel de Camadas */}
         {showLocation && (
           <button
             onClick={centerOnMe}
@@ -886,16 +917,6 @@ ${placemarks.join('\n')}
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                 <Layers size={14} /> Camadas
               </div>
-              {canManage && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2"
-                  onClick={() => { setEditing(null); setModalOpen(true); setLayersOpen(false); }}
-                >
-                  <Plus size={14} className="mr-1" /> Adicionar
-                </Button>
-              )}
             </div>
 
             {/* As-built */}
@@ -1121,6 +1142,28 @@ ${placemarks.join('\n')}
                 </div>
               );
             })()}
+
+            {/* Bottom: discrete actions */}
+            {canManage && (
+              <div className="mt-3 pt-2 border-t border-border/60 flex items-center justify-between gap-2">
+                <button
+                  onClick={() => { setEditing(null); setModalOpen(true); setLayersOpen(false); }}
+                  className="inline-flex items-center gap-1.5 text-xs hover:text-foreground transition-colors"
+                  style={{ color: '#6b8aaa' }}
+                  title="Inserir KMZ"
+                >
+                  <Upload size={12} /> Inserir KMZ
+                </button>
+                <button
+                  onClick={() => { exportKmz(); }}
+                  className="inline-flex items-center gap-1.5 text-xs hover:text-foreground transition-colors"
+                  style={{ color: '#6b8aaa' }}
+                  title="Exportar KMZ"
+                >
+                  <Download size={12} /> Exportar
+                </button>
+              </div>
+            )}
           </PopoverContent>
         </Popover>
       </div>

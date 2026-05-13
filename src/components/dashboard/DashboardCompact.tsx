@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
   BarChart,
@@ -88,6 +88,16 @@ interface Props {
 }
 
 export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const focusOsId = (location.state as any)?.focusOsId ?? null;
+  // Clear state after first read so revisits don't re-trigger
+  useEffect(() => {
+    if (focusOsId) {
+      const t = setTimeout(() => navigate(location.pathname, { replace: true, state: {} }), 4500);
+      return () => clearTimeout(t);
+    }
+  }, [focusOsId, navigate, location.pathname]);
   const [registros, setRegistros] = useState<DailyRow[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -365,10 +375,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         <div className="col-span-4 bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col">
           <div className="flex items-center justify-between px-1 pb-1">
             <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
-            <Link to="/mapa" className="text-xs text-secondary hover:underline">Abrir</Link>
           </div>
           <div className="flex-1 min-h-0">
-            <MapaInterativo height="100%" className="" />
+            <MapaInterativo height="100%" className="" focusOsId={focusOsId} />
           </div>
         </div>
 

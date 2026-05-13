@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
-import { Link } from 'react-router-dom';
-import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +26,7 @@ function naturalCompare(a: string, b: string) {
 const OrdensPage = () => {
   const { ordens, loading } = useOrdensServico();
   const { user, effectiveRole } = useAuth();
+  const navigate = useNavigate();
   const role = effectiveRole || user?.role;
   const canImport = role === 'admin' || role === 'sala_tecnica';
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
@@ -37,18 +38,31 @@ const OrdensPage = () => {
   const [producaoByOs, setProducaoByOs] = useState<Record<string, number>>({});
   // Latest status change date per OS
   const [statusSinceByOs, setStatusSinceByOs] = useState<Record<string, string>>({});
+  // OS ids that have ≥2 as-built points (PV montante + jusante coords filled)
+  const [locatableOsIds, setLocatableOsIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [{ data: regs }, { data: hist }] = await Promise.all([
+      const [{ data: regs }, { data: hist }, { data: ab }] = await Promise.all([
         supabase.from('registros_producao').select('os_id, comprimento_dia'),
         supabase
           .from('os_status_historico')
           .select('os_id, created_at')
           .order('created_at', { ascending: false }),
+        supabase
+          .from('topografia_asbuilt')
+          .select('os_id')
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null),
       ]);
       if (cancelled) return;
+
+      const counts = new Map<string, number>();
+      (ab || []).forEach((r: any) => counts.set(r.os_id, (counts.get(r.os_id) || 0) + 1));
+      const locatable = new Set<string>();
+      counts.forEach((n, id) => { if (n >= 2) locatable.add(id); });
+      setLocatableOsIds(locatable);
 
       const acc: Record<string, number> = {};
       (regs || []).forEach((r: any) => {
@@ -258,6 +272,7 @@ const OrdensPage = () => {
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell w-[160px]">%</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Responsável</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+              <th className="px-2 py-3 w-[44px]"></th>
             </tr>
           </thead>
           <tbody>
@@ -308,12 +323,24 @@ const OrdensPage = () => {
                       )}
                     </div>
                   </td>
+                  <td className="px-2 py-3">
+                    {locatableOsIds.has(os.id) && (
+                      <button
+                        onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-primary/10 transition-colors"
+                        style={{ color: '#4dd9ac' }}
+                        title="Localizar no mapa"
+                      >
+                        <MapPin size={14} /> <span className="hidden lg:inline">Localizar</span>
+                      </button>
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {data.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                   {ordens.length === 0
                     ? 'Nenhuma OS cadastrada. Importe o Planilhão para começar.'
                     : 'Nenhuma OS encontrada com os filtros aplicados.'}

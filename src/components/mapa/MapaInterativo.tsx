@@ -368,6 +368,9 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
             <p style="font-weight:700;margin:0 0 4px">${first.trecho}</p>
             <p style="margin:2px 0">${p.nome_estaca || `Ponto ${idx + 1}`}</p>
             <p style="margin:2px 0;color:#555;font-size:12px">${p.latitude.toFixed(6)}, ${p.longitude.toFixed(6)}</p>
+            ${p.encarregado ? `<p style="margin:2px 0">Encarregado: <b>${p.encarregado}</b></p>` : ''}
+            ${p.profundidade != null ? `<p style="margin:2px 0">Profundidade: <b>${p.profundidade} m</b></p>` : ''}
+            ${p.ns_relacionada ? `<p style="margin:2px 0">NS relacionada: <b>${p.ns_relacionada}</b></p>` : ''}
           </div>`);
         circle.addTo(layer);
       });

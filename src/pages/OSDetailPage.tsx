@@ -808,6 +808,24 @@ const OSDetailPage = () => {
                 <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
                 <span className="text-xs font-semibold text-secondary uppercase">Real</span>
               </div>
+              <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-center">
+                <span className="text-sm text-muted-foreground">Bacia</span>
+                <input
+                  value={editFields.bacia ?? ''}
+                  onChange={e => updateEditField('bacia', e.target.value)}
+                  className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-full"
+                />
+                <span />
+              </div>
+              <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-center">
+                <span className="text-sm text-muted-foreground">Trecho</span>
+                <input
+                  value={editFields.trecho ?? ''}
+                  onChange={e => updateEditField('trecho', e.target.value)}
+                  className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-full"
+                />
+                <span />
+              </div>
               <EditableRow label="Comprimento (m)" previstoValue={editFields.comprimento_previsto} realValue={editFields.comprimento_real} previstoField="comprimento_previsto" realField="comprimento_real" onChange={updateEditField} />
               <EditableRow label="Prof. Média (m)" previstoValue={editFields.prof_media_prevista} realValue={editFields.prof_media_real} previstoField="prof_media_prevista" realField="prof_media_real" onChange={updateEditField} />
               <EditableRow label="DN (m)" previstoValue={editFields.dn} realValue={editFields.dn_real} previstoField="dn" realField="dn_real" onChange={updateEditField} />

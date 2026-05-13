@@ -6,63 +6,74 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 213 50% 15%;
+    /* App background #0a1628 */
+    --background: 214 61% 10%;
+    /* Primary text #e8edf2 */
+    --foreground: 213 24% 93%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 213 50% 15%;
+    /* Card #0d1b2a */
+    --card: 213 53% 11%;
+    --card-foreground: 213 24% 93%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 213 50% 15%;
+    /* Popover / dropdowns #0d1f3c */
+    --popover: 217 64% 14%;
+    --popover-foreground: 213 24% 93%;
 
-    --primary: 212 80% 27%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary = teal accent #4dd9ac */
+    --primary: 160 64% 58%;
+    --primary-foreground: 213 53% 11%;
 
-    --secondary: 213 60% 35%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary = active panel blue #1a3a5c */
+    --secondary: 212 56% 23%;
+    --secondary-foreground: 160 64% 58%;
 
-    --muted: 40 6% 90%;
-    --muted-foreground: 40 3% 53%;
+    /* Muted #0d1f3c bg / #6b8aaa fg */
+    --muted: 217 64% 14%;
+    --muted-foreground: 212 26% 54%;
 
-    --accent: 212 80% 27%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 160 64% 58%;
+    --accent-foreground: 213 53% 11%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 355 78% 56%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 6% 83%;
-    --input: 40 6% 83%;
-    --ring: 212 80% 27%;
+    /* Border ~ rgba(255,255,255,0.08) flattened over bg */
+    --border: 214 30% 18%;
+    /* Input bg #0d1f3c */
+    --input: 217 64% 14%;
+    --ring: 160 64% 58%;
 
     --radius: 0.5rem;
 
     /* SaneGest custom tokens */
     --sane-blue-dark: 212 80% 27%;
     --sane-blue: 213 60% 37%;
-    --sane-blue-light: 213 60% 50%;
-    --sane-gray: 43 3% 53%;
-    --sane-gray-light: 40 6% 83%;
-    --sane-cream: 40 20% 97%;
+    --sane-blue-light: 160 64% 58%;
+    --sane-gray: 212 26% 54%;
+    --sane-gray-light: 214 30% 18%;
+    --sane-cream: 213 53% 11%;
 
-    --status-gray: 0 0% 60%;
-    --status-gray-bg: 0 0% 93%;
-    --status-red: 0 72% 51%;
-    --status-red-bg: 0 72% 95%;
-    --status-orange: 25 95% 53%;
-    --status-orange-bg: 25 95% 93%;
-    --status-yellow: 45 93% 47%;
-    --status-yellow-bg: 45 93% 93%;
-    --status-green: 142 71% 35%;
-    --status-green-bg: 142 71% 93%;
+    /* Status badges (dark) */
+    --status-gray: 212 26% 54%;
+    --status-gray-bg: 217 64% 14%;
+    --status-red: 355 78% 56%;
+    --status-red-bg: 348 60% 12%;
+    --status-orange: 33 100% 50%;
+    --status-orange-bg: 26 100% 9%;
+    --status-yellow: 48 100% 48%;
+    --status-yellow-bg: 48 100% 9%;
+    --status-green: 135 64% 47%;
+    --status-green-bg: 143 100% 9%;
 
-    --sidebar-background: 212 80% 20%;
-    --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 212 80% 20%;
-    --sidebar-accent: 212 70% 30%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 212 60% 28%;
-    --sidebar-ring: 213 60% 50%;
+    /* Sidebar */
+    --sidebar-background: 217 64% 14%;
+    --sidebar-foreground: 213 33% 71%;
+    --sidebar-primary: 160 64% 58%;
+    --sidebar-primary-foreground: 213 53% 11%;
+    --sidebar-accent: 212 56% 23%;
+    --sidebar-accent-foreground: 213 24% 93%;
+    --sidebar-border: 214 30% 18%;
+    --sidebar-ring: 160 64% 58%;
   }
 }
 
@@ -72,6 +83,26 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Thin dark scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #1a3a5c #0a1628;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a1628;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1a3a5c;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #234a73;
   }
 }
 

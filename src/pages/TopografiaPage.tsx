@@ -319,6 +319,16 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const pvMontanteLabel = os.pv_montante || 'PV Montante';
   const pvJusanteLabel = os.pv_jusante || 'PV Jusante';
 
+  // Helper: monta payload extra opcional
+  const extraPayload = (enc: string, prof: string, ns: string) => {
+    const out: Record<string, any> = {};
+    if (enc.trim()) out.encarregado = enc.trim();
+    const pf = parseFloat(prof);
+    if (!isNaN(pf)) out.profundidade = pf;
+    if (ns.trim()) out.ns_relacionada = ns.trim();
+    return out;
+  };
+
   // ===== Salvar / atualizar PV Montante =====
   const saveMontante = async () => {
     const latVal = parseFloat(montLat);
@@ -328,16 +338,16 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       return;
     }
     setSavingMontante(true);
+    const extra = extraPayload(montEnc, montProf, montNs);
     if (montante) {
       const { data, error } = await supabase.from('topografia_asbuilt').update({
-        latitude: latVal, longitude: lngVal,
+        latitude: latVal, longitude: lngVal, ...extra,
       }).eq('id', montante.id).select().single();
       setSavingMontante(false);
       if (error) { toast.error('Erro ao atualizar PV Montante.'); return; }
       toast.success('PV Montante atualizado!');
       if (data) setPoints((prev) => prev.map((p) => p.id === data.id ? (data as AsBuiltPoint) : p));
     } else {
-      // Inserir como o primeiro registro (created_at bem antigo para ficar à frente)
       const ts = new Date(Date.now() - 1000 * 60 * 60 * 24 * 365).toISOString();
       const { data, error } = await supabase.from('topografia_asbuilt').insert({
         os_id: os.id,
@@ -346,6 +356,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
         longitude: lngVal,
         registrado_por: user?.id ?? null,
         created_at: ts,
+        ...extra,
       }).select().single();
       setSavingMontante(false);
       if (error) { toast.error('Erro ao salvar PV Montante.'); return; }
@@ -364,16 +375,16 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       return;
     }
     setSavingJusante(true);
+    const extra = extraPayload(jusEnc, jusProf, jusNs);
     if (jusante) {
       const { data, error } = await supabase.from('topografia_asbuilt').update({
-        latitude: latVal, longitude: lngVal,
+        latitude: latVal, longitude: lngVal, ...extra,
       }).eq('id', jusante.id).select().single();
       setSavingJusante(false);
       if (error) { toast.error('Erro ao atualizar PV Jusante.'); return; }
       toast.success('PV Jusante atualizado!');
       if (data) setPoints((prev) => prev.map((p) => p.id === data.id ? (data as AsBuiltPoint) : p));
     } else {
-      // Created_at no futuro para ficar sempre por último
       const ts = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
       const { data, error } = await supabase.from('topografia_asbuilt').insert({
         os_id: os.id,
@@ -382,6 +393,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
         longitude: lngVal,
         registrado_por: user?.id ?? null,
         created_at: ts,
+        ...extra,
       }).select().single();
       setSavingJusante(false);
       if (error) { toast.error('Erro ao salvar PV Jusante.'); return; }
@@ -407,11 +419,12 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       latitude: latVal,
       longitude: lngVal,
       registrado_por: user?.id ?? null,
+      ...extraPayload(interEnc, interProf, interNs),
     }).select().single();
     setSavingInter(false);
     if (error) { toast.error('Erro ao salvar ponto intermediário.'); return; }
     toast.success(`Intermediário ${next} registrado!`);
-    setInterLat(''); setInterLng('');
+    setInterLat(''); setInterLng(''); setInterEnc(''); setInterProf('');
     if (data) setPoints((prev) => [...prev, data as AsBuiltPoint]);
   };
 

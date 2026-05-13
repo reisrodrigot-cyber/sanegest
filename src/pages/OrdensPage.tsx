@@ -340,7 +340,7 @@ const OrdensPage = () => {
             })}
             {data.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                   {ordens.length === 0
                     ? 'Nenhuma OS cadastrada. Importe o Planilhão para começar.'
                     : 'Nenhuma OS encontrada com os filtros aplicados.'}

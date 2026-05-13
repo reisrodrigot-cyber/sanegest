@@ -88,6 +88,16 @@ interface Props {
 }
 
 export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const focusOsId = (location.state as any)?.focusOsId ?? null;
+  // Clear state after first read so revisits don't re-trigger
+  useEffect(() => {
+    if (focusOsId) {
+      const t = setTimeout(() => navigate(location.pathname, { replace: true, state: {} }), 4500);
+      return () => clearTimeout(t);
+    }
+  }, [focusOsId, navigate, location.pathname]);
   const [registros, setRegistros] = useState<DailyRow[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);

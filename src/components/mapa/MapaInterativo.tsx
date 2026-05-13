@@ -201,8 +201,9 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   }, []);
 
   // ======= Fetch dados =======
-  const fetchCamadas = async () => {
+  const fetchCamadas = async (groupsForVisibility = groups) => {
     const stored = visStorageRef.current;
+    const groupNameById = new Map(groupsForVisibility.map((g) => [g.id, g.name]));
     const { data } = await supabase
       .from('mapa_camadas')
       .select('*')
@@ -213,7 +214,9 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       const nextVis = { ...visivelRef.current };
       for (const c of loadedCamadas) {
         // Estado salvo por nome vence antes da renderização; senão mantém o estado atual ou default visível.
-        nextVis[c.id] = stored[c.nome] !== undefined ? !!stored[c.nome] : nextVis[c.id] !== false;
+        const groupName = c.group_id ? groupNameById.get(c.group_id) : undefined;
+        const savedValue = stored[c.nome] ?? (groupName ? stored[groupName] : undefined);
+        nextVis[c.id] = savedValue !== undefined ? !!savedValue : nextVis[c.id] !== false;
       }
       visivelRef.current = nextVis;
       setVisivel(nextVis);
@@ -237,6 +240,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
         return next;
       });
     }
+    return (data ?? []) as LayerGroup[];
   };
 
   const fetchAsBuiltConfig = async () => {

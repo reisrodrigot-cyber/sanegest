@@ -359,6 +359,8 @@ const OSDetailPage = () => {
     const toNum = (v: string) => v ? Number(v) : null;
     const toInt = (v: string) => v ? parseInt(v) : null;
     const update: any = {
+      bacia: editFields.bacia ?? '',
+      trecho: editFields.trecho ?? '',
       comprimento_previsto: toNum(editFields.comprimento_previsto),
       comprimento_real: toNum(editFields.comprimento_real),
       prof_media_prevista: toNum(editFields.prof_media_prevista),

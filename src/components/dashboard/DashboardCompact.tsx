@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  LabelList,
+  Cell,
+} from 'recharts';
 import {
   Activity,
   CalendarDays,
@@ -244,6 +256,19 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [ordens],
   );
 
+  // Avanço por Trecho (todas as OS liberadas)
+  const porTrecho = useMemo(() => {
+    return ordens
+      .filter((o) => o.liberado && (o.comprimento_previsto ?? 0) > 0)
+      .map((o) => {
+        const prev = Math.round(o.comprimento_previsto ?? 0);
+        const exec = Math.round(Math.min(o.comprimento_real ?? 0, prev));
+        const pend = Math.max(prev - exec, 0);
+        return { trecho: o.trecho, executado: exec, pendente: pend, total: prev };
+      })
+      .sort((a, b) => b.total - a.total);
+  }, [ordens]);
+
   const accent = {
     blue: '#185FA5',
     blueDark: '#0C447C',
@@ -251,6 +276,33 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     green: '#16A34A',
     red: '#DC2626',
     purple: '#7C3AED',
+  };
+
+  // Dark chart palette
+  const DARK_BG = '#0d1b2a';
+  const DARK_BORDER = 'rgba(255,255,255,0.1)';
+  const DARK_GRID = 'rgba(255,255,255,0.1)';
+  const DARK_AXIS = 'rgba(255,255,255,0.7)';
+  const TEAL = '#4dd9ac';
+  const RED_PEND = '#e63946';
+  const GREEN_EXEC = '#2dc653';
+
+  const darkCardStyle: React.CSSProperties = {
+    backgroundColor: DARK_BG,
+    border: `1px solid ${DARK_BORDER}`,
+    color: '#ffffff',
+  };
+  const darkTooltipStyle: React.CSSProperties = {
+    backgroundColor: '#0d1b2a',
+    border: `1px solid ${DARK_BORDER}`,
+    color: '#fff',
+    fontSize: 11,
+    borderRadius: 6,
+  };
+
+  const formatKm = (m: number) => {
+    if (m >= 1000) return `${(m / 1000).toFixed(1).replace('.', ',')}km`;
+    return `${Math.round(m)}m`;
   };
 
   return (
@@ -307,37 +359,74 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           </div>
         </div>
 
-        {/* Charts */}
+        {/* Charts (dark) */}
         <div className="col-span-3 flex flex-col gap-3">
-          <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0">
-            <h3 className="text-sm font-semibold text-foreground mb-1">Produção Diária <span className="text-[10px] text-muted-foreground font-normal">(30d)</span></h3>
+          <div className="rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
+            <h3 className="text-sm font-semibold text-white mb-1">
+              Produção Diária <span className="text-[10px] text-white/60 font-normal">(30d)</span>
+            </h3>
             <div className="h-[150px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyData} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={4} />
-                  <YAxis tick={{ fontSize: 9 }} />
-                  <Tooltip formatter={(v: number) => [`${v} m`, 'Produção']} />
-                  <Bar dataKey="metros" fill={accent.blue} radius={[3, 3, 0, 0]} />
-                </BarChart>
+                <LineChart data={dailyData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                  <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 9, fill: DARK_AXIS }} interval={4} stroke={DARK_GRID} />
+                  <YAxis tick={{ fontSize: 9, fill: DARK_AXIS }} stroke={DARK_GRID} />
+                  <Tooltip
+                    contentStyle={darkTooltipStyle}
+                    labelStyle={{ color: '#fff' }}
+                    formatter={(v: number) => [`${v} m`, 'Produção']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="metros"
+                    stroke={TEAL}
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: TEAL, stroke: '#fff', strokeWidth: 1 }}
+                    activeDot={{ r: 5, fill: TEAL, stroke: '#fff', strokeWidth: 1 }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0">
-            <h3 className="text-sm font-semibold text-foreground mb-1">Produção Mensal <span className="text-[10px] text-muted-foreground font-normal">(4 meses)</span></h3>
+          <div className="rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
+            <h3 className="text-sm font-semibold text-white mb-1">
+              Produção Mensal <span className="text-[10px] text-white/60 font-normal">(4 meses)</span>
+            </h3>
             <div className="h-[150px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 9 }} />
-                  <Tooltip formatter={(v: number) => [`${v} m`, 'Produção']} />
-                  <Bar dataKey="metros" fill={accent.blueDark} radius={[4, 4, 0, 0]} />
-                </BarChart>
+                <LineChart data={monthlyData} margin={{ top: 18, right: 16, bottom: 0, left: -16 }}>
+                  <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
+                  <YAxis tick={{ fontSize: 9, fill: DARK_AXIS }} stroke={DARK_GRID} />
+                  <Tooltip
+                    contentStyle={darkTooltipStyle}
+                    labelStyle={{ color: '#fff' }}
+                    formatter={(v: number) => [`${v} m`, 'Produção']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="metros"
+                    stroke={TEAL}
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: TEAL, stroke: '#fff', strokeWidth: 1 }}
+                    activeDot={{ r: 5, fill: TEAL, stroke: '#fff', strokeWidth: 1 }}
+                  >
+                    <LabelList
+                      dataKey="metros"
+                      position="top"
+                      offset={8}
+                      formatter={(v: number) => formatKm(v)}
+                      fill="#fff"
+                      fontSize={10}
+                    />
+                  </Line>
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* Tables */}
+        {/* Tables + Produtividade strip */}
         <div className="col-span-3 flex flex-col gap-3">
           <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
             <h3 className="text-sm font-semibold text-foreground mb-2">Produção por Encarregado</h3>
@@ -390,43 +479,104 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 </tbody>
               </table>
             </div>
+            {/* Produtividade strip compacto */}
+            <div className="mt-2 pt-2 border-t border-border">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground mb-1.5">
+                <Layers size={12} className="text-muted-foreground" />
+                Produtividade por Profundidade
+              </div>
+              {loading ? (
+                <Loader2 className="animate-spin text-muted-foreground mx-auto my-2" size={14} />
+              ) : (
+                <div className="space-y-1">
+                  {profStats.map((s) => (
+                    <div key={s.label} className="flex items-center gap-2">
+                      <span className="text-[10px] text-foreground w-[110px] truncate">{s.label}</span>
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${s.pctBar}%`, backgroundColor: accent.blue }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-semibold text-foreground w-[58px] text-right">
+                        {s.media.toLocaleString('pt-BR')} m/d
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Row 3 — Profundidade + NS em Execução */}
-      <div className="grid grid-cols-10 gap-3">
-        <div className="col-span-4 bg-card rounded-lg border border-border shadow-sm p-3">
-          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <Layers size={14} className="text-muted-foreground" />
-            Produtividade por Profundidade
-          </h3>
-          {loading ? (
-            <Loader2 className="animate-spin text-muted-foreground mx-auto my-4" size={16} />
-          ) : (
-            <div className="space-y-2">
-              {profStats.map((s) => (
-                <div key={s.label}>
-                  <div className="flex items-center justify-between text-xs mb-0.5">
-                    <span className="text-foreground font-medium">{s.label}</span>
-                    <span className="text-muted-foreground">
-                      <span className="font-semibold text-foreground">{s.media.toLocaleString('pt-BR')}</span> m/dia
-                      <span className="text-[10px] ml-2">total {s.total.toLocaleString('pt-BR')} m</span>
-                    </span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${s.pctBar}%`, backgroundColor: accent.blue }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Row 3 — Avanço por Trecho (full width, dark) */}
+      <div className="rounded-lg shadow-sm p-3" style={darkCardStyle}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-white">Avanço por Trecho</h3>
+          <div className="flex items-center gap-3 text-[11px] text-white/80">
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: RED_PEND }} />
+              Pendente
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_EXEC }} />
+              Executado
+            </span>
+          </div>
         </div>
+        {porTrecho.length === 0 ? (
+          <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
+        ) : (
+          <div style={{ height: Math.max(140, porTrecho.length * 26 + 30) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={porTrecho}
+                layout="vertical"
+                margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
+                barCategoryGap={6}
+              >
+                <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
+                <YAxis
+                  type="category"
+                  dataKey="trecho"
+                  tick={{ fontSize: 10, fill: DARK_AXIS }}
+                  stroke={DARK_GRID}
+                  width={80}
+                />
+                <Tooltip
+                  contentStyle={darkTooltipStyle}
+                  labelStyle={{ color: '#fff' }}
+                  formatter={(v: number, n: string) => [`${v.toLocaleString('pt-BR')} m`, n === 'executado' ? 'Executado' : 'Pendente']}
+                />
+                <Bar dataKey="executado" stackId="a" fill={GREEN_EXEC} name="executado">
+                  <LabelList
+                    dataKey="executado"
+                    position="center"
+                    formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
+                    fill="#fff"
+                    fontSize={10}
+                  />
+                </Bar>
+                <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente">
+                  <LabelList
+                    dataKey="pendente"
+                    position="center"
+                    formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
+                    fill="#fff"
+                    fontSize={10}
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
 
-        <div className="col-span-6 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col">
+      {/* Row 4 — NS em Execução (compact list) + Activity Feed (wide) */}
+      <div className="grid grid-cols-10 gap-3">
+        <div className="col-span-3 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-foreground">NS em Execução</h3>
             <Link to="/ordens" className="text-xs text-secondary hover:underline">Ver todas</Link>
@@ -434,30 +584,29 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           {nsEmExec.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-4">Nenhuma NS em execução.</p>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
+            <ul className="overflow-y-auto max-h-[340px] divide-y divide-border/50">
               {nsEmExec.map((os) => (
-                <Link
-                  key={os.id}
-                  to={`/ordens/${os.id}`}
-                  className="rounded-md border border-border bg-muted/30 hover:bg-muted/60 transition-colors p-2 flex flex-col gap-1"
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-semibold text-foreground truncate">{os.trecho}</span>
+                <li key={os.id}>
+                  <Link
+                    to={`/ordens/${os.id}`}
+                    className="flex items-center gap-2 py-1.5 px-1 hover:bg-muted/40 rounded transition-colors"
+                  >
+                    <span className="text-xs font-semibold text-foreground w-[68px] truncate">{os.trecho}</span>
+                    <span className="text-[11px] text-muted-foreground flex-1 truncate">{os.bacia}</span>
+                    <span className="text-[11px] text-foreground font-medium tabular-nums w-[58px] text-right">
+                      {(os.comprimento_previsto ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}m
+                    </span>
                     <StatusBadge status={os.status} size="sm" />
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate">{os.bacia}</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {(os.comprimento_previsto ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m
-                  </div>
-                </Link>
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
+        <div className="col-span-7">
+          <ActivityFeed />
+        </div>
       </div>
-
-      {/* Row 4 — Activity Feed */}
-      <ActivityFeed />
     </div>
   );
 };

@@ -224,6 +224,21 @@ const OSDetailPage = () => {
     },
   });
 
+  // Whether this OS has at least 2 as-built points (PV montante + jusante coords filled)
+  const { data: locatable = false } = useQuery({
+    queryKey: ['os-locatable', id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('topografia_asbuilt')
+        .select('id', { count: 'exact', head: true })
+        .eq('os_id', id!)
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null);
+      return (count ?? 0) >= 2;
+    },
+  });
+
   const isSalaTecnica = permissions.canEditOS(effectiveRole);
   const isEncarregado = permissions.canEditProducao(effectiveRole) && effectiveRole === 'encarregado';
 

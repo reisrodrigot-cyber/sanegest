@@ -732,6 +732,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
 
   const persistVisibility = (state: Record<string, boolean>, layers = camadas) => {
     const out: Record<string, boolean> = {
+      ...visStorageRef.current,
       'As-built Rede': state.__rede !== false,
       'As-built Ligações': state.__ligacoes !== false,
     };

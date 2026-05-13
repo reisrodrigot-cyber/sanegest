@@ -747,7 +747,7 @@ const formatStamp = (d: Date) =>
 const ActivityFeed = () => {
   const events = MOCK_EVENTS.slice(0, 20);
   return (
-    <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col">
+    <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-full">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
           <Radio size={14} className="text-secondary" />
@@ -762,7 +762,7 @@ const ActivityFeed = () => {
           ))}
         </div>
       </div>
-      <div className="overflow-y-auto max-h-[320px] pr-1">
+      <div className="overflow-y-auto flex-1 min-h-0 pr-1">
         <ul className="space-y-1.5">
           {events.map((e) => {
             const meta = EVENT_META[e.type];

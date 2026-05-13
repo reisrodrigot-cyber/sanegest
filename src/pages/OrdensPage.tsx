@@ -38,6 +38,8 @@ const OrdensPage = () => {
   const [producaoByOs, setProducaoByOs] = useState<Record<string, number>>({});
   // Latest status change date per OS
   const [statusSinceByOs, setStatusSinceByOs] = useState<Record<string, string>>({});
+  // OS ids that have ≥2 as-built points (PV montante + jusante coords filled)
+  const [locatableOsIds, setLocatableOsIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;

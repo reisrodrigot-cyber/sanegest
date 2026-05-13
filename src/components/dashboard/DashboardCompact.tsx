@@ -329,9 +329,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="dc-root flex flex-col gap-3">
       {/* Row 1 — KPIs */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="dc-kpis grid grid-cols-5 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico"
@@ -370,24 +370,24 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       </div>
 
       {/* Row 2 — Map + Charts + Tables */}
-      <div className="grid grid-cols-10 gap-3">
+      <div className="dc-row2 grid grid-cols-10 gap-3">
         {/* Map */}
-        <div className="col-span-4 bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col">
+        <div className="dc-map col-span-4 bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col">
           <div className="flex items-center justify-between px-1 pb-1">
             <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
           </div>
-          <div className="flex-1 min-h-0">
+          <div className="dc-map-inner flex-1 min-h-0">
             <MapaInterativo height="100%" className="" focusOsId={focusOsId} />
           </div>
         </div>
 
         {/* Charts (dark) */}
-        <div className="col-span-3 flex flex-col gap-3">
-          <div className="rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
+        <div className="dc-charts col-span-3 flex flex-col gap-3">
+          <div className="dc-chart dc-chart-daily rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Diária <span className="text-[10px] text-white/60 font-normal">(30d)</span>
             </h3>
-            <div className="h-[150px]">
+            <div className="dc-chart-box h-[150px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
@@ -410,11 +410,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
+          <div className="dc-chart dc-chart-monthly rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Mensal <span className="text-[10px] text-white/60 font-normal">(4 meses)</span>
             </h3>
-            <div className="h-[150px]">
+            <div className="dc-chart-box h-[150px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyData} margin={{ top: 18, right: 16, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
@@ -449,8 +449,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         </div>
 
         {/* Tables + Produtividade strip */}
-        <div className="col-span-3 flex flex-col gap-3">
-          <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="dc-tables col-span-3 flex flex-col gap-3">
+          <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
             <h3 className="text-sm font-semibold text-foreground mb-2">Produção por Encarregado</h3>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
@@ -475,7 +475,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               </table>
             </div>
           </div>
-          <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
+          <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
             <h3 className="text-sm font-semibold text-foreground mb-2">Avanço por Bacia</h3>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
@@ -533,7 +533,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       </div>
 
       {/* Row 3 — Bacia (50%) + NS em Execução (20%) + Activity Feed (30%) */}
-      <div className="grid grid-cols-10 gap-3 items-stretch">
+      <div className="dc-row3 grid grid-cols-10 gap-3 items-stretch">
         {/* Avanço por Bacia — 50% */}
         {(() => {
           const filtered = porTrecho.filter(b => {
@@ -543,7 +543,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           });
           const innerHeight = Math.max(160, filtered.length * 22 + 30);
           return (
-            <div className="col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-[420px]" style={darkCardStyle}>
+            <div className="dc-bacia col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-[420px]" style={darkCardStyle}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <h3 className="text-sm font-semibold text-white">Avanço por Bacia</h3>
                 <div className="flex items-center gap-2">
@@ -634,7 +634,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         })()}
 
         {/* NS em Execução — 20% */}
-        <div className="col-span-2 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-[420px]">
+        <div className="dc-ns col-span-2 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-[420px]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-foreground">NS em Execução</h3>
             <Link to="/ordens" className="text-xs text-secondary hover:underline">Ver todas</Link>
@@ -663,7 +663,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         </div>
 
         {/* Activity Feed — 30% */}
-        <div className="col-span-3 h-[420px]">
+        <div className="dc-activity col-span-3 h-[420px]">
           <ActivityFeed />
         </div>
       </div>

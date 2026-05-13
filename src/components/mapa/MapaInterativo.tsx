@@ -209,16 +209,15 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       .order('ordem', { ascending: true })
       .order('created_at', { ascending: true });
     if (data) {
-      setCamadas(data as Camada[]);
-      setVisivel((prev) => {
-        const next = { ...prev };
-        for (const c of data) {
-          // Estado salvo por nome vence sempre na carga/realtime; senão mantém o estado atual ou default visível.
-          next[c.id] = stored[c.nome] !== undefined ? !!stored[c.nome] : next[c.id] !== false;
-        }
-        visivelRef.current = next;
-        return next;
-      });
+      const loadedCamadas = data as Camada[];
+      const nextVis = { ...visivelRef.current };
+      for (const c of loadedCamadas) {
+        // Estado salvo por nome vence antes da renderização; senão mantém o estado atual ou default visível.
+        nextVis[c.id] = stored[c.nome] !== undefined ? !!stored[c.nome] : nextVis[c.id] !== false;
+      }
+      visivelRef.current = nextVis;
+      setVisivel(nextVis);
+      setCamadas(loadedCamadas);
     }
   };
 

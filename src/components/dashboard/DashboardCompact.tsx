@@ -634,7 +634,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         })()}
 
         {/* NS em Execução — 20% */}
-        <div className="col-span-2 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-[420px]">
+        <div className="dc-ns col-span-2 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-[420px]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-foreground">NS em Execução</h3>
             <Link to="/ordens" className="text-xs text-secondary hover:underline">Ver todas</Link>

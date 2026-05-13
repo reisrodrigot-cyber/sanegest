@@ -547,13 +547,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <h3 className="text-sm font-semibold text-white">Avanço por Bacia</h3>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={baciaFilter}
-                    onChange={e => setBaciaFilter(e.target.value)}
-                    placeholder="Filtrar bacia..."
-                    className="h-7 px-2 text-[11px] rounded border border-white/10 bg-white/5 text-white placeholder:text-white/40 focus:outline-none focus:border-[#4dd9ac] w-36"
-                  />
                   <button
                     onClick={() => setBaciaMode('com_execucao')}
                     className={`h-7 px-2 text-[11px] rounded border ${baciaMode === 'com_execucao' ? 'bg-[#4dd9ac] text-[#0d1b2a] border-[#4dd9ac]' : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'}`}

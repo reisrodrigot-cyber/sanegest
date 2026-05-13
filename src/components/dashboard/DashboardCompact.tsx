@@ -91,6 +91,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [registros, setRegistros] = useState<DailyRow[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [baciaFilter, setBaciaFilter] = useState('');
+  const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
 
   useEffect(() => {
     Promise.all([
@@ -522,76 +524,110 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       </div>
 
       {/* Row 3 — Avanço por Bacia (full width, dark) */}
-      <div className="rounded-lg shadow-sm p-3" style={darkCardStyle}>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-white">Avanço por Bacia</h3>
-          <div className="flex items-center gap-3 text-[11px] text-white/80">
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: RED_PEND }} />
-              Pendente
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_EXEC }} />
-              Executado
-            </span>
-          </div>
-        </div>
-        {porTrecho.length === 0 ? (
-          <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
-        ) : (
-          <div style={{ height: Math.max(160, porTrecho.length * 38 + 30) }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={porTrecho}
-                layout="vertical"
-                margin={{ top: 4, right: 56, bottom: 4, left: 8 }}
-                barCategoryGap={10}
-              >
-                <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
-                <YAxis
-                  type="category"
-                  dataKey="trecho"
-                  tick={{ fontSize: 11, fill: DARK_AXIS }}
-                  stroke={DARK_GRID}
-                  width={120}
+      {(() => {
+        const filtered = porTrecho.filter(b => {
+          if (baciaMode === 'com_execucao' && !(b.executado > 0)) return false;
+          if (baciaFilter && !String(b.trecho).toLowerCase().includes(baciaFilter.toLowerCase())) return false;
+          return true;
+        });
+        const innerHeight = Math.max(160, filtered.length * 22 + 30);
+        return (
+          <div className="rounded-lg shadow-sm p-3" style={darkCardStyle}>
+            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+              <h3 className="text-sm font-semibold text-white">Avanço por Bacia</h3>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={baciaFilter}
+                  onChange={e => setBaciaFilter(e.target.value)}
+                  placeholder="Filtrar bacia..."
+                  className="h-7 px-2 text-[11px] rounded border border-white/10 bg-white/5 text-white placeholder:text-white/40 focus:outline-none focus:border-[#4dd9ac] w-40"
                 />
-                <Tooltip
-                  contentStyle={darkTooltipStyle}
-                  labelStyle={{ color: '#fff' }}
-                  formatter={(v: number, n: string) => [`${v.toLocaleString('pt-BR')} m`, n === 'executado' ? 'Executado' : 'Pendente']}
-                />
-                <Bar dataKey="executado" stackId="a" fill={GREEN_EXEC} name="executado">
-                  <LabelList
-                    dataKey="executado"
-                    position="center"
-                    formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
-                    fill="#fff"
-                    fontSize={11}
-                  />
-                </Bar>
-                <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente">
-                  <LabelList
-                    dataKey="pendente"
-                    position="center"
-                    formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
-                    fill="#fff"
-                    fontSize={11}
-                  />
-                  <LabelList
-                    dataKey="pct"
-                    position="right"
-                    formatter={(v: number) => `${v}%`}
-                    fill="#4dd9ac"
-                    fontSize={12}
-                    offset={8}
-                  />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                <button
+                  onClick={() => setBaciaMode('com_execucao')}
+                  className={`h-7 px-2 text-[11px] rounded border ${baciaMode === 'com_execucao' ? 'bg-[#4dd9ac] text-[#0d1b2a] border-[#4dd9ac]' : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'}`}
+                >
+                  Com execução
+                </button>
+                <button
+                  onClick={() => setBaciaMode('todas')}
+                  className={`h-7 px-2 text-[11px] rounded border ${baciaMode === 'todas' ? 'bg-[#4dd9ac] text-[#0d1b2a] border-[#4dd9ac]' : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'}`}
+                >
+                  Todas
+                </button>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-white/80">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: RED_PEND }} />
+                  Pendente
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_EXEC }} />
+                  Executado
+                </span>
+              </div>
+            </div>
+            {filtered.length === 0 ? (
+              <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
+            ) : (
+              <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
+                <div style={{ height: innerHeight }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={filtered}
+                      layout="vertical"
+                      margin={{ top: 4, right: 56, bottom: 4, left: 8 }}
+                      barCategoryGap={4}
+                      barSize={14}
+                    >
+                      <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
+                      <YAxis
+                        type="category"
+                        dataKey="trecho"
+                        tick={{ fontSize: 11, fill: DARK_AXIS }}
+                        stroke={DARK_GRID}
+                        width={120}
+                      />
+                      <Tooltip
+                        contentStyle={darkTooltipStyle}
+                        labelStyle={{ color: '#fff' }}
+                        formatter={(v: number, n: string) => [`${v.toLocaleString('pt-BR')} m`, n === 'executado' ? 'Executado' : 'Pendente']}
+                      />
+                      <Bar dataKey="executado" stackId="a" fill={GREEN_EXEC} name="executado" barSize={14}>
+                        <LabelList
+                          dataKey="executado"
+                          position="center"
+                          formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
+                          fill="#fff"
+                          fontSize={10}
+                        />
+                      </Bar>
+                      <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente" barSize={14}>
+                        <LabelList
+                          dataKey="pendente"
+                          position="center"
+                          formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
+                          fill="#fff"
+                          fontSize={10}
+                        />
+                        <LabelList
+                          dataKey="pct"
+                          position="right"
+                          formatter={(v: number) => `${v}%`}
+                          fill="#4dd9ac"
+                          fontSize={11}
+                          offset={8}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* Row 4 — NS em Execução (compact list) + Activity Feed (wide) */}
       <div className="grid grid-cols-10 gap-3">

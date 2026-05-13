@@ -370,24 +370,24 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       </div>
 
       {/* Row 2 — Map + Charts + Tables */}
-      <div className="grid grid-cols-10 gap-3">
+      <div className="dc-row2 grid grid-cols-10 gap-3">
         {/* Map */}
-        <div className="col-span-4 bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col">
+        <div className="dc-map col-span-4 bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col">
           <div className="flex items-center justify-between px-1 pb-1">
             <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
           </div>
-          <div className="flex-1 min-h-0">
+          <div className="dc-map-inner flex-1 min-h-0">
             <MapaInterativo height="100%" className="" focusOsId={focusOsId} />
           </div>
         </div>
 
         {/* Charts (dark) */}
-        <div className="col-span-3 flex flex-col gap-3">
-          <div className="rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
+        <div className="dc-charts col-span-3 flex flex-col gap-3">
+          <div className="dc-chart dc-chart-daily rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Diária <span className="text-[10px] text-white/60 font-normal">(30d)</span>
             </h3>
-            <div className="h-[150px]">
+            <div className="dc-chart-box h-[150px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />

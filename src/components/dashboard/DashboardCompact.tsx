@@ -423,7 +423,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Mensal <span className="text-[10px] text-white/60 font-normal">(4 meses)</span>
             </h3>
-            <div className="dc-chart-box h-[150px]">
+            <div className="dc-chart-box h-[150px]" style={{ width: '100%', minHeight: 150, display: 'block' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyData} margin={{ top: 18, right: 16, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />

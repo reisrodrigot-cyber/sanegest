@@ -244,6 +244,30 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const [interLat, setInterLat] = useState('');
   const [interLng, setInterLng] = useState('');
 
+  // Metadados extra (encarregado / profundidade / ns_relacionada) por seção
+  const [montEnc, setMontEnc] = useState(''); const [montProf, setMontProf] = useState(''); const [montNs, setMontNs] = useState(os.trecho ?? '');
+  const [jusEnc, setJusEnc] = useState(''); const [jusProf, setJusProf] = useState(''); const [jusNs, setJusNs] = useState(os.trecho ?? '');
+  const [interEnc, setInterEnc] = useState(''); const [interProf, setInterProf] = useState(''); const [interNs, setInterNs] = useState(os.trecho ?? '');
+
+  // Listas para dropdowns
+  const [encOpts, setEncOpts] = useState<string[]>([]);
+  const [nsOpts, setNsOpts] = useState<string[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data: roleRows } = await supabase
+        .from('user_roles').select('user_id').eq('role', 'encarregado');
+      const ids = (roleRows ?? []).map((r: any) => r.user_id);
+      if (ids.length) {
+        const { data: profs } = await supabase
+          .from('profiles').select('display_name, email').in('user_id', ids);
+        setEncOpts((profs ?? []).map((p: any) => p.display_name || p.email).filter(Boolean));
+      }
+      const { data: oss } = await supabase
+        .from('ordens_servico').select('trecho').order('trecho', { ascending: true });
+      setNsOpts([...new Set((oss ?? []).map((o: any) => o.trecho).filter(Boolean))]);
+    })();
+  }, []);
+
   const fetchPoints = useCallback(async () => {
     const { data } = await supabase
       .from('topografia_asbuilt')

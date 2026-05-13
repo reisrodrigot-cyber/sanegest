@@ -559,15 +559,18 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     const line = osPolylineRef.current.get(focusOsId);
     if (line) {
       setTimeout(() => {
-        try { line.openPopup(); } catch {/* ignore */}
-        const el = (line as any)._path as SVGElement | undefined;
-        if (el) {
-          el.classList.remove('ns-highlight-pulse');
-          // force reflow
-          void (el as any).getBoundingClientRect?.();
-          el.classList.add('ns-highlight-pulse');
-          setTimeout(() => el.classList.remove('ns-highlight-pulse'), 3200);
-        }
+        try { line.openPopup(bounds.getCenter()); } catch {/* ignore */}
+        const start = Date.now();
+        const interval = window.setInterval(() => {
+          const t = (Date.now() - start) / 1000;
+          if (t >= 3) {
+            window.clearInterval(interval);
+            try { line.setStyle({ weight: 4, color: redeColor, opacity: redeOpacidade }); } catch {/* ignore */}
+            return;
+          }
+          const w = 5 + Math.abs(Math.sin(t * Math.PI * 1.6)) * 7;
+          try { line.setStyle({ weight: w, color: '#4dd9ac', opacity: 1 }); } catch {/* ignore */}
+        }, 60);
       }, 1100);
     }
   }, [focusOsId, redePoints]);

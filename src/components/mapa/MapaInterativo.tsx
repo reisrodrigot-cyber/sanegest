@@ -345,6 +345,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
         });
         line.bindPopup(popupHtml);
         line.addTo(layer);
+        osPolylineRef.current.set(first.os_id, line);
         // Setas de direcionamento do fluxo (gravidade: montante → jusante)
         // @ts-ignore - plugin polylineDecorator
         L.polylineDecorator(line, {

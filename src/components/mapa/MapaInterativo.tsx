@@ -331,14 +331,18 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
 
   // Inicial + realtime
   useEffect(() => {
-    Promise.all([fetchCamadas(), fetchGroups(), fetchAsBuilt(), fetchLigacoes(), fetchAsBuiltConfig()]).finally(() => setLoading(false));
+    const loadGroupsAndLayers = async () => {
+      const loadedGroups = await fetchGroups();
+      await fetchCamadas(loadedGroups);
+    };
+    Promise.all([loadGroupsAndLayers(), fetchAsBuilt(), fetchLigacoes(), fetchAsBuiltConfig()]).finally(() => setLoading(false));
 
     const ch = supabase
       .channel('mapa-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'topografia_asbuilt' }, fetchAsBuilt)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ligacoes' }, fetchLigacoes)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_camadas' }, fetchCamadas)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'kmz_layer_groups' }, fetchGroups)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_camadas' }, () => { fetchCamadas(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kmz_layer_groups' }, () => { loadGroupsAndLayers(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_asbuilt_config' }, fetchAsBuiltConfig)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -743,11 +747,15 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     for (const c of layers) {
       out[c.nome] = state[c.id] !== false;
     }
+    for (const g of groups) {
+      const groupLayers = layers.filter((c) => c.group_id === g.id);
+      if (groupLayers.length > 0) out[g.name] = groupLayers.some((c) => state[c.id] !== false);
+    }
     try {
       localStorage.setItem(VIS_STORAGE_KEY, JSON.stringify(out));
       visStorageRef.current = out;
     } catch { /* quota / privacy mode */ }
-  }, [camadas]);
+  }, [camadas, groups]);
 
   const toggleVis = (id: string) => setVisivel((v) => {
     const next = { ...v, [id]: !v[id] };

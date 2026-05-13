@@ -475,7 +475,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               </table>
             </div>
           </div>
-          <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
+          <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
             <h3 className="text-sm font-semibold text-foreground mb-2">Avanço por Bacia</h3>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">

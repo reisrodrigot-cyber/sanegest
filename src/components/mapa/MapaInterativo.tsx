@@ -95,9 +95,13 @@ async function loadKmzAsGeoJSON(url: string): Promise<GeoJSON.FeatureCollection 
 interface MapaInterativoProps {
   /** Mostra marcador da posição GPS atual e botão "Minha Localização" */
   showLocation?: boolean;
+  /** Altura do mapa em px ou string CSS. Default 520. */
+  height?: number | string;
+  /** Margem inferior. Default mb-6. */
+  className?: string;
 }
 
-export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) => {
+export const MapaInterativo = ({ showLocation = false, height = 520, className = 'mb-6' }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
 
@@ -731,7 +735,7 @@ export const MapaInterativo = ({ showLocation = false }: MapaInterativoProps) =>
   };
 
   return (
-    <div className="relative mb-6" style={{ height: 520 }}>
+    <div className={`relative ${className}`} style={{ height }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', borderRadius: '0.75rem', overflow: 'hidden' }} />
 
       {/* Controle flutuante: camadas + minha localização */}

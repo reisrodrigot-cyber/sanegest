@@ -82,15 +82,21 @@ const useMobileChartWidth = (minWidth = 260) => {
 const ChartFrame = ({
   className,
   mobileHeight,
+  desktopHeight,
   children,
 }: {
   className: string;
   mobileHeight: number;
+  desktopHeight?: number;
   children: (width?: number, height?: number) => React.ReactElement;
 }) => {
   const [ref, mobileWidth] = useMobileChartWidth();
   return (
-    <div ref={ref} className={className} style={{ width: '100%', minHeight: 150, display: 'block' }}>
+    <div
+      ref={ref}
+      className={className}
+      style={{ width: '100%', height: mobileWidth > 0 ? mobileHeight : desktopHeight, minHeight: 150, display: 'block' }}
+    >
       {mobileWidth > 0 ? (
         children(mobileWidth, mobileHeight)
       ) : (
@@ -643,7 +649,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
               ) : (
                 <div className="overflow-y-auto flex-1 min-h-0">
-                  <ChartFrame className="dc-chart-box" mobileHeight={mobileBaciaHeight}>
+                  <ChartFrame className="dc-chart-box" mobileHeight={mobileBaciaHeight} desktopHeight={innerHeight}>
                     {(chartWidth, chartHeight) => (
                       <BarChart
                         width={chartWidth}

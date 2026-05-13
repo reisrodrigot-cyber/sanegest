@@ -840,6 +840,7 @@ ${placemarks.join('\n')}
     }
   };
 
+  return (
     <div className={`relative ${className}`} style={{ height }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', borderRadius: '0.75rem', overflow: 'hidden' }} />
 

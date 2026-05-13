@@ -202,6 +202,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
 
   // ======= Fetch dados =======
   const fetchCamadas = async () => {
+    const stored = visStorageRef.current;
     const { data } = await supabase
       .from('mapa_camadas')
       .select('*')
@@ -211,13 +212,11 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       setCamadas(data as Camada[]);
       setVisivel((prev) => {
         const next = { ...prev };
-        const stored = visStorageRef.current;
         for (const c of data) {
-          if (next[c.id] === undefined) {
-            // Default: visível (a menos que esteja explicitamente oculto no localStorage por nome)
-            next[c.id] = stored[c.nome] !== undefined ? !!stored[c.nome] : true;
-          }
+          // Estado salvo por nome vence sempre na carga/realtime; senão mantém o estado atual ou default visível.
+          next[c.id] = stored[c.nome] !== undefined ? !!stored[c.nome] : next[c.id] !== false;
         }
+        visivelRef.current = next;
         return next;
       });
     }
@@ -469,7 +468,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     }
 
     camadas.forEach(async (c) => {
-      const shouldShow = visivel[c.id] !== false;
+      const shouldShow = visivelRef.current[c.id] !== false;
       const sig = `${c.cor}|${c.opacidade}|${c.storage_path}`;
       const cached = kmzLayersRef.current.get(c.id);
       const cachedSig = kmzSigRef.current.get(c.id);
@@ -509,7 +508,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
         }
 
         // Se enquanto carregava o usuário desligou a camada, não adiciona
-        if (visivel[c.id] === false) return;
+        if (visivelRef.current[c.id] === false) return;
 
         const styleOpts: L.PathOptions = {
           color: c.cor,

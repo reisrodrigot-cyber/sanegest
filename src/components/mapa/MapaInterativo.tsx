@@ -743,7 +743,103 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     });
   };
 
-  return (
+  // ===== Exportar KMZ as-built (rede + ligações com ExtendedData) =====
+  const exportKmz = async () => {
+    try {
+      const esc = (s: any) =>
+        String(s ?? '')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      const ext = (data: Record<string, any>) => {
+        const rows = Object.entries(data)
+          .filter(([, v]) => v !== null && v !== undefined && v !== '')
+          .map(([k, v]) => `      <Data name="${esc(k)}"><value>${esc(v)}</value></Data>`)
+          .join('\n');
+        return rows ? `    <ExtendedData>\n${rows}\n    </ExtendedData>` : '';
+      };
+
+      // Agrupar rede por OS para gerar LineStrings + Points
+      const grupos = new Map<string, RedePoint[]>();
+      redePoints.forEach((p) => {
+        const arr = grupos.get(p.os_id) ?? [];
+        arr.push(p); grupos.set(p.os_id, arr);
+      });
+
+      const placemarks: string[] = [];
+
+      grupos.forEach((pts) => {
+        if (pts.length === 0) return;
+        const first = pts[0];
+        if (pts.length >= 2) {
+          const coords = pts.map((p) => `${p.longitude},${p.latitude},0`).join(' ');
+          placemarks.push(`  <Placemark>
+    <name>REDE — ${esc(first.trecho)}</name>
+${ext({
+  tipo: 'REDE',
+  trecho: first.trecho,
+  bacia: first.bacia,
+  pv_montante: first.pv_montante,
+  pv_jusante: first.pv_jusante,
+  comprimento_executado: first.comprimento_real ?? first.comprimento_previsto,
+  status: first.status,
+})}
+    <LineString><coordinates>${coords}</coordinates></LineString>
+  </Placemark>`);
+        }
+        pts.forEach((p, idx) => {
+          placemarks.push(`  <Placemark>
+    <name>${esc(p.nome_estaca || `Ponto ${idx + 1}`)} — ${esc(first.trecho)}</name>
+${ext({
+  tipo: 'VERTICE',
+  trecho: first.trecho,
+  bacia: first.bacia,
+  nome_estaca: p.nome_estaca,
+  encarregado: p.encarregado,
+  profundidade: p.profundidade,
+  ns_relacionada: p.ns_relacionada,
+  status: first.status,
+})}
+    <Point><coordinates>${p.longitude},${p.latitude},0</coordinates></Point>
+  </Placemark>`);
+        });
+      });
+
+      ligacoesPoints.forEach((m) => {
+        placemarks.push(`  <Placemark>
+    <name>Ligação ${m.numero} — ${esc(m.trecho)}</name>
+${ext({
+  tipo: 'LIGACAO',
+  trecho: m.trecho,
+  numero: m.numero,
+  referencia: m.referencia,
+})}
+    <Point><coordinates>${m.longitude},${m.latitude},0</coordinates></Point>
+  </Placemark>`);
+      });
+
+      const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>SaneGest As-built</name>
+${placemarks.join('\n')}
+</Document>
+</kml>`;
+
+      const zip = new JSZip();
+      zip.file('doc.kml', kml);
+      const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.google-earth.kmz' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sanegest-asbuilt-${new Date().toISOString().slice(0, 10)}.kmz`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('KMZ exportado');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Erro ao exportar KMZ');
+    }
+  };
+
     <div className={`relative ${className}`} style={{ height }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', borderRadius: '0.75rem', overflow: 'hidden' }} />
 

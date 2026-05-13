@@ -256,7 +256,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   return (
     <div className="flex flex-col gap-3">
       {/* Row 1 — KPIs */}
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico"
@@ -284,13 +284,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           value={kpis.nsExec}
           sub={divergenciasCount > 0 ? `${divergenciasCount} divergência(s)` : 'sem divergências'}
           accent={accent.amber}
-        />
-        <KpiCard
-          icon={<Users size={16} />}
-          label="Encarregados Ativos"
-          value={kpis.ativos}
-          sub="últimos 30 dias"
-          accent={accent.purple}
         />
         <KpiCard
           icon={<Gauge size={16} />}

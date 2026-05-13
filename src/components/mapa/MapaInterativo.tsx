@@ -1142,6 +1142,28 @@ ${placemarks.join('\n')}
                 </div>
               );
             })()}
+
+            {/* Bottom: discrete actions */}
+            {canManage && (
+              <div className="mt-3 pt-2 border-t border-border/60 flex items-center justify-between gap-2">
+                <button
+                  onClick={() => { setEditing(null); setModalOpen(true); setLayersOpen(false); }}
+                  className="inline-flex items-center gap-1.5 text-xs hover:text-foreground transition-colors"
+                  style={{ color: '#6b8aaa' }}
+                  title="Inserir KMZ"
+                >
+                  <Upload size={12} /> Inserir KMZ
+                </button>
+                <button
+                  onClick={() => { exportKmz(); }}
+                  className="inline-flex items-center gap-1.5 text-xs hover:text-foreground transition-colors"
+                  style={{ color: '#6b8aaa' }}
+                  title="Exportar KMZ"
+                >
+                  <Download size={12} /> Exportar
+                </button>
+              </div>
+            )}
           </PopoverContent>
         </Popover>
       </div>

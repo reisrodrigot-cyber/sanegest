@@ -114,6 +114,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   const mapRef = useRef<L.Map | null>(null);
   const redeLayerRef = useRef<L.LayerGroup | null>(null);
   const ligacoesLayerRef = useRef<L.LayerGroup | null>(null);
+  const osPolylineRef = useRef<Map<string, L.Polyline>>(new Map());
   const kmzLayersRef = useRef<Map<string, L.Layer>>(new Map());
   const kmzBoundsRef = useRef<Map<string, L.LatLngBounds>>(new Map());
   // Assinatura por camada (cor|opacidade|storage_path) para saber quando refazer o layer

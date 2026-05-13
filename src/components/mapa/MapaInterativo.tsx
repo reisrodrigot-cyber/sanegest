@@ -130,9 +130,24 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [redePoints, setRedePoints] = useState<RedePoint[]>([]);
   const [ligacoesPoints, setLigacoesPoints] = useState<LigacaoPoint[]>([]);
-  const [visivel, setVisivel] = useState<Record<string, boolean>>({
-    __rede: true,
-    __ligacoes: true,
+
+  // Visibilidade persistida em localStorage por NOME da camada
+  const VIS_STORAGE_KEY = 'sangest_map_layers_visibility';
+  const readVisStorage = (): Record<string, boolean> => {
+    try {
+      const raw = localStorage.getItem(VIS_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch { return {}; }
+  };
+  const visStorageRef = useRef<Record<string, boolean>>(readVisStorage());
+  const [visivel, setVisivel] = useState<Record<string, boolean>>(() => {
+    const stored = visStorageRef.current;
+    return {
+      __rede: stored['As-built Rede'] !== false,
+      __ligacoes: stored['As-built Ligações'] !== false,
+    };
   });
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -177,7 +192,13 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       setCamadas(data as Camada[]);
       setVisivel((prev) => {
         const next = { ...prev };
-        for (const c of data) if (next[c.id] === undefined) next[c.id] = c.visivel_default;
+        const stored = visStorageRef.current;
+        for (const c of data) {
+          if (next[c.id] === undefined) {
+            // Default: visível (a menos que esteja explicitamente oculto no localStorage por nome)
+            next[c.id] = stored[c.nome] !== undefined ? !!stored[c.nome] : true;
+          }
+        }
         return next;
       });
     }
@@ -693,6 +714,21 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   };
 
   const toggleVis = (id: string) => setVisivel((v) => ({ ...v, [id]: !v[id] }));
+
+  // Persistir visibilidade no localStorage por NOME da camada
+  useEffect(() => {
+    const out: Record<string, boolean> = {
+      'As-built Rede': visivel.__rede !== false,
+      'As-built Ligações': visivel.__ligacoes !== false,
+    };
+    for (const c of camadas) {
+      out[c.nome] = visivel[c.id] !== false;
+    }
+    try {
+      localStorage.setItem(VIS_STORAGE_KEY, JSON.stringify(out));
+      visStorageRef.current = out;
+    } catch { /* quota / privacy mode */ }
+  }, [visivel, camadas]);
 
   const focusCamada = (id: string) => {
     const map = mapRef.current;

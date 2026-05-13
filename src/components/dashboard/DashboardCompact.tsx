@@ -7,10 +7,10 @@ import {
   CalendarDays,
   TrendingUp,
   ListChecks,
-  Users,
   Gauge,
   Layers,
   Loader2,
+  Radio,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { StatusBadge } from '@/components/StatusBadge';

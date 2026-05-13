@@ -917,16 +917,6 @@ ${placemarks.join('\n')}
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                 <Layers size={14} /> Camadas
               </div>
-              {canManage && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2"
-                  onClick={() => { setEditing(null); setModalOpen(true); setLayersOpen(false); }}
-                >
-                  <Plus size={14} className="mr-1" /> Adicionar
-                </Button>
-              )}
             </div>
 
             {/* As-built */}

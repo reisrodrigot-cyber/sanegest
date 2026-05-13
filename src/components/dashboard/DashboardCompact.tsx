@@ -115,6 +115,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     });
   }, []);
 
+  // Force Recharts ResponsiveContainer to recalc on mount (fixes empty charts on mobile)
+  useEffect(() => {
+    const fire = () => window.dispatchEvent(new Event('resize'));
+    const t1 = setTimeout(fire, 100);
+    const t2 = setTimeout(fire, 400);
+    const t3 = setTimeout(fire, 900);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const kpis = useMemo(() => {

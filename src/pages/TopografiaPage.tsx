@@ -23,6 +23,9 @@ interface AsBuiltPoint {
   longitude: number | null;
   created_at: string;
   registrado_por: string | null;
+  encarregado: string | null;
+  profundidade: number | null;
+  ns_relacionada: string | null;
 }
 
 interface LigacaoPoint {

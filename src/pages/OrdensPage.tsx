@@ -26,6 +26,7 @@ function naturalCompare(a: string, b: string) {
 const OrdensPage = () => {
   const { ordens, loading } = useOrdensServico();
   const { user, effectiveRole } = useAuth();
+  const navigate = useNavigate();
   const role = effectiveRole || user?.role;
   const canImport = role === 'admin' || role === 'sala_tecnica';
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');

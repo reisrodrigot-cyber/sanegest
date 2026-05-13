@@ -23,6 +23,9 @@ interface AsBuiltPoint {
   longitude: number | null;
   created_at: string;
   registrado_por: string | null;
+  encarregado: string | null;
+  profundidade: number | null;
+  ns_relacionada: string | null;
 }
 
 interface LigacaoPoint {
@@ -144,10 +147,14 @@ interface PVCardProps {
   onDelete: () => Promise<void> | void;
   saving: boolean;
   canEdit: boolean;
+  encState: string; profState: string; nsState: string;
+  onEnc: (v: string) => void; onProf: (v: string) => void; onNs: (v: string) => void;
+  encOpts: string[]; nsOpts: string[];
 }
 
 const PVCard = ({
   titulo, label, point, latState, lngState, onLat, onLng, onSave, onDelete, saving, canEdit,
+  encState, profState, nsState, onEnc, onProf, onNs, encOpts, nsOpts,
 }: PVCardProps) => {
   const [editMode, setEditMode] = useState(false);
   const showForm = !point || editMode;
@@ -160,6 +167,9 @@ const PVCard = ({
   const startEdit = () => {
     onLat(point?.latitude?.toString() ?? '');
     onLng(point?.longitude?.toString() ?? '');
+    onEnc(point?.encarregado ?? '');
+    onProf(point?.profundidade != null ? String(point.profundidade) : '');
+    onNs(point?.ns_relacionada ?? '');
     setEditMode(true);
   };
 
@@ -172,18 +182,10 @@ const PVCard = ({
         </p>
         {point && !showForm && canEdit && (
           <div className="flex items-center gap-1">
-            <button
-              onClick={startEdit}
-              className="text-muted-foreground hover:text-foreground p-1"
-              title="Editar"
-            >
+            <button onClick={startEdit} className="text-muted-foreground hover:text-foreground p-1" title="Editar">
               <Pencil size={13} />
             </button>
-            <button
-              onClick={() => onDelete()}
-              className="text-destructive hover:text-destructive/80 p-1"
-              title="Excluir"
-            >
+            <button onClick={() => onDelete()} className="text-destructive hover:text-destructive/80 p-1" title="Excluir">
               <Trash2 size={13} />
             </button>
           </div>
@@ -195,6 +197,25 @@ const PVCard = ({
           <div className="grid grid-cols-2 gap-2">
             <Input placeholder="Latitude *" type="number" step="any" value={latState} onChange={(e) => onLat(e.target.value)} className="h-9 text-sm" />
             <Input placeholder="Longitude *" type="number" step="any" value={lngState} onChange={(e) => onLng(e.target.value)} className="h-9 text-sm" />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <select
+              value={encState}
+              onChange={(e) => onEnc(e.target.value)}
+              className="h-9 text-sm rounded-md border border-input bg-background px-2"
+            >
+              <option value="">Encarregado…</option>
+              {encOpts.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <Input placeholder="Profundidade (m)" type="number" step="any" value={profState} onChange={(e) => onProf(e.target.value)} className="h-9 text-sm" />
+            <select
+              value={nsState}
+              onChange={(e) => onNs(e.target.value)}
+              className="h-9 text-sm rounded-md border border-input bg-background px-2"
+            >
+              <option value="">NS relacionada…</option>
+              {nsOpts.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
           </div>
           <div className="flex gap-2">
             <Button onClick={handleSave} disabled={saving} size="sm" className="flex-1">
@@ -209,10 +230,15 @@ const PVCard = ({
           </div>
         </>
       ) : point ? (
-        <p className="text-sm text-foreground">
-          <span className="text-status-green mr-1">✓</span>
-          {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
-        </p>
+        <div className="text-sm text-foreground space-y-0.5">
+          <p>
+            <span className="text-status-green mr-1">✓</span>
+            {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
+          </p>
+          {point.encarregado && <p className="text-xs text-muted-foreground">Encarregado: <span className="text-foreground">{point.encarregado}</span></p>}
+          {point.profundidade != null && <p className="text-xs text-muted-foreground">Profundidade: <span className="text-foreground">{point.profundidade} m</span></p>}
+          {point.ns_relacionada && <p className="text-xs text-muted-foreground">NS relacionada: <span className="text-foreground">{point.ns_relacionada}</span></p>}
+        </div>
       ) : (
         <p className="text-xs text-muted-foreground italic">Não registrado</p>
       )}
@@ -241,10 +267,34 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const [interLat, setInterLat] = useState('');
   const [interLng, setInterLng] = useState('');
 
+  // Metadados extra (encarregado / profundidade / ns_relacionada) por seção
+  const [montEnc, setMontEnc] = useState(''); const [montProf, setMontProf] = useState(''); const [montNs, setMontNs] = useState(os.trecho ?? '');
+  const [jusEnc, setJusEnc] = useState(''); const [jusProf, setJusProf] = useState(''); const [jusNs, setJusNs] = useState(os.trecho ?? '');
+  const [interEnc, setInterEnc] = useState(''); const [interProf, setInterProf] = useState(''); const [interNs, setInterNs] = useState(os.trecho ?? '');
+
+  // Listas para dropdowns
+  const [encOpts, setEncOpts] = useState<string[]>([]);
+  const [nsOpts, setNsOpts] = useState<string[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data: roleRows } = await supabase
+        .from('user_roles').select('user_id').eq('role', 'encarregado');
+      const ids = (roleRows ?? []).map((r: any) => r.user_id);
+      if (ids.length) {
+        const { data: profs } = await supabase
+          .from('profiles').select('display_name, email').in('user_id', ids);
+        setEncOpts((profs ?? []).map((p: any) => p.display_name || p.email).filter(Boolean));
+      }
+      const { data: oss } = await supabase
+        .from('ordens_servico').select('trecho').order('trecho', { ascending: true });
+      setNsOpts([...new Set((oss ?? []).map((o: any) => o.trecho).filter(Boolean))]);
+    })();
+  }, []);
+
   const fetchPoints = useCallback(async () => {
     const { data } = await supabase
       .from('topografia_asbuilt')
-      .select('id, os_id, nome_estaca, latitude, longitude, created_at, registrado_por')
+      .select('id, os_id, nome_estaca, latitude, longitude, created_at, registrado_por, encarregado, profundidade, ns_relacionada')
       .eq('os_id', os.id)
       .order('created_at', { ascending: true });
     setPoints((data as AsBuiltPoint[]) ?? []);
@@ -292,6 +342,16 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const pvMontanteLabel = os.pv_montante || 'PV Montante';
   const pvJusanteLabel = os.pv_jusante || 'PV Jusante';
 
+  // Helper: monta payload extra opcional
+  const extraPayload = (enc: string, prof: string, ns: string) => {
+    const out: Record<string, any> = {};
+    if (enc.trim()) out.encarregado = enc.trim();
+    const pf = parseFloat(prof);
+    if (!isNaN(pf)) out.profundidade = pf;
+    if (ns.trim()) out.ns_relacionada = ns.trim();
+    return out;
+  };
+
   // ===== Salvar / atualizar PV Montante =====
   const saveMontante = async () => {
     const latVal = parseFloat(montLat);
@@ -301,16 +361,16 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       return;
     }
     setSavingMontante(true);
+    const extra = extraPayload(montEnc, montProf, montNs);
     if (montante) {
       const { data, error } = await supabase.from('topografia_asbuilt').update({
-        latitude: latVal, longitude: lngVal,
+        latitude: latVal, longitude: lngVal, ...extra,
       }).eq('id', montante.id).select().single();
       setSavingMontante(false);
       if (error) { toast.error('Erro ao atualizar PV Montante.'); return; }
       toast.success('PV Montante atualizado!');
       if (data) setPoints((prev) => prev.map((p) => p.id === data.id ? (data as AsBuiltPoint) : p));
     } else {
-      // Inserir como o primeiro registro (created_at bem antigo para ficar à frente)
       const ts = new Date(Date.now() - 1000 * 60 * 60 * 24 * 365).toISOString();
       const { data, error } = await supabase.from('topografia_asbuilt').insert({
         os_id: os.id,
@@ -319,6 +379,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
         longitude: lngVal,
         registrado_por: user?.id ?? null,
         created_at: ts,
+        ...extra,
       }).select().single();
       setSavingMontante(false);
       if (error) { toast.error('Erro ao salvar PV Montante.'); return; }
@@ -337,16 +398,16 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       return;
     }
     setSavingJusante(true);
+    const extra = extraPayload(jusEnc, jusProf, jusNs);
     if (jusante) {
       const { data, error } = await supabase.from('topografia_asbuilt').update({
-        latitude: latVal, longitude: lngVal,
+        latitude: latVal, longitude: lngVal, ...extra,
       }).eq('id', jusante.id).select().single();
       setSavingJusante(false);
       if (error) { toast.error('Erro ao atualizar PV Jusante.'); return; }
       toast.success('PV Jusante atualizado!');
       if (data) setPoints((prev) => prev.map((p) => p.id === data.id ? (data as AsBuiltPoint) : p));
     } else {
-      // Created_at no futuro para ficar sempre por último
       const ts = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
       const { data, error } = await supabase.from('topografia_asbuilt').insert({
         os_id: os.id,
@@ -355,6 +416,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
         longitude: lngVal,
         registrado_por: user?.id ?? null,
         created_at: ts,
+        ...extra,
       }).select().single();
       setSavingJusante(false);
       if (error) { toast.error('Erro ao salvar PV Jusante.'); return; }
@@ -380,11 +442,12 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       latitude: latVal,
       longitude: lngVal,
       registrado_por: user?.id ?? null,
+      ...extraPayload(interEnc, interProf, interNs),
     }).select().single();
     setSavingInter(false);
     if (error) { toast.error('Erro ao salvar ponto intermediário.'); return; }
     toast.success(`Intermediário ${next} registrado!`);
-    setInterLat(''); setInterLng('');
+    setInterLat(''); setInterLng(''); setInterEnc(''); setInterProf('');
     if (data) setPoints((prev) => [...prev, data as AsBuiltPoint]);
   };
 
@@ -484,6 +547,9 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 onDelete={() => montante && deletePV(montante, 'PV Montante')}
                 saving={savingMontante}
                 canEdit={canEdit}
+                encState={montEnc} profState={montProf} nsState={montNs}
+                onEnc={setMontEnc} onProf={setMontProf} onNs={setMontNs}
+                encOpts={encOpts} nsOpts={nsOpts}
               />
 
               {/* Intermediários */}
@@ -529,6 +595,25 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                       <Input placeholder="Latitude" type="number" step="any" value={interLat} onChange={(e) => setInterLat(e.target.value)} className="h-9 text-sm" />
                       <Input placeholder="Longitude" type="number" step="any" value={interLng} onChange={(e) => setInterLng(e.target.value)} className="h-9 text-sm" />
                     </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <select
+                        value={interEnc}
+                        onChange={(e) => setInterEnc(e.target.value)}
+                        className="h-9 text-sm rounded-md border border-input bg-background px-2"
+                      >
+                        <option value="">Encarregado…</option>
+                        {encOpts.map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                      <Input placeholder="Profundidade (m)" type="number" step="any" value={interProf} onChange={(e) => setInterProf(e.target.value)} className="h-9 text-sm" />
+                      <select
+                        value={interNs}
+                        onChange={(e) => setInterNs(e.target.value)}
+                        className="h-9 text-sm rounded-md border border-input bg-background px-2"
+                      >
+                        <option value="">NS relacionada…</option>
+                        {nsOpts.map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
                     <Button onClick={addIntermediario} disabled={savingInter} size="sm" variant="outline" className="w-full">
                       {savingInter ? <Loader2 className="animate-spin mr-2" size={14} /> : <Plus size={14} className="mr-1" />}
                       Adicionar Ponto Intermediário
@@ -550,6 +635,9 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 onDelete={() => jusante && deletePV(jusante, 'PV Jusante')}
                 saving={savingJusante}
                 canEdit={canEdit}
+                encState={jusEnc} profState={jusProf} nsState={jusNs}
+                onEnc={setJusEnc} onProf={setJusProf} onNs={setJusNs}
+                encOpts={encOpts} nsOpts={nsOpts}
               />
 
               {!isConcluded && !allowEditAll && podeConcluir && (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -43,6 +43,64 @@ interface OSRow {
 const MES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const formatDayLabel = (d: Date) =>
   `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+const useMobileChartWidth = (minWidth = 260) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const media = window.matchMedia('(max-width: 1023px)');
+    const measure = () => {
+      if (!media.matches) {
+        setWidth(0);
+        return;
+      }
+      const rectWidth = el.getBoundingClientRect().width || el.clientWidth || window.innerWidth - 48;
+      setWidth(Math.max(minWidth, Math.floor(rectWidth)));
+    };
+    measure();
+    const raf = window.requestAnimationFrame(measure);
+    const timers = [100, 300, 700].map((ms) => window.setTimeout(measure, ms));
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', measure);
+    media.addEventListener?.('change', measure);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      timers.forEach(window.clearTimeout);
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+      media.removeEventListener?.('change', measure);
+    };
+  }, [minWidth]);
+
+  return [ref, width] as const;
+};
+
+const ChartFrame = ({
+  className,
+  mobileHeight,
+  children,
+}: {
+  className: string;
+  mobileHeight: number;
+  children: (width?: number, height?: number) => React.ReactElement;
+}) => {
+  const [ref, mobileWidth] = useMobileChartWidth();
+  return (
+    <div ref={ref} className={className} style={{ width: '100%', minHeight: 150, display: 'block' }}>
+      {mobileWidth > 0 ? (
+        children(mobileWidth, mobileHeight)
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          {children()}
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+};
 
 const FAIXAS = [
   { label: 'Até 1,15m', max: 1.15 },

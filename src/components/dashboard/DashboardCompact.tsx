@@ -289,7 +289,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         total: Math.round(v.total),
         pct: v.total > 0 ? Math.round((v.executado / v.total) * 100) : 0,
       }))
-      .sort((a, b) => b.pct - a.pct);
+      .sort((a, b) => String(a.trecho).localeCompare(String(b.trecho), 'pt-BR', { numeric: true, sensitivity: 'base' }));
   }, [ordens]);
 
   const accent = {

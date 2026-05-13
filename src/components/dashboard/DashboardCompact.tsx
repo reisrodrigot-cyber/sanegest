@@ -375,10 +375,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         <div className="col-span-4 bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col">
           <div className="flex items-center justify-between px-1 pb-1">
             <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
-            <Link to="/mapa" className="text-xs text-secondary hover:underline">Abrir</Link>
           </div>
           <div className="flex-1 min-h-0">
-            <MapaInterativo height="100%" className="" />
+            <MapaInterativo height="100%" className="" focusOsId={focusOsId} />
           </div>
         </div>
 

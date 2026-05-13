@@ -102,9 +102,11 @@ interface MapaInterativoProps {
   height?: number | string;
   /** Margem inferior. Default mb-6. */
   className?: string;
+  /** OS ID para focar (flyToBounds + popup + pulse) */
+  focusOsId?: string | null;
 }
 
-export const MapaInterativo = ({ showLocation = false, height = 520, className = 'mb-6' }: MapaInterativoProps) => {
+export const MapaInterativo = ({ showLocation = false, height = 520, className = 'mb-6', focusOsId = null }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
 

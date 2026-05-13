@@ -308,6 +308,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     const layer = redeLayerRef.current;
     if (!map || !layer) return;
     layer.clearLayers();
+    osPolylineRef.current.clear();
     if (!visivel.__rede) {
       if (map.hasLayer(layer)) map.removeLayer(layer);
       return;

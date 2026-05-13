@@ -454,9 +454,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Diária <span className="text-[10px] text-white/60 font-normal">(30d)</span>
             </h3>
-            <div className="dc-chart-box h-[150px]" style={{ width: '100%', minHeight: 150, display: 'block' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+            <ChartFrame className="dc-chart-box h-[150px]" mobileHeight={180}>
+              {(chartWidth, chartHeight) => (
+                <LineChart width={chartWidth} height={chartHeight} data={dailyData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: DARK_AXIS }} interval={4} stroke={DARK_GRID} />
                   <YAxis tick={{ fontSize: 9, fill: DARK_AXIS }} stroke={DARK_GRID} />
@@ -474,16 +474,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     activeDot={{ r: 5, fill: TEAL, stroke: '#fff', strokeWidth: 1 }}
                   />
                 </LineChart>
-              </ResponsiveContainer>
-            </div>
+              )}
+            </ChartFrame>
           </div>
           <div className="dc-chart dc-chart-monthly rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Mensal <span className="text-[10px] text-white/60 font-normal">(4 meses)</span>
             </h3>
-            <div className="dc-chart-box h-[150px]" style={{ width: '100%', minHeight: 150, display: 'block' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyData} margin={{ top: 18, right: 16, bottom: 0, left: -16 }}>
+            <ChartFrame className="dc-chart-box h-[150px]" mobileHeight={160}>
+              {(chartWidth, chartHeight) => (
+                <LineChart width={chartWidth} height={chartHeight} data={monthlyData} margin={{ top: 18, right: 16, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
                   <YAxis tick={{ fontSize: 9, fill: DARK_AXIS }} stroke={DARK_GRID} />
@@ -510,8 +510,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     />
                   </Line>
                 </LineChart>
-              </ResponsiveContainer>
-            </div>
+              )}
+            </ChartFrame>
           </div>
         </div>
 

@@ -483,7 +483,7 @@ const MOCK_EVENTS: FeedEvent[] = (() => {
   const now = Date.now();
   const min = 60 * 1000;
   const h = 60 * min;
-  const raw: Omit<FeedEvent, 'id' | 'ts'> & { offset: number }[] = [
+  const raw: Array<{ type: EventType; who: string; description: string; offset: number }> = [
     { type: 'producao',     who: 'Cleiber',        description: 'registrou 12m na TR-1.3',                              offset: 8 * min },
     { type: 'topografia',   who: 'Maria Topógrafa', description: 'estaqueou TR-2.1 — 45 pontos',                         offset: 22 * min },
     { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-1.10 atribuída a Jonas',                         offset: 47 * min },

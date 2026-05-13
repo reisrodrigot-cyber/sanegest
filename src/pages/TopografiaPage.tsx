@@ -547,6 +547,9 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 onDelete={() => montante && deletePV(montante, 'PV Montante')}
                 saving={savingMontante}
                 canEdit={canEdit}
+                encState={montEnc} profState={montProf} nsState={montNs}
+                onEnc={setMontEnc} onProf={setMontProf} onNs={setMontNs}
+                encOpts={encOpts} nsOpts={nsOpts}
               />
 
               {/* Intermediários */}

@@ -256,26 +256,24 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [ordens],
   );
 
-  // Avanço por Bacia (agregado das OS liberadas)
+  // Avanço por Bacia (todas as NS, independente de status/liberação)
   const porTrecho = useMemo(() => {
-    const map = new Map<string, { executado: number; pendente: number; total: number }>();
-    ordens
-      .filter((o) => o.liberado && (o.comprimento_previsto ?? 0) > 0)
-      .forEach((o) => {
-        const bacia = o.bacia || 'Sem bacia';
-        const prev = o.comprimento_previsto ?? 0;
-        const exec = Math.min(o.comprimento_real ?? 0, prev);
-        const c = map.get(bacia) ?? { executado: 0, pendente: 0, total: 0 };
-        c.executado += exec;
-        c.total += prev;
-        c.pendente = Math.max(c.total - c.executado, 0);
-        map.set(bacia, c);
-      });
+    const map = new Map<string, { executado: number; total: number }>();
+    ordens.forEach((o) => {
+      const prev = o.comprimento_previsto ?? 0;
+      if (prev <= 0) return;
+      const bacia = o.bacia || 'Sem bacia';
+      const exec = Math.min(o.comprimento_real ?? 0, prev);
+      const c = map.get(bacia) ?? { executado: 0, total: 0 };
+      c.executado += exec;
+      c.total += prev;
+      map.set(bacia, c);
+    });
     return Array.from(map.entries())
       .map(([bacia, v]) => ({
         trecho: bacia,
         executado: Math.round(v.executado),
-        pendente: Math.round(v.pendente),
+        pendente: Math.round(Math.max(v.total - v.executado, 0)),
         total: Math.round(v.total),
         pct: v.total > 0 ? Math.round((v.executado / v.total) * 100) : 0,
       }))

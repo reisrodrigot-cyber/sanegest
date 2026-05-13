@@ -29,6 +29,11 @@ export const ProducaoMensalChart = () => {
       });
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+    return () => clearTimeout(t);
+  }, []);
+
   const data = useMemo(() => {
     const now = new Date();
     const buckets: { key: string; label: string; metros: number }[] = [];

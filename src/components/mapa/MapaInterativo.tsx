@@ -542,6 +542,36 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     didInitialFitRef.current = true;
   }, [redePoints.length, ligacoesPoints.length]);
 
+  // Focus on a specific OS (flyToBounds + popup + pulse)
+  useEffect(() => {
+    if (!focusOsId) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const pts = redePoints.filter((p) => p.os_id === focusOsId);
+    if (pts.length < 2) return;
+    const bounds = L.latLngBounds(pts.map((p) => [p.latitude, p.longitude] as [number, number]));
+    if (!bounds.isValid()) return;
+    try {
+      map.flyToBounds(bounds, { padding: [60, 60], maxZoom: 18, duration: 1.0 });
+    } catch {
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 18 });
+    }
+    const line = osPolylineRef.current.get(focusOsId);
+    if (line) {
+      setTimeout(() => {
+        try { line.openPopup(); } catch {/* ignore */}
+        const el = (line as any)._path as SVGElement | undefined;
+        if (el) {
+          el.classList.remove('ns-highlight-pulse');
+          // force reflow
+          void (el as any).getBoundingClientRect?.();
+          el.classList.add('ns-highlight-pulse');
+          setTimeout(() => el.classList.remove('ns-highlight-pulse'), 3200);
+        }
+      }, 1100);
+    }
+  }, [focusOsId, redePoints]);
+
   // ======= Geolocalização (apenas quando showLocation) =======
   useEffect(() => {
     if (!showLocation) return;

@@ -115,6 +115,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     });
   }, []);
 
+  // Force Recharts ResponsiveContainer to recalc on mount (fixes empty charts on mobile)
+  useEffect(() => {
+    const fire = () => window.dispatchEvent(new Event('resize'));
+    const t1 = setTimeout(fire, 100);
+    const t2 = setTimeout(fire, 400);
+    const t3 = setTimeout(fire, 900);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const kpis = useMemo(() => {
@@ -387,7 +396,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Diária <span className="text-[10px] text-white/60 font-normal">(30d)</span>
             </h3>
-            <div className="dc-chart-box h-[150px]">
+            <div className="dc-chart-box h-[150px]" style={{ width: '100%', minHeight: 150, display: 'block' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
@@ -414,7 +423,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Mensal <span className="text-[10px] text-white/60 font-normal">(4 meses)</span>
             </h3>
-            <div className="dc-chart-box h-[150px]">
+            <div className="dc-chart-box h-[150px]" style={{ width: '100%', minHeight: 150, display: 'block' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyData} margin={{ top: 18, right: 16, bottom: 0, left: -16 }}>
                   <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" vertical={false} />
@@ -575,7 +584,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
               ) : (
                 <div className="overflow-y-auto flex-1 min-h-0">
-                  <div style={{ height: innerHeight }}>
+                  <div style={{ height: innerHeight, width: '100%', minHeight: 180, display: 'block' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={filtered}

@@ -29,6 +29,11 @@ export const ProducaoDiariaChart = () => {
       });
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+    return () => clearTimeout(t);
+  }, []);
+
   const data = useMemo(() => {
     const now = new Date();
     const buckets: { label: string; metros: number; key: string }[] = [];
@@ -54,7 +59,7 @@ export const ProducaoDiariaChart = () => {
           <Loader2 className="animate-spin text-muted-foreground" size={18} />
         </div>
       ) : (
-        <div className="h-44">
+        <div className="h-44" style={{ width: '100%', minHeight: 180, display: 'block' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
               <XAxis

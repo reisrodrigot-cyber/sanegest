@@ -194,7 +194,19 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     if (visStorageRef.current['As-built Rede'] !== false) redeLayerRef.current.addTo(map);
     if (visStorageRef.current['As-built Ligações'] !== false) ligacoesLayerRef.current.addTo(map);
     mapRef.current = map;
+    // Garante o cálculo correto de tamanho (mobile: container só ganha altura após layout)
+    const invalidate = () => { try { map.invalidateSize(); } catch {} };
+    const t1 = setTimeout(invalidate, 100);
+    const t2 = setTimeout(invalidate, 300);
+    const t3 = setTimeout(invalidate, 800);
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      ro = new ResizeObserver(() => invalidate());
+      ro.observe(containerRef.current);
+    }
     return () => {
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+      if (ro) ro.disconnect();
       map.remove();
       mapRef.current = null;
     };

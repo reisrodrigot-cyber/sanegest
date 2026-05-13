@@ -272,6 +272,7 @@ const OrdensPage = () => {
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell w-[160px]">%</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Responsável</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+              <th className="px-2 py-3 w-[44px]"></th>
             </tr>
           </thead>
           <tbody>

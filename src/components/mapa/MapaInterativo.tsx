@@ -217,7 +217,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   const fetchAsBuilt = async () => {
     const { data: ab } = await supabase
       .from('topografia_asbuilt')
-      .select('id, os_id, latitude, longitude, nome_estaca, created_at')
+      .select('id, os_id, latitude, longitude, nome_estaca, created_at, encarregado, profundidade, ns_relacionada')
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
       .order('created_at', { ascending: true });
@@ -241,6 +241,9 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
             nome_estaca: r.nome_estaca, created_at: r.created_at,
             pv_montante: os.pv_montante, pv_jusante: os.pv_jusante,
             comprimento_real: os.comprimento_real, comprimento_previsto: os.comprimento_previsto,
+            encarregado: (r as any).encarregado ?? null,
+            profundidade: (r as any).profundidade != null ? Number((r as any).profundidade) : null,
+            ns_relacionada: (r as any).ns_relacionada ?? null,
           });
         }
       }

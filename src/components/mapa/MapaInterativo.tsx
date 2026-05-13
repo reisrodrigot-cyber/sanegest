@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import JSZip from 'jszip';
 import { kml as kmlToGeoJson } from '@tmcw/togeojson';
@@ -149,6 +149,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       __ligacoes: stored['As-built Ligações'] !== false,
     };
   });
+  const visivelRef = useRef(visivel);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Camada | null>(null);
@@ -162,6 +163,22 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   const [ligacoesOpacidade, setLigacoesOpacidade] = useState(0.9);
   const [editAsBuilt, setEditAsBuilt] = useState<null | 'rede' | 'ligacoes'>(null);
 
+  // Reidrata localStorage antes de qualquer camada ser adicionada ao mapa
+  useEffect(() => {
+    const savedState = readVisStorage();
+    console.log("Map layer state loaded:", savedState);
+    visStorageRef.current = savedState;
+    setVisivel((prev) => {
+      const next = {
+        ...prev,
+        __rede: savedState['As-built Rede'] !== false,
+        __ligacoes: savedState['As-built Ligações'] !== false,
+      };
+      visivelRef.current = next;
+      return next;
+    });
+  }, []);
+
   // Init mapa
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -172,8 +189,10 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     // Pane dedicado às ligações com z-index acima da polyline (overlayPane=400)
     const ligacoesPane = map.createPane('ligacoesPane');
     ligacoesPane.style.zIndex = '650';
-    redeLayerRef.current = L.layerGroup().addTo(map);
-    ligacoesLayerRef.current = L.layerGroup().addTo(map);
+    redeLayerRef.current = L.layerGroup();
+    ligacoesLayerRef.current = L.layerGroup();
+    if (visStorageRef.current['As-built Rede'] !== false) redeLayerRef.current.addTo(map);
+    if (visStorageRef.current['As-built Ligações'] !== false) ligacoesLayerRef.current.addTo(map);
     mapRef.current = map;
     return () => {
       map.remove();
@@ -182,25 +201,26 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   }, []);
 
   // ======= Fetch dados =======
-  const fetchCamadas = async () => {
+  const fetchCamadas = async (groupsForVisibility = groups) => {
+    const stored = visStorageRef.current;
+    const groupNameById = new Map(groupsForVisibility.map((g) => [g.id, g.name]));
     const { data } = await supabase
       .from('mapa_camadas')
       .select('*')
       .order('ordem', { ascending: true })
       .order('created_at', { ascending: true });
     if (data) {
-      setCamadas(data as Camada[]);
-      setVisivel((prev) => {
-        const next = { ...prev };
-        const stored = visStorageRef.current;
-        for (const c of data) {
-          if (next[c.id] === undefined) {
-            // Default: visível (a menos que esteja explicitamente oculto no localStorage por nome)
-            next[c.id] = stored[c.nome] !== undefined ? !!stored[c.nome] : true;
-          }
-        }
-        return next;
-      });
+      const loadedCamadas = data as Camada[];
+      const nextVis = { ...visivelRef.current };
+      for (const c of loadedCamadas) {
+        // Estado salvo por nome vence antes da renderização; senão mantém o estado atual ou default visível.
+        const groupName = c.group_id ? groupNameById.get(c.group_id) : undefined;
+        const savedValue = stored[c.nome] ?? (groupName ? stored[groupName] : undefined);
+        nextVis[c.id] = savedValue !== undefined ? !!savedValue : nextVis[c.id] !== false;
+      }
+      visivelRef.current = nextVis;
+      setVisivel(nextVis);
+      setCamadas(loadedCamadas);
     }
   };
 
@@ -220,6 +240,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
         return next;
       });
     }
+    return (data ?? []) as LayerGroup[];
   };
 
   const fetchAsBuiltConfig = async () => {
@@ -310,14 +331,18 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
 
   // Inicial + realtime
   useEffect(() => {
-    Promise.all([fetchCamadas(), fetchGroups(), fetchAsBuilt(), fetchLigacoes(), fetchAsBuiltConfig()]).finally(() => setLoading(false));
+    const loadGroupsAndLayers = async () => {
+      const loadedGroups = await fetchGroups();
+      await fetchCamadas(loadedGroups);
+    };
+    Promise.all([loadGroupsAndLayers(), fetchAsBuilt(), fetchLigacoes(), fetchAsBuiltConfig()]).finally(() => setLoading(false));
 
     const ch = supabase
       .channel('mapa-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'topografia_asbuilt' }, fetchAsBuilt)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ligacoes' }, fetchLigacoes)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_camadas' }, fetchCamadas)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'kmz_layer_groups' }, fetchGroups)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_camadas' }, () => { fetchCamadas(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kmz_layer_groups' }, () => { loadGroupsAndLayers(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_asbuilt_config' }, fetchAsBuiltConfig)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -450,7 +475,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     }
 
     camadas.forEach(async (c) => {
-      const shouldShow = visivel[c.id] !== false;
+      const shouldShow = visivelRef.current[c.id] !== false;
       const sig = `${c.cor}|${c.opacidade}|${c.storage_path}`;
       const cached = kmzLayersRef.current.get(c.id);
       const cachedSig = kmzSigRef.current.get(c.id);
@@ -490,7 +515,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
         }
 
         // Se enquanto carregava o usuário desligou a camada, não adiciona
-        if (visivel[c.id] === false) return;
+        if (visivelRef.current[c.id] === false) return;
 
         const styleOpts: L.PathOptions = {
           color: c.cor,
@@ -713,22 +738,37 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     }
   };
 
-  const toggleVis = (id: string) => setVisivel((v) => ({ ...v, [id]: !v[id] }));
-
-  // Persistir visibilidade no localStorage por NOME da camada
-  useEffect(() => {
+  const persistVisibility = useCallback((state: Record<string, boolean>, layers = camadas) => {
     const out: Record<string, boolean> = {
-      'As-built Rede': visivel.__rede !== false,
-      'As-built Ligações': visivel.__ligacoes !== false,
+      ...visStorageRef.current,
+      'As-built Rede': state.__rede !== false,
+      'As-built Ligações': state.__ligacoes !== false,
     };
-    for (const c of camadas) {
-      out[c.nome] = visivel[c.id] !== false;
+    for (const c of layers) {
+      out[c.nome] = state[c.id] !== false;
+    }
+    for (const g of groups) {
+      const groupLayers = layers.filter((c) => c.group_id === g.id);
+      if (groupLayers.length > 0) out[g.name] = groupLayers.some((c) => state[c.id] !== false);
     }
     try {
       localStorage.setItem(VIS_STORAGE_KEY, JSON.stringify(out));
       visStorageRef.current = out;
     } catch { /* quota / privacy mode */ }
-  }, [visivel, camadas]);
+  }, [camadas, groups]);
+
+  const toggleVis = (id: string) => setVisivel((v) => {
+    const next = { ...v, [id]: !v[id] };
+    visivelRef.current = next;
+    persistVisibility(next);
+    return next;
+  });
+
+  // Persistir visibilidade no localStorage por NOME da camada
+  useEffect(() => {
+    visivelRef.current = visivel;
+    persistVisibility(visivel);
+  }, [visivel, persistVisibility]);
 
   const focusCamada = (id: string) => {
     const map = mapRef.current;
@@ -813,6 +853,8 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     setVisivel((v) => {
       const next = { ...v };
       for (const c of camadasOfGroup) next[c.id] = target;
+      visivelRef.current = next;
+      persistVisibility(next);
       return next;
     });
   };

@@ -130,9 +130,24 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [redePoints, setRedePoints] = useState<RedePoint[]>([]);
   const [ligacoesPoints, setLigacoesPoints] = useState<LigacaoPoint[]>([]);
-  const [visivel, setVisivel] = useState<Record<string, boolean>>({
-    __rede: true,
-    __ligacoes: true,
+
+  // Visibilidade persistida em localStorage por NOME da camada
+  const VIS_STORAGE_KEY = 'sangest_map_layers_visibility';
+  const readVisStorage = (): Record<string, boolean> => {
+    try {
+      const raw = localStorage.getItem(VIS_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch { return {}; }
+  };
+  const visStorageRef = useRef<Record<string, boolean>>(readVisStorage());
+  const [visivel, setVisivel] = useState<Record<string, boolean>>(() => {
+    const stored = visStorageRef.current;
+    return {
+      __rede: stored['As-built Rede'] !== false,
+      __ligacoes: stored['As-built Ligações'] !== false,
+    };
   });
 
   const [modalOpen, setModalOpen] = useState(false);

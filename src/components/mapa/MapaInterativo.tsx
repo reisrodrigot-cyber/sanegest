@@ -715,6 +715,21 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
 
   const toggleVis = (id: string) => setVisivel((v) => ({ ...v, [id]: !v[id] }));
 
+  // Persistir visibilidade no localStorage por NOME da camada
+  useEffect(() => {
+    const out: Record<string, boolean> = {
+      'As-built Rede': visivel.__rede !== false,
+      'As-built Ligações': visivel.__ligacoes !== false,
+    };
+    for (const c of camadas) {
+      out[c.nome] = visivel[c.id] !== false;
+    }
+    try {
+      localStorage.setItem(VIS_STORAGE_KEY, JSON.stringify(out));
+      visStorageRef.current = out;
+    } catch { /* quota / privacy mode */ }
+  }, [visivel, camadas]);
+
   const focusCamada = (id: string) => {
     const map = mapRef.current;
     const b = kmzBoundsRef.current.get(id);

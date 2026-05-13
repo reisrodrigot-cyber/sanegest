@@ -44,14 +44,25 @@ const OrdensPage = () => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [{ data: regs }, { data: hist }] = await Promise.all([
+      const [{ data: regs }, { data: hist }, { data: ab }] = await Promise.all([
         supabase.from('registros_producao').select('os_id, comprimento_dia'),
         supabase
           .from('os_status_historico')
           .select('os_id, created_at')
           .order('created_at', { ascending: false }),
+        supabase
+          .from('topografia_asbuilt')
+          .select('os_id')
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null),
       ]);
       if (cancelled) return;
+
+      const counts = new Map<string, number>();
+      (ab || []).forEach((r: any) => counts.set(r.os_id, (counts.get(r.os_id) || 0) + 1));
+      const locatable = new Set<string>();
+      counts.forEach((n, id) => { if (n >= 2) locatable.add(id); });
+      setLocatableOsIds(locatable);
 
       const acc: Record<string, number> = {};
       (regs || []).forEach((r: any) => {

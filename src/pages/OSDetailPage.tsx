@@ -285,6 +285,8 @@ const OSDetailPage = () => {
   const startEditing = () => {
     if (!os) return;
     const fields: Record<string, string> = {
+      bacia: os.bacia ?? '',
+      trecho: os.trecho ?? '',
       comprimento_previsto: os.comprimento_previsto != null ? String(os.comprimento_previsto) : '',
       comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
       prof_media_prevista: os.prof_media_prevista != null ? String(os.prof_media_prevista) : '',

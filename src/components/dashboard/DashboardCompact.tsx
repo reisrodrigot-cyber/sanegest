@@ -91,6 +91,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [registros, setRegistros] = useState<DailyRow[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [baciaFilter, setBaciaFilter] = useState('');
+  const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
 
   useEffect(() => {
     Promise.all([

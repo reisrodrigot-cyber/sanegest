@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import JSZip from 'jszip';
 import { kml as kmlToGeoJson } from '@tmcw/togeojson';
@@ -730,7 +730,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     }
   };
 
-  const persistVisibility = (state: Record<string, boolean>, layers = camadas) => {
+  const persistVisibility = useCallback((state: Record<string, boolean>, layers = camadas) => {
     const out: Record<string, boolean> = {
       ...visStorageRef.current,
       'As-built Rede': state.__rede !== false,
@@ -743,7 +743,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       localStorage.setItem(VIS_STORAGE_KEY, JSON.stringify(out));
       visStorageRef.current = out;
     } catch { /* quota / privacy mode */ }
-  };
+  }, [camadas]);
 
   const toggleVis = (id: string) => setVisivel((v) => {
     const next = { ...v, [id]: !v[id] };
@@ -756,7 +756,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   useEffect(() => {
     visivelRef.current = visivel;
     persistVisibility(visivel);
-  }, [visivel, camadas]);
+  }, [visivel, persistVisibility]);
 
   const focusCamada = (id: string) => {
     const map = mapRef.current;

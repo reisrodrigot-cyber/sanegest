@@ -149,6 +149,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       __ligacoes: stored['As-built Ligações'] !== false,
     };
   });
+  const visivelRef = useRef(visivel);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Camada | null>(null);
@@ -162,6 +163,22 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   const [ligacoesOpacidade, setLigacoesOpacidade] = useState(0.9);
   const [editAsBuilt, setEditAsBuilt] = useState<null | 'rede' | 'ligacoes'>(null);
 
+  // Reidrata localStorage antes de qualquer camada ser adicionada ao mapa
+  useEffect(() => {
+    const savedState = readVisStorage();
+    console.log("Map layer state loaded:", savedState);
+    visStorageRef.current = savedState;
+    setVisivel((prev) => {
+      const next = {
+        ...prev,
+        __rede: savedState['As-built Rede'] !== false,
+        __ligacoes: savedState['As-built Ligações'] !== false,
+      };
+      visivelRef.current = next;
+      return next;
+    });
+  }, []);
+
   // Init mapa
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -172,8 +189,10 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     // Pane dedicado às ligações com z-index acima da polyline (overlayPane=400)
     const ligacoesPane = map.createPane('ligacoesPane');
     ligacoesPane.style.zIndex = '650';
-    redeLayerRef.current = L.layerGroup().addTo(map);
-    ligacoesLayerRef.current = L.layerGroup().addTo(map);
+    redeLayerRef.current = L.layerGroup();
+    ligacoesLayerRef.current = L.layerGroup();
+    if (visStorageRef.current['As-built Rede'] !== false) redeLayerRef.current.addTo(map);
+    if (visStorageRef.current['As-built Ligações'] !== false) ligacoesLayerRef.current.addTo(map);
     mapRef.current = map;
     return () => {
       map.remove();

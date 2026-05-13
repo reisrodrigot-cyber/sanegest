@@ -609,6 +609,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             return true;
           });
           const innerHeight = Math.max(160, filtered.length * 22 + 30);
+          const mobileBaciaHeight = Math.max(200, Math.min(360, innerHeight));
           return (
             <div className="dc-bacia col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-[420px]" style={darkCardStyle}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
@@ -642,9 +643,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
               ) : (
                 <div className="overflow-y-auto flex-1 min-h-0">
-                  <div style={{ height: innerHeight, width: '100%', minHeight: 180, display: 'block' }}>
-                    <ResponsiveContainer width="100%" height="100%">
+                  <ChartFrame className="dc-chart-box" mobileHeight={mobileBaciaHeight}>
+                    {(chartWidth, chartHeight) => (
                       <BarChart
+                        width={chartWidth}
+                        height={chartHeight}
                         data={filtered}
                         layout="vertical"
                         margin={{ top: 4, right: 56, bottom: 4, left: 8 }}
@@ -692,8 +695,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                           />
                         </Bar>
                       </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                    )}
+                  </ChartFrame>
                 </div>
               )}
             </div>

@@ -567,6 +567,16 @@ const OSDetailPage = () => {
               Liberada para {os.liberado_para}
             </span>
           )}
+          {locatable && (
+            <button
+              onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-primary/40 hover:bg-primary/10 transition-colors"
+              style={{ color: '#4dd9ac' }}
+              title="Localizar no mapa"
+            >
+              <MapPin size={14} /> Localizar
+            </button>
+          )}
         </div>
         <p className="text-sm text-muted-foreground mt-1">{os.bacia} • PV {os.pv_montante} → {os.pv_jusante}</p>
       </div>

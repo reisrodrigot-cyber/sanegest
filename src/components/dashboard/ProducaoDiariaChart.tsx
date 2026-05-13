@@ -29,6 +29,11 @@ export const ProducaoDiariaChart = () => {
       });
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+    return () => clearTimeout(t);
+  }, []);
+
   const data = useMemo(() => {
     const now = new Date();
     const buckets: { label: string; metros: number; key: string }[] = [];

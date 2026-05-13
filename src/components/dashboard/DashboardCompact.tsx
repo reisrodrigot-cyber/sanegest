@@ -256,17 +256,30 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [ordens],
   );
 
-  // Avanço por Trecho (todas as OS liberadas)
+  // Avanço por Bacia (agregado das OS liberadas)
   const porTrecho = useMemo(() => {
-    return ordens
+    const map = new Map<string, { executado: number; pendente: number; total: number }>();
+    ordens
       .filter((o) => o.liberado && (o.comprimento_previsto ?? 0) > 0)
-      .map((o) => {
-        const prev = Math.round(o.comprimento_previsto ?? 0);
-        const exec = Math.round(Math.min(o.comprimento_real ?? 0, prev));
-        const pend = Math.max(prev - exec, 0);
-        return { trecho: o.trecho, executado: exec, pendente: pend, total: prev };
-      })
-      .sort((a, b) => b.total - a.total);
+      .forEach((o) => {
+        const bacia = o.bacia || 'Sem bacia';
+        const prev = o.comprimento_previsto ?? 0;
+        const exec = Math.min(o.comprimento_real ?? 0, prev);
+        const c = map.get(bacia) ?? { executado: 0, pendente: 0, total: 0 };
+        c.executado += exec;
+        c.total += prev;
+        c.pendente = Math.max(c.total - c.executado, 0);
+        map.set(bacia, c);
+      });
+    return Array.from(map.entries())
+      .map(([bacia, v]) => ({
+        trecho: bacia,
+        executado: Math.round(v.executado),
+        pendente: Math.round(v.pendente),
+        total: Math.round(v.total),
+        pct: v.total > 0 ? Math.round((v.executado / v.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.pct - a.pct);
   }, [ordens]);
 
   const accent = {
@@ -510,10 +523,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         </div>
       </div>
 
-      {/* Row 3 — Avanço por Trecho (full width, dark) */}
+      {/* Row 3 — Avanço por Bacia (full width, dark) */}
       <div className="rounded-lg shadow-sm p-3" style={darkCardStyle}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-white">Avanço por Trecho</h3>
+          <h3 className="text-sm font-semibold text-white">Avanço por Bacia</h3>
           <div className="flex items-center gap-3 text-[11px] text-white/80">
             <span className="flex items-center gap-1">
               <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: RED_PEND }} />
@@ -528,22 +541,22 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         {porTrecho.length === 0 ? (
           <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
         ) : (
-          <div style={{ height: Math.max(140, porTrecho.length * 26 + 30) }}>
+          <div style={{ height: Math.max(160, porTrecho.length * 38 + 30) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={porTrecho}
                 layout="vertical"
-                margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
-                barCategoryGap={6}
+                margin={{ top: 4, right: 56, bottom: 4, left: 8 }}
+                barCategoryGap={10}
               >
                 <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
                 <YAxis
                   type="category"
                   dataKey="trecho"
-                  tick={{ fontSize: 10, fill: DARK_AXIS }}
+                  tick={{ fontSize: 11, fill: DARK_AXIS }}
                   stroke={DARK_GRID}
-                  width={80}
+                  width={120}
                 />
                 <Tooltip
                   contentStyle={darkTooltipStyle}
@@ -556,7 +569,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     position="center"
                     formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
                     fill="#fff"
-                    fontSize={10}
+                    fontSize={11}
                   />
                 </Bar>
                 <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente">
@@ -565,7 +578,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     position="center"
                     formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
                     fill="#fff"
-                    fontSize={10}
+                    fontSize={11}
+                  />
+                  <LabelList
+                    dataKey="pct"
+                    position="right"
+                    formatter={(v: number) => `${v}%`}
+                    fill="#4dd9ac"
+                    fontSize={12}
+                    offset={8}
                   />
                 </Bar>
               </BarChart>

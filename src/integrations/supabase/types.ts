@@ -587,36 +587,45 @@ export type Database = {
           coord_e: number | null
           coord_n: number | null
           created_at: string
+          encarregado: string | null
           id: string
           latitude: number | null
           longitude: number | null
           nome_estaca: string | null
+          ns_relacionada: string | null
           observacao: string | null
           os_id: string
+          profundidade: number | null
           registrado_por: string | null
         }
         Insert: {
           coord_e?: number | null
           coord_n?: number | null
           created_at?: string
+          encarregado?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           nome_estaca?: string | null
+          ns_relacionada?: string | null
           observacao?: string | null
           os_id: string
+          profundidade?: number | null
           registrado_por?: string | null
         }
         Update: {
           coord_e?: number | null
           coord_n?: number | null
           created_at?: string
+          encarregado?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           nome_estaca?: string | null
+          ns_relacionada?: string | null
           observacao?: string | null
           os_id?: string
+          profundidade?: number | null
           registrado_por?: string | null
         }
         Relationships: [

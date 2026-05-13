@@ -584,7 +584,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
               ) : (
                 <div className="overflow-y-auto flex-1 min-h-0">
-                  <div style={{ height: innerHeight }}>
+                  <div style={{ height: innerHeight, width: '100%', minHeight: 180, display: 'block' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={filtered}

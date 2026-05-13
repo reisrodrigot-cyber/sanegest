@@ -24,8 +24,12 @@ const LoginPage = () => {
       if (result.error) {
         setError(result.error);
       } else {
-        setMessage('Verifique seu e-mail para confirmar o cadastro.');
-        setIsSignup(false);
+        // Auto-login após cadastro (sem confirmação de e-mail)
+        const loginResult = await login(email, password);
+        if (loginResult.error) {
+          setMessage('Cadastro realizado. Faça login para continuar.');
+          setIsSignup(false);
+        }
       }
     } else {
       const result = await login(email, password);

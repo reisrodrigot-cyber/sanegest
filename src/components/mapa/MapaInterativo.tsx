@@ -100,13 +100,15 @@ interface MapaInterativoProps {
   showLocation?: boolean;
   /** Altura do mapa em px ou string CSS. Default 520. */
   height?: number | string;
+  /** Usa renderer Canvas do Leaflet. No dashboard mobile, SVG evita panes travadas ao remontar. */
+  preferCanvas?: boolean;
   /** Margem inferior. Default mb-6. */
   className?: string;
   /** OS ID para focar (flyToBounds + popup + pulse) */
   focusOsId?: string | null;
 }
 
-export const MapaInterativo = ({ showLocation = false, height = 520, className = 'mb-6', focusOsId = null }: MapaInterativoProps) => {
+export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
 
@@ -192,7 +194,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       mapRef.current = null;
     }
 
-    const map = L.map(containerRef.current, { preferCanvas: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    const map = L.map(containerRef.current, { preferCanvas }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     mapRef.current = map;
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',

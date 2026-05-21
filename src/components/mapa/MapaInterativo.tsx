@@ -993,8 +993,9 @@ ${placemarks.join('\n')}
   };
 
   return (
-    <div className={`relative ${className}`} style={{ height, minHeight: 300 }}>
-      <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 300, borderRadius: '0.75rem', overflow: 'hidden' }} />
+    <div className={`relative ${className}`} style={{ height }}>
+      <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 200, borderRadius: '0.75rem', overflow: 'hidden' }} />
+
 
 
       {/* Controle flutuante: camadas + minha localização */}

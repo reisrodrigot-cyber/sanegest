@@ -130,6 +130,10 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [redePoints, setRedePoints] = useState<RedePoint[]>([]);
   const [ligacoesPoints, setLigacoesPoints] = useState<LigacaoPoint[]>([]);
+  const redePointsRef = useRef<RedePoint[]>([]);
+  const ligacoesPointsRef = useRef<LigacaoPoint[]>([]);
+  useEffect(() => { redePointsRef.current = redePoints; }, [redePoints]);
+  useEffect(() => { ligacoesPointsRef.current = ligacoesPoints; }, [ligacoesPoints]);
 
   // Visibilidade persistida em localStorage por NOME da camada
   const VIS_STORAGE_KEY = 'sangest_map_layers_visibility';

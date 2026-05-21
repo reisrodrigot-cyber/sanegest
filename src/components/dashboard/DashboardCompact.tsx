@@ -162,6 +162,20 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       return () => clearTimeout(t);
     }
   }, [focusOsId, navigate, location.pathname]);
+
+  // Track whether we're in the mobile dashboard layout (≤1023px) so the map
+  // can mount with an explicit pixel height. Without this, on mobile the
+  // Leaflet container initializes inside a flex parent whose height isn't
+  // resolved on the first paint, leaving the map stuck with 0×0 panes
+  // (drag/zoom locked, no markers).
+  const [isMobileLayout, setIsMobileLayout] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1023px)');
+    const apply = () => setIsMobileLayout(mql.matches);
+    apply();
+    mql.addEventListener?.('change', apply);
+    return () => mql.removeEventListener?.('change', apply);
+  }, []);
   const [registros, setRegistros] = useState<DailyRow[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);

@@ -162,6 +162,20 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       return () => clearTimeout(t);
     }
   }, [focusOsId, navigate, location.pathname]);
+
+  // Track whether we're in the mobile dashboard layout (≤1023px) so the map
+  // can mount with an explicit pixel height. Without this, on mobile the
+  // Leaflet container initializes inside a flex parent whose height isn't
+  // resolved on the first paint, leaving the map stuck with 0×0 panes
+  // (drag/zoom locked, no markers).
+  const [isMobileLayout, setIsMobileLayout] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1023px)');
+    const apply = () => setIsMobileLayout(mql.matches);
+    apply();
+    mql.addEventListener?.('change', apply);
+    return () => mql.removeEventListener?.('change', apply);
+  }, []);
   const [registros, setRegistros] = useState<DailyRow[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -450,9 +464,17 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
           </div>
           <div className="dc-map-inner flex-1 min-h-0">
-            <MapaInterativo height="100%" className="" focusOsId={focusOsId} />
+            {isMobileLayout !== null && (
+              <MapaInterativo
+                key={isMobileLayout ? 'mobile' : 'desktop'}
+                height={isMobileLayout ? 220 : '100%'}
+                className=""
+                focusOsId={focusOsId}
+              />
+            )}
           </div>
         </div>
+
 
         {/* Charts (dark) */}
         <div className="dc-charts col-span-3 flex flex-col gap-3">

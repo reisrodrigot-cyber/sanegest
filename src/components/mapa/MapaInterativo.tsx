@@ -195,7 +195,21 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     if (visStorageRef.current['As-built Ligações'] !== false) ligacoesLayerRef.current.addTo(map);
     mapRef.current = map;
     // Garante o cálculo correto de tamanho (mobile: container só ganha altura após layout)
-    const invalidate = () => { try { map.invalidateSize(); } catch {} };
+    const refitToData = () => {
+      const all = [
+        ...redePoints.map(r => [r.latitude, r.longitude] as [number, number]),
+        ...ligacoesPoints.map(r => [r.latitude, r.longitude] as [number, number]),
+      ];
+      if (all.length === 0) return;
+      try {
+        const b = L.latLngBounds(all);
+        if (b.isValid()) map.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
+      } catch {/* ignore */}
+    };
+    const invalidate = () => {
+      try { map.invalidateSize(); } catch {}
+      refitToData();
+    };
     const t1 = setTimeout(invalidate, 100);
     const t2 = setTimeout(invalidate, 300);
     const t3 = setTimeout(invalidate, 800);
@@ -204,12 +218,18 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       ro = new ResizeObserver(() => invalidate());
       ro.observe(containerRef.current);
     }
+    const onWinResize = () => invalidate();
+    window.addEventListener('resize', onWinResize);
+    window.addEventListener('orientationchange', onWinResize);
     return () => {
       clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
       if (ro) ro.disconnect();
+      window.removeEventListener('resize', onWinResize);
+      window.removeEventListener('orientationchange', onWinResize);
       map.remove();
       mapRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ======= Fetch dados =======

@@ -201,8 +201,8 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     // Garante o cálculo correto de tamanho (mobile: container só ganha altura após layout)
     const refitToData = () => {
       const all = [
-        ...redePoints.map(r => [r.latitude, r.longitude] as [number, number]),
-        ...ligacoesPoints.map(r => [r.latitude, r.longitude] as [number, number]),
+        ...redePointsRef.current.map(r => [r.latitude, r.longitude] as [number, number]),
+        ...ligacoesPointsRef.current.map(r => [r.latitude, r.longitude] as [number, number]),
       ];
       if (all.length === 0) return;
       try {

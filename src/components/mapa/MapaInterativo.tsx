@@ -193,6 +193,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     }
 
     const map = L.map(containerRef.current, { preferCanvas: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    mapRef.current = map;
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',
     }).addTo(map);
@@ -203,7 +204,6 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     ligacoesLayerRef.current = L.layerGroup();
     if (visStorageRef.current['As-built Rede'] !== false) redeLayerRef.current.addTo(map);
     if (visStorageRef.current['As-built Ligações'] !== false) ligacoesLayerRef.current.addTo(map);
-    mapRef.current = map;
     // Garante o cálculo correto de tamanho (mobile: container só ganha altura após layout)
     const refitToData = () => {
       const all = [

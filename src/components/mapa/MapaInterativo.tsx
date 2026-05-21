@@ -130,6 +130,10 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [redePoints, setRedePoints] = useState<RedePoint[]>([]);
   const [ligacoesPoints, setLigacoesPoints] = useState<LigacaoPoint[]>([]);
+  const redePointsRef = useRef<RedePoint[]>([]);
+  const ligacoesPointsRef = useRef<LigacaoPoint[]>([]);
+  useEffect(() => { redePointsRef.current = redePoints; }, [redePoints]);
+  useEffect(() => { ligacoesPointsRef.current = ligacoesPoints; }, [ligacoesPoints]);
 
   // Visibilidade persistida em localStorage por NOME da camada
   const VIS_STORAGE_KEY = 'sangest_map_layers_visibility';
@@ -195,7 +199,21 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
     if (visStorageRef.current['As-built Ligações'] !== false) ligacoesLayerRef.current.addTo(map);
     mapRef.current = map;
     // Garante o cálculo correto de tamanho (mobile: container só ganha altura após layout)
-    const invalidate = () => { try { map.invalidateSize(); } catch {} };
+    const refitToData = () => {
+      const all = [
+        ...redePointsRef.current.map(r => [r.latitude, r.longitude] as [number, number]),
+        ...ligacoesPointsRef.current.map(r => [r.latitude, r.longitude] as [number, number]),
+      ];
+      if (all.length === 0) return;
+      try {
+        const b = L.latLngBounds(all);
+        if (b.isValid()) map.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
+      } catch {/* ignore */}
+    };
+    const invalidate = () => {
+      try { map.invalidateSize(); } catch {}
+      refitToData();
+    };
     const t1 = setTimeout(invalidate, 100);
     const t2 = setTimeout(invalidate, 300);
     const t3 = setTimeout(invalidate, 800);
@@ -204,12 +222,18 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       ro = new ResizeObserver(() => invalidate());
       ro.observe(containerRef.current);
     }
+    const onWinResize = () => invalidate();
+    window.addEventListener('resize', onWinResize);
+    window.addEventListener('orientationchange', onWinResize);
     return () => {
       clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
       if (ro) ro.disconnect();
+      window.removeEventListener('resize', onWinResize);
+      window.removeEventListener('orientationchange', onWinResize);
       map.remove();
       mapRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ======= Fetch dados =======
@@ -970,7 +994,9 @@ ${placemarks.join('\n')}
 
   return (
     <div className={`relative ${className}`} style={{ height }}>
-      <div ref={containerRef} style={{ height: '100%', width: '100%', borderRadius: '0.75rem', overflow: 'hidden' }} />
+      <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 200, borderRadius: '0.75rem', overflow: 'hidden' }} />
+
+
 
       {/* Controle flutuante: camadas + minha localização */}
       <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">

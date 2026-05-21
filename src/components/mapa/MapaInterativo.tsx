@@ -185,7 +185,13 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
 
   // Init mapa
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!containerRef.current) return;
+
+    if (mapRef.current) {
+      try { mapRef.current.remove(); } catch {/* ignore */}
+      mapRef.current = null;
+    }
+
     const map = L.map(containerRef.current, { preferCanvas: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',
@@ -230,8 +236,12 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       if (ro) ro.disconnect();
       window.removeEventListener('resize', onWinResize);
       window.removeEventListener('orientationchange', onWinResize);
-      map.remove();
+      if (mapRef.current) {
+        try { mapRef.current.remove(); } catch {/* ignore */}
+      }
       mapRef.current = null;
+      redeLayerRef.current = null;
+      ligacoesLayerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

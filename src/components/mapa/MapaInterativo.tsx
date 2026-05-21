@@ -242,6 +242,15 @@ export const MapaInterativo = ({ showLocation = false, height = 520, className =
       mapRef.current = null;
       redeLayerRef.current = null;
       ligacoesLayerRef.current = null;
+      // Limpa caches que referenciam layers do mapa destruído. Sem isto,
+      // ao remontar o componente (ex: troca de breakpoint), os layers KMZ
+      // em cache tentam reusar o renderer Canvas antigo e quebram com
+      // "Cannot read properties of undefined (reading 'clearRect'/'intersects')".
+      kmzLayersRef.current.clear();
+      kmzSigRef.current.clear();
+      kmzBoundsRef.current.clear();
+      osPolylineRef.current.clear();
+      didInitialFitRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

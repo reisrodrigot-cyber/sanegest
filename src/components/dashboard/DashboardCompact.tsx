@@ -468,6 +468,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               <MapaInterativo
                 key={isMobileLayout ? 'mobile' : 'desktop'}
                 height={isMobileLayout ? 220 : '100%'}
+                preferCanvas={!isMobileLayout}
                 className=""
                 focusOsId={focusOsId}
               />

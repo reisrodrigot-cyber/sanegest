@@ -196,8 +196,6 @@
   /* Map */
   .dc-map { padding: 12px !important; border-radius: 8px !important; }
   .dc-map-inner { height: 220px !important; flex: none !important; }
-  /* Hide layer panel by default on mobile (toggle button still visible) */
-  .dc-map .leaflet-control-layers-expanded { display: none !important; }
 
   /* Charts stacked, full width */
   .dc-charts { gap: 12px !important; }

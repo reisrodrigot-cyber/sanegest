@@ -464,9 +464,17 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
           </div>
           <div className="dc-map-inner flex-1 min-h-0">
-            <MapaInterativo height="100%" className="" focusOsId={focusOsId} />
+            {isMobileLayout !== null && (
+              <MapaInterativo
+                key={isMobileLayout ? 'mobile' : 'desktop'}
+                height={isMobileLayout ? 220 : '100%'}
+                className=""
+                focusOsId={focusOsId}
+              />
+            )}
           </div>
         </div>
+
 
         {/* Charts (dark) */}
         <div className="dc-charts col-span-3 flex flex-col gap-3">

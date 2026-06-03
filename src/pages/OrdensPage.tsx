@@ -222,7 +222,7 @@ const OrdensPage = () => {
     });
 
     // AutoFilter on row 21
-    ws.autoFilter = 'B21:AB21';
+    ws.autoFilter = 'B21:AA21';
 
     // Data rows starting at row 22
     const sortedOrdens = [...ordens].sort((a, b) => naturalCompare(a.trecho, b.trecho));

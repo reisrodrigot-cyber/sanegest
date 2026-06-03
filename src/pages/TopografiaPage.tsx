@@ -586,7 +586,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                       <Input placeholder="Latitude" type="number" step="any" value={interLat} onChange={(e) => setInterLat(e.target.value)} className="h-9 text-sm" />
                       <Input placeholder="Longitude" type="number" step="any" value={interLng} onChange={(e) => setInterLng(e.target.value)} className="h-9 text-sm" />
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <select
                         value={interEnc}
                         onChange={(e) => setInterEnc(e.target.value)}
@@ -596,15 +596,14 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                         {encOpts.map((n) => <option key={n} value={n}>{n}</option>)}
                       </select>
                       <Input placeholder="Profundidade (m)" type="number" step="any" value={interProf} onChange={(e) => setInterProf(e.target.value)} className="h-9 text-sm" />
-                      <select
-                        value={interNs}
-                        onChange={(e) => setInterNs(e.target.value)}
-                        className="h-9 text-sm rounded-md border border-input bg-background px-2"
-                      >
-                        <option value="">NS relacionada…</option>
-                        {nsOpts.map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
                     </div>
+                    <textarea
+                      placeholder="Observação (opcional)"
+                      value={interObs}
+                      onChange={(e) => setInterObs(e.target.value)}
+                      rows={2}
+                      className="w-full text-sm rounded-md border border-input bg-background px-3 py-2 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
                     <Button onClick={addIntermediario} disabled={savingInter} size="sm" variant="outline" className="w-full">
                       {savingInter ? <Loader2 className="animate-spin mr-2" size={14} /> : <Plus size={14} className="mr-1" />}
                       Adicionar Ponto Intermediário

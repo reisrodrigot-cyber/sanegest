@@ -147,14 +147,14 @@ interface PVCardProps {
   onDelete: () => Promise<void> | void;
   saving: boolean;
   canEdit: boolean;
-  encState: string; profState: string; nsState: string;
-  onEnc: (v: string) => void; onProf: (v: string) => void; onNs: (v: string) => void;
-  encOpts: string[]; nsOpts: string[];
+  encState: string; profState: string;
+  onEnc: (v: string) => void; onProf: (v: string) => void;
+  encOpts: string[];
 }
 
 const PVCard = ({
   titulo, label, point, latState, lngState, onLat, onLng, onSave, onDelete, saving, canEdit,
-  encState, profState, nsState, onEnc, onProf, onNs, encOpts, nsOpts,
+  encState, profState, onEnc, onProf, encOpts,
 }: PVCardProps) => {
   const [editMode, setEditMode] = useState(false);
   const showForm = !point || editMode;
@@ -169,7 +169,6 @@ const PVCard = ({
     onLng(point?.longitude?.toString() ?? '');
     onEnc(point?.encarregado ?? '');
     onProf(point?.profundidade != null ? String(point.profundidade) : '');
-    onNs(point?.ns_relacionada ?? '');
     setEditMode(true);
   };
 
@@ -198,7 +197,7 @@ const PVCard = ({
             <Input placeholder="Latitude *" type="number" step="any" value={latState} onChange={(e) => onLat(e.target.value)} className="h-9 text-sm" />
             <Input placeholder="Longitude *" type="number" step="any" value={lngState} onChange={(e) => onLng(e.target.value)} className="h-9 text-sm" />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <select
               value={encState}
               onChange={(e) => onEnc(e.target.value)}
@@ -208,14 +207,6 @@ const PVCard = ({
               {encOpts.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
             <Input placeholder="Profundidade (m)" type="number" step="any" value={profState} onChange={(e) => onProf(e.target.value)} className="h-9 text-sm" />
-            <select
-              value={nsState}
-              onChange={(e) => onNs(e.target.value)}
-              className="h-9 text-sm rounded-md border border-input bg-background px-2"
-            >
-              <option value="">NS relacionada…</option>
-              {nsOpts.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
           </div>
           <div className="flex gap-2">
             <Button onClick={handleSave} disabled={saving} size="sm" className="flex-1">
@@ -237,7 +228,6 @@ const PVCard = ({
           </p>
           {point.encarregado && <p className="text-xs text-muted-foreground">Encarregado: <span className="text-foreground">{point.encarregado}</span></p>}
           {point.profundidade != null && <p className="text-xs text-muted-foreground">Profundidade: <span className="text-foreground">{point.profundidade} m</span></p>}
-          {point.ns_relacionada && <p className="text-xs text-muted-foreground">NS relacionada: <span className="text-foreground">{point.ns_relacionada}</span></p>}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground italic">Não registrado</p>

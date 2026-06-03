@@ -343,6 +343,25 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     return out;
   };
 
+  // Limites geográficos do Brasil
+  const BR_LAT_MIN = -33.75, BR_LAT_MAX = 5.27;
+  const BR_LNG_MIN = -73.99, BR_LNG_MAX = -28.85;
+  const validateCoords = (lat: number, lng: number, label = 'Coordenadas'): boolean => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      toast.error(`${label}: latitude/longitude inválidas.`);
+      return false;
+    }
+    if (lat < BR_LAT_MIN || lat > BR_LAT_MAX) {
+      toast.error(`${label}: latitude fora do Brasil (deve estar entre ${BR_LAT_MIN} e ${BR_LAT_MAX}).`);
+      return false;
+    }
+    if (lng < BR_LNG_MIN || lng > BR_LNG_MAX) {
+      toast.error(`${label}: longitude fora do Brasil (deve estar entre ${BR_LNG_MIN} e ${BR_LNG_MAX}).`);
+      return false;
+    }
+    return true;
+  };
+
   // ===== Salvar / atualizar PV Montante =====
   const saveMontante = async () => {
     const latVal = parseFloat(montLat);

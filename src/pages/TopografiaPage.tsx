@@ -553,16 +553,23 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 {intermediarios.length > 0 && (
                   <div className="space-y-2 max-h-52 overflow-y-auto">
                     {intermediarios.map((p, idx) => (
-                      <div key={p.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2 text-sm">
-                        <div className="flex items-center gap-2 min-w-0">
+                      <div key={p.id} className="flex items-start justify-between bg-muted/50 rounded-lg px-3 py-2 text-sm">
+                        <div className="flex items-start gap-2 min-w-0 flex-1">
                           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-status-green/15 text-status-green text-xs font-semibold shrink-0">
                             {idx + 1}
                           </span>
-                          <div className="min-w-0">
-                            <span className="font-medium text-foreground">Intermediário {idx + 1}</span>
-                            <span className="text-muted-foreground ml-2 text-xs">
-                              {p.latitude?.toFixed(6)}, {p.longitude?.toFixed(6)}
-                            </span>
+                          <div className="min-w-0 flex-1">
+                            <div>
+                              <span className="font-medium text-foreground">Intermediário {idx + 1}</span>
+                              <span className="text-muted-foreground ml-2 text-xs">
+                                {p.latitude?.toFixed(6)}, {p.longitude?.toFixed(6)}
+                              </span>
+                            </div>
+                            {p.observacao && (
+                              <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+                                <span className="font-medium">Obs:</span> {p.observacao}
+                              </p>
+                            )}
                           </div>
                         </div>
                         {canEdit && (

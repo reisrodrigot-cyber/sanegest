@@ -408,6 +408,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       toast.error('Latitude e Longitude do PV Jusante são obrigatórios.');
       return;
     }
+    if (!validateCoords(latVal, lngVal, 'PV Jusante')) return;
     setSavingJusante(true);
     const extra = extraPayload(jusEnc, jusProf, jusNs);
     if (jusante) {

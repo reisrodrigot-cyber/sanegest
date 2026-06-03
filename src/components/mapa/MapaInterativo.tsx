@@ -442,7 +442,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
           <p style="margin:2px 0">PV: ${first.pv_montante || '—'} → ${first.pv_jusante || '—'}</p>
           <p style="margin:2px 0">Comp. executado: ${first.comprimento_real ?? first.comprimento_previsto ?? '—'}m</p>
           <p style="margin:2px 0">Bacia: ${first.bacia}</p>
-          <p style="margin:2px 0">Status: <span style="color:${STATUS_COLORS[first.status]};font-weight:600">${first.status}</span></p>
+          <p style="margin:2px 0">Prof.: ${first.prof_montante != null ? `${first.prof_montante}m` : '—'} → ${first.prof_jusante != null ? `${first.prof_jusante}m` : '—'}</p>
         </div>`;
 
       // Polyline conectando os vértices (Montante → Jusante)

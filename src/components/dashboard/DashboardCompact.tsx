@@ -558,7 +558,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         {/* Tables + Produtividade strip */}
         <div className="dc-tables col-span-3 flex flex-col gap-3">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <h3 className="text-sm font-semibold text-foreground mb-2">Produção por Encarregado</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Produção por Encarregado (mês atual)</h3>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">

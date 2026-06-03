@@ -332,7 +332,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       const osIds = [...new Set(ab.map(r => r.os_id))];
       const { data: osData } = await supabase
         .from('ordens_servico')
-        .select('id, trecho, bacia, status, pv_montante, pv_jusante, comprimento_real, comprimento_previsto')
+        .select('id, trecho, bacia, status, pv_montante, pv_jusante, comprimento_real, comprimento_previsto, prof_montante, prof_jusante')
         .in('id', osIds);
       const osMap = new Map((osData ?? []).map(o => [o.id, o]));
       const result: RedePoint[] = [];
@@ -345,6 +345,8 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
             nome_estaca: r.nome_estaca, created_at: r.created_at,
             pv_montante: os.pv_montante, pv_jusante: os.pv_jusante,
             comprimento_real: os.comprimento_real, comprimento_previsto: os.comprimento_previsto,
+            prof_montante: (os as any).prof_montante != null ? Number((os as any).prof_montante) : null,
+            prof_jusante: (os as any).prof_jusante != null ? Number((os as any).prof_jusante) : null,
             encarregado: (r as any).encarregado ?? null,
             profundidade: (r as any).profundidade != null ? Number((r as any).profundidade) : null,
             ns_relacionada: (r as any).ns_relacionada ?? null,

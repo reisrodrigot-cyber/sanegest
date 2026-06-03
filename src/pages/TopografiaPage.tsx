@@ -26,6 +26,7 @@ interface AsBuiltPoint {
   encarregado: string | null;
   profundidade: number | null;
   ns_relacionada: string | null;
+  observacao: string | null;
 }
 
 interface LigacaoPoint {

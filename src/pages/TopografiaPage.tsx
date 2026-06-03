@@ -626,9 +626,9 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 onDelete={() => jusante && deletePV(jusante, 'PV Jusante')}
                 saving={savingJusante}
                 canEdit={canEdit}
-                encState={jusEnc} profState={jusProf} nsState={jusNs}
-                onEnc={setJusEnc} onProf={setJusProf} onNs={setJusNs}
-                encOpts={encOpts} nsOpts={nsOpts}
+                encState={jusEnc} profState={jusProf}
+                onEnc={setJusEnc} onProf={setJusProf}
+                encOpts={encOpts}
               />
 
               {!isConcluded && !allowEditAll && podeConcluir && (

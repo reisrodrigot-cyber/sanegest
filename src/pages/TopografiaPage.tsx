@@ -285,7 +285,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const fetchPoints = useCallback(async () => {
     const { data } = await supabase
       .from('topografia_asbuilt')
-      .select('id, os_id, nome_estaca, latitude, longitude, created_at, registrado_por, encarregado, profundidade, ns_relacionada')
+      .select('id, os_id, nome_estaca, latitude, longitude, created_at, registrado_por, encarregado, profundidade, ns_relacionada, observacao')
       .eq('os_id', os.id)
       .order('created_at', { ascending: true });
     setPoints((data as AsBuiltPoint[]) ?? []);

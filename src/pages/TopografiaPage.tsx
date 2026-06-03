@@ -446,6 +446,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       toast.error('Latitude e Longitude do ponto intermediário são obrigatórios.');
       return;
     }
+    if (!validateCoords(latVal, lngVal, 'Ponto intermediário')) return;
     setSavingInter(true);
     const next = intermediarios.length + 1;
     const obs = interObs.trim();

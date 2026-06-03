@@ -232,7 +232,7 @@ const OrdensPage = () => {
       const values = [
         os.trecho, os.bacia, os.pv_montante, os.pv_jusante,
         os.comprimento_previsto, os.comprimento_real, os.largura_vala,
-        os.prof_media_executada, os.prof_media_prevista, os.prof_media_real,
+        os.prof_media_prevista, os.prof_media_real,
         os.dn, os.prof_montante, os.prof_jusante,
         os.pav_previsto, os.pav_real, os.largura_pav_prevista, os.largura_pav_real,
         os.pav_m2_previsto, os.pav_m2_real, os.areia, os.brita,

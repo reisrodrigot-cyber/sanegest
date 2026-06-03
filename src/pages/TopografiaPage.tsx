@@ -261,7 +261,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   // Metadados extra (encarregado / profundidade / ns_relacionada) por seção
   const [montEnc, setMontEnc] = useState(''); const [montProf, setMontProf] = useState(''); const [montNs, setMontNs] = useState(os.trecho ?? '');
   const [jusEnc, setJusEnc] = useState(''); const [jusProf, setJusProf] = useState(''); const [jusNs, setJusNs] = useState(os.trecho ?? '');
-  const [interEnc, setInterEnc] = useState(''); const [interProf, setInterProf] = useState(''); const [interNs, setInterNs] = useState(os.trecho ?? '');
+  const [interEnc, setInterEnc] = useState(''); const [interProf, setInterProf] = useState(''); const [interNs, setInterNs] = useState(os.trecho ?? ''); const [interObs, setInterObs] = useState('');
 
   // Listas para dropdowns
   const [encOpts, setEncOpts] = useState<string[]>([]);

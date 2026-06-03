@@ -286,7 +286,7 @@ const OrdensPage = () => {
               return (
                 <tr key={os.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-3">
-                    <Link to={`/ordens/${os.id}`} className="font-medium text-secondary hover:underline">{os.trecho}</Link>
+                    <Link to={`/ordens/${os.id}`} className="font-medium text-primary hover:underline">{os.trecho}</Link>
                   </td>
                   <td className="px-4 py-3 text-foreground">{os.bacia}</td>
                   <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.comprimento_previsto ?? '—'}</td>

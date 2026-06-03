@@ -283,23 +283,34 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return buckets.map((b) => ({ ...b, metros: Math.round(b.metros) }));
   }, [registros]);
 
-  // Produção por encarregado (a partir de OS)
+  // Produção por encarregado — APENAS mês corrente (a partir de registros_producao)
+  const [encNames, setEncNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    supabase.from('profiles').select('user_id, display_name, email').then(({ data }) => {
+      const m: Record<string, string> = {};
+      (data ?? []).forEach((p: any) => { m[p.user_id] = p.display_name || p.email || '—'; });
+      setEncNames(m);
+    });
+  }, []);
   const porEncarregado = useMemo(() => {
-    const map = new Map<string, { nome: string; ns: number; total: number; days: Set<string> }>();
-    ordens
-      .filter((o) => o.comprimento_real != null && o.comprimento_real > 0 && o.liberado_para)
-      .forEach((o) => {
-        const c = map.get(o.liberado_para!) ?? { nome: o.liberado_para!, ns: 0, total: 0, days: new Set<string>() };
-        c.ns += 1;
-        c.total += o.comprimento_real!;
-        map.set(o.liberado_para!, c);
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const map = new Map<string, { nome: string; ns: Set<string>; total: number }>();
+    registros
+      .filter((r) => r.data_registro.startsWith(ym))
+      .forEach((r) => {
+        const nome = encNames[r.user_id] || '—';
+        const c = map.get(r.user_id) ?? { nome, ns: new Set<string>(), total: 0 };
+        c.nome = nome;
+        c.ns.add(r.os_id);
+        c.total += Number(r.comprimento_dia) || 0;
+        map.set(r.user_id, c);
       });
-    // dias por encarregado vem de registros — usar regs por user_id seria ideal mas aqui simplificamos
     return Array.from(map.values())
-      .map((v) => ({ ...v, media: 0 }))
+      .map((v) => ({ nome: v.nome, ns: v.ns.size, total: v.total }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 6);
-  }, [ordens]);
+  }, [registros, encNames]);
 
   // Avanço por bacia
   const porBacia = useMemo(() => {
@@ -547,7 +558,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         {/* Tables + Produtividade strip */}
         <div className="dc-tables col-span-3 flex flex-col gap-3">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <h3 className="text-sm font-semibold text-foreground mb-2">Produção por Encarregado</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Produção por Encarregado (mês atual)</h3>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">

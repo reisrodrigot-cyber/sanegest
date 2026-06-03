@@ -127,7 +127,7 @@ const OrdensPage = () => {
     const headers = [
       'Trecho','BACIA','PV de Montante','PV de Jusante',
       'Comprimento (m)','Comprimento REAL (m)','Largura de Vala',
-      'Prof. Média EXECUTADA  (m)','Prof. Média  (m)','Prof. Média REAL  (m)',
+      'Prof. Média  (m)','Prof. Média REAL  (m)',
       'DN (m)','Prof. Mont.  (m)','Prof. Jus.  (m)',
       'PAV','PAV REAL','LARG. PAV.','LARG. PAV REAL','PAV. M2','PAV. REAL(M2)',
       'AREIA','BRITA','Previsão de ligação por TR',' ligação por TR REAL',
@@ -136,26 +136,26 @@ const OrdensPage = () => {
     const subHeaders = [
       'trecho','bacia','pv_montante','pv_jusante',
       'comprimento_previsto','comprimento_real','largura_vala',
-      'prof_media_executada','prof_media_prevista','prof_media_real',
+      'prof_media_prevista','prof_media_real',
       'dn','prof_montante','prof_jusante',
       'pav_previsto','pav_real','largura_pav_prevista','largura_pav_real',
       'pav_m2_previsto','pav_m2_real','areia','brita',
       'ligacoes_previstas','ligacoes_real','bomba_rebaixo',
       'prazo_previsto','prazo_arredondado','bms',
     ];
-    // Color per column index (0=B ... 26=AB)
+    // Color per column index (0=B ... 25=AA)
     const YELLOW = 'FFFFFF00', LBLUE = 'FF99CCFF', LYELLOW = 'FFFFFFCC';
     const colorByIdx: (string | null)[] = [
       YELLOW,YELLOW,YELLOW,YELLOW,YELLOW,null,YELLOW,    // B-H
-      LBLUE,LBLUE,null,LYELLOW,YELLOW,YELLOW,            // I-N
-      null,null,null,null,null,null,                      // O-T
-      LYELLOW,LYELLOW,LYELLOW,null,LYELLOW,              // U-Y
-      LBLUE,LBLUE,LBLUE,                                  // Z,AA,AB
+      LBLUE,null,LYELLOW,YELLOW,YELLOW,                  // I-M
+      null,null,null,null,null,null,                      // N-S
+      LYELLOW,LYELLOW,LYELLOW,null,LYELLOW,              // T-X
+      LBLUE,LBLUE,LBLUE,                                  // Y,Z,AA
     ];
     const widths: Record<string, number> = {
-      A:4, B:13.71, C:14.71, D:16.86, E:10.29, F:11.14, H:8.43, I:14.43, J:10.43,
-      L:6.43, M:10.29, N:10.71, O:11, P:12.14, Q:7, R:7.71, T:9.14, U:8.86,
-      V:7.86, W:9, Y:7.71, AA:8.29, AB:6.14,
+      A:4, B:13.71, C:14.71, D:16.86, E:10.29, F:11.14, H:8.43, I:14.43,
+      J:10.43, K:6.43, L:10.29, M:10.71, N:11, O:12.14, P:7, Q:7.71,
+      S:9.14, T:8.86, U:7.86, V:9, X:7.71, Z:8.29, AA:6.14,
     };
 
     const wb = new ExcelJS.Workbook();
@@ -179,8 +179,8 @@ const OrdensPage = () => {
       right: { style: 'thin' as const },
     };
 
-    // Title row 17 (B17:AB17)
-    ws.mergeCells('B17:AB17');
+    // Title row 17 (B17:AA17)
+    ws.mergeCells('B17:AA17');
     const title = ws.getCell('B17');
     title.value = 'Dados de Entrada';
     title.font = { name: 'Arial', size: 10, bold: true };
@@ -188,7 +188,7 @@ const OrdensPage = () => {
     title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF99CCFF' } };
     title.border = thinBorder;
     // Apply borders to all merged title cells
-    for (let i = 0; i < 27; i++) {
+    for (let i = 0; i < 26; i++) {
       ws.getCell(`${(() => { const n = i + 2; let s = ''; let x = n; while (x > 0) { const r = (x - 1) % 26; s = String.fromCharCode(65 + r) + s; x = Math.floor((x - 1) / 26); } return s; })()}17`).border = thinBorder;
     }
 
@@ -222,7 +222,7 @@ const OrdensPage = () => {
     });
 
     // AutoFilter on row 21
-    ws.autoFilter = 'B21:AB21';
+    ws.autoFilter = 'B21:AA21';
 
     // Data rows starting at row 22
     const sortedOrdens = [...ordens].sort((a, b) => naturalCompare(a.trecho, b.trecho));
@@ -232,7 +232,7 @@ const OrdensPage = () => {
       const values = [
         os.trecho, os.bacia, os.pv_montante, os.pv_jusante,
         os.comprimento_previsto, os.comprimento_real, os.largura_vala,
-        os.prof_media_executada, os.prof_media_prevista, os.prof_media_real,
+        os.prof_media_prevista, os.prof_media_real,
         os.dn, os.prof_montante, os.prof_jusante,
         os.pav_previsto, os.pav_real, os.largura_pav_prevista, os.largura_pav_real,
         os.pav_m2_previsto, os.pav_m2_real, os.areia, os.brita,

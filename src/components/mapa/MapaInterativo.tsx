@@ -47,6 +47,8 @@ interface RedePoint {
   pv_jusante: string | null;
   comprimento_real: number | null;
   comprimento_previsto: number | null;
+  prof_montante: number | null;
+  prof_jusante: number | null;
   encarregado: string | null;
   profundidade: number | null;
   ns_relacionada: string | null;
@@ -330,7 +332,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       const osIds = [...new Set(ab.map(r => r.os_id))];
       const { data: osData } = await supabase
         .from('ordens_servico')
-        .select('id, trecho, bacia, status, pv_montante, pv_jusante, comprimento_real, comprimento_previsto')
+        .select('id, trecho, bacia, status, pv_montante, pv_jusante, comprimento_real, comprimento_previsto, prof_montante, prof_jusante')
         .in('id', osIds);
       const osMap = new Map((osData ?? []).map(o => [o.id, o]));
       const result: RedePoint[] = [];
@@ -343,6 +345,8 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
             nome_estaca: r.nome_estaca, created_at: r.created_at,
             pv_montante: os.pv_montante, pv_jusante: os.pv_jusante,
             comprimento_real: os.comprimento_real, comprimento_previsto: os.comprimento_previsto,
+            prof_montante: (os as any).prof_montante != null ? Number((os as any).prof_montante) : null,
+            prof_jusante: (os as any).prof_jusante != null ? Number((os as any).prof_jusante) : null,
             encarregado: (r as any).encarregado ?? null,
             profundidade: (r as any).profundidade != null ? Number((r as any).profundidade) : null,
             ns_relacionada: (r as any).ns_relacionada ?? null,
@@ -438,7 +442,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
           <p style="margin:2px 0">PV: ${first.pv_montante || '—'} → ${first.pv_jusante || '—'}</p>
           <p style="margin:2px 0">Comp. executado: ${first.comprimento_real ?? first.comprimento_previsto ?? '—'}m</p>
           <p style="margin:2px 0">Bacia: ${first.bacia}</p>
-          <p style="margin:2px 0">Status: <span style="color:${STATUS_COLORS[first.status]};font-weight:600">${first.status}</span></p>
+          <p style="margin:2px 0">Prof.: ${first.prof_montante != null ? `${first.prof_montante}m` : '—'} → ${first.prof_jusante != null ? `${first.prof_jusante}m` : '—'}</p>
         </div>`;
 
       // Polyline conectando os vértices (Montante → Jusante)

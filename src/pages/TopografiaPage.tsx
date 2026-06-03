@@ -26,6 +26,7 @@ interface AsBuiltPoint {
   encarregado: string | null;
   profundidade: number | null;
   ns_relacionada: string | null;
+  observacao: string | null;
 }
 
 interface LigacaoPoint {
@@ -147,14 +148,14 @@ interface PVCardProps {
   onDelete: () => Promise<void> | void;
   saving: boolean;
   canEdit: boolean;
-  encState: string; profState: string; nsState: string;
-  onEnc: (v: string) => void; onProf: (v: string) => void; onNs: (v: string) => void;
-  encOpts: string[]; nsOpts: string[];
+  encState: string; profState: string;
+  onEnc: (v: string) => void; onProf: (v: string) => void;
+  encOpts: string[];
 }
 
 const PVCard = ({
   titulo, label, point, latState, lngState, onLat, onLng, onSave, onDelete, saving, canEdit,
-  encState, profState, nsState, onEnc, onProf, onNs, encOpts, nsOpts,
+  encState, profState, onEnc, onProf, encOpts,
 }: PVCardProps) => {
   const [editMode, setEditMode] = useState(false);
   const showForm = !point || editMode;
@@ -169,7 +170,6 @@ const PVCard = ({
     onLng(point?.longitude?.toString() ?? '');
     onEnc(point?.encarregado ?? '');
     onProf(point?.profundidade != null ? String(point.profundidade) : '');
-    onNs(point?.ns_relacionada ?? '');
     setEditMode(true);
   };
 
@@ -198,7 +198,7 @@ const PVCard = ({
             <Input placeholder="Latitude *" type="number" step="any" value={latState} onChange={(e) => onLat(e.target.value)} className="h-9 text-sm" />
             <Input placeholder="Longitude *" type="number" step="any" value={lngState} onChange={(e) => onLng(e.target.value)} className="h-9 text-sm" />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <select
               value={encState}
               onChange={(e) => onEnc(e.target.value)}
@@ -208,14 +208,6 @@ const PVCard = ({
               {encOpts.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
             <Input placeholder="Profundidade (m)" type="number" step="any" value={profState} onChange={(e) => onProf(e.target.value)} className="h-9 text-sm" />
-            <select
-              value={nsState}
-              onChange={(e) => onNs(e.target.value)}
-              className="h-9 text-sm rounded-md border border-input bg-background px-2"
-            >
-              <option value="">NS relacionada…</option>
-              {nsOpts.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
           </div>
           <div className="flex gap-2">
             <Button onClick={handleSave} disabled={saving} size="sm" className="flex-1">
@@ -237,7 +229,6 @@ const PVCard = ({
           </p>
           {point.encarregado && <p className="text-xs text-muted-foreground">Encarregado: <span className="text-foreground">{point.encarregado}</span></p>}
           {point.profundidade != null && <p className="text-xs text-muted-foreground">Profundidade: <span className="text-foreground">{point.profundidade} m</span></p>}
-          {point.ns_relacionada && <p className="text-xs text-muted-foreground">NS relacionada: <span className="text-foreground">{point.ns_relacionada}</span></p>}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground italic">Não registrado</p>
@@ -270,7 +261,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   // Metadados extra (encarregado / profundidade / ns_relacionada) por seção
   const [montEnc, setMontEnc] = useState(''); const [montProf, setMontProf] = useState(''); const [montNs, setMontNs] = useState(os.trecho ?? '');
   const [jusEnc, setJusEnc] = useState(''); const [jusProf, setJusProf] = useState(''); const [jusNs, setJusNs] = useState(os.trecho ?? '');
-  const [interEnc, setInterEnc] = useState(''); const [interProf, setInterProf] = useState(''); const [interNs, setInterNs] = useState(os.trecho ?? '');
+  const [interEnc, setInterEnc] = useState(''); const [interProf, setInterProf] = useState(''); const [interNs, setInterNs] = useState(os.trecho ?? ''); const [interObs, setInterObs] = useState('');
 
   // Listas para dropdowns
   const [encOpts, setEncOpts] = useState<string[]>([]);
@@ -294,7 +285,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
   const fetchPoints = useCallback(async () => {
     const { data } = await supabase
       .from('topografia_asbuilt')
-      .select('id, os_id, nome_estaca, latitude, longitude, created_at, registrado_por, encarregado, profundidade, ns_relacionada')
+      .select('id, os_id, nome_estaca, latitude, longitude, created_at, registrado_por, encarregado, profundidade, ns_relacionada, observacao')
       .eq('os_id', os.id)
       .order('created_at', { ascending: true });
     setPoints((data as AsBuiltPoint[]) ?? []);
@@ -436,6 +427,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     }
     setSavingInter(true);
     const next = intermediarios.length + 1;
+    const obs = interObs.trim();
     const { data, error } = await supabase.from('topografia_asbuilt').insert({
       os_id: os.id,
       nome_estaca: `Intermediário ${next}`,
@@ -443,11 +435,12 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       longitude: lngVal,
       registrado_por: user?.id ?? null,
       ...extraPayload(interEnc, interProf, interNs),
+      ...(obs ? { observacao: obs } : {}),
     }).select().single();
     setSavingInter(false);
     if (error) { toast.error('Erro ao salvar ponto intermediário.'); return; }
     toast.success(`Intermediário ${next} registrado!`);
-    setInterLat(''); setInterLng(''); setInterEnc(''); setInterProf('');
+    setInterLat(''); setInterLng(''); setInterEnc(''); setInterProf(''); setInterObs('');
     if (data) setPoints((prev) => [...prev, data as AsBuiltPoint]);
   };
 
@@ -547,9 +540,9 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 onDelete={() => montante && deletePV(montante, 'PV Montante')}
                 saving={savingMontante}
                 canEdit={canEdit}
-                encState={montEnc} profState={montProf} nsState={montNs}
-                onEnc={setMontEnc} onProf={setMontProf} onNs={setMontNs}
-                encOpts={encOpts} nsOpts={nsOpts}
+                encState={montEnc} profState={montProf}
+                onEnc={setMontEnc} onProf={setMontProf}
+                encOpts={encOpts}
               />
 
               {/* Intermediários */}
@@ -560,16 +553,23 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 {intermediarios.length > 0 && (
                   <div className="space-y-2 max-h-52 overflow-y-auto">
                     {intermediarios.map((p, idx) => (
-                      <div key={p.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2 text-sm">
-                        <div className="flex items-center gap-2 min-w-0">
+                      <div key={p.id} className="flex items-start justify-between bg-muted/50 rounded-lg px-3 py-2 text-sm">
+                        <div className="flex items-start gap-2 min-w-0 flex-1">
                           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-status-green/15 text-status-green text-xs font-semibold shrink-0">
                             {idx + 1}
                           </span>
-                          <div className="min-w-0">
-                            <span className="font-medium text-foreground">Intermediário {idx + 1}</span>
-                            <span className="text-muted-foreground ml-2 text-xs">
-                              {p.latitude?.toFixed(6)}, {p.longitude?.toFixed(6)}
-                            </span>
+                          <div className="min-w-0 flex-1">
+                            <div>
+                              <span className="font-medium text-foreground">Intermediário {idx + 1}</span>
+                              <span className="text-muted-foreground ml-2 text-xs">
+                                {p.latitude?.toFixed(6)}, {p.longitude?.toFixed(6)}
+                              </span>
+                            </div>
+                            {p.observacao && (
+                              <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+                                <span className="font-medium">Obs:</span> {p.observacao}
+                              </p>
+                            )}
                           </div>
                         </div>
                         {canEdit && (
@@ -595,7 +595,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                       <Input placeholder="Latitude" type="number" step="any" value={interLat} onChange={(e) => setInterLat(e.target.value)} className="h-9 text-sm" />
                       <Input placeholder="Longitude" type="number" step="any" value={interLng} onChange={(e) => setInterLng(e.target.value)} className="h-9 text-sm" />
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <select
                         value={interEnc}
                         onChange={(e) => setInterEnc(e.target.value)}
@@ -605,15 +605,14 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                         {encOpts.map((n) => <option key={n} value={n}>{n}</option>)}
                       </select>
                       <Input placeholder="Profundidade (m)" type="number" step="any" value={interProf} onChange={(e) => setInterProf(e.target.value)} className="h-9 text-sm" />
-                      <select
-                        value={interNs}
-                        onChange={(e) => setInterNs(e.target.value)}
-                        className="h-9 text-sm rounded-md border border-input bg-background px-2"
-                      >
-                        <option value="">NS relacionada…</option>
-                        {nsOpts.map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
                     </div>
+                    <textarea
+                      placeholder="Observação (opcional)"
+                      value={interObs}
+                      onChange={(e) => setInterObs(e.target.value)}
+                      rows={2}
+                      className="w-full text-sm rounded-md border border-input bg-background px-3 py-2 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
                     <Button onClick={addIntermediario} disabled={savingInter} size="sm" variant="outline" className="w-full">
                       {savingInter ? <Loader2 className="animate-spin mr-2" size={14} /> : <Plus size={14} className="mr-1" />}
                       Adicionar Ponto Intermediário
@@ -635,9 +634,9 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 onDelete={() => jusante && deletePV(jusante, 'PV Jusante')}
                 saving={savingJusante}
                 canEdit={canEdit}
-                encState={jusEnc} profState={jusProf} nsState={jusNs}
-                onEnc={setJusEnc} onProf={setJusProf} onNs={setJusNs}
-                encOpts={encOpts} nsOpts={nsOpts}
+                encState={jusEnc} profState={jusProf}
+                onEnc={setJusEnc} onProf={setJusProf}
+                encOpts={encOpts}
               />
 
               {!isConcluded && !allowEditAll && podeConcluir && (

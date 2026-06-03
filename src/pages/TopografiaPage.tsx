@@ -427,6 +427,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     }
     setSavingInter(true);
     const next = intermediarios.length + 1;
+    const obs = interObs.trim();
     const { data, error } = await supabase.from('topografia_asbuilt').insert({
       os_id: os.id,
       nome_estaca: `Intermediário ${next}`,
@@ -434,11 +435,12 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       longitude: lngVal,
       registrado_por: user?.id ?? null,
       ...extraPayload(interEnc, interProf, interNs),
+      ...(obs ? { observacao: obs } : {}),
     }).select().single();
     setSavingInter(false);
     if (error) { toast.error('Erro ao salvar ponto intermediário.'); return; }
     toast.success(`Intermediário ${next} registrado!`);
-    setInterLat(''); setInterLng(''); setInterEnc(''); setInterProf('');
+    setInterLat(''); setInterLng(''); setInterEnc(''); setInterProf(''); setInterObs('');
     if (data) setPoints((prev) => [...prev, data as AsBuiltPoint]);
   };
 

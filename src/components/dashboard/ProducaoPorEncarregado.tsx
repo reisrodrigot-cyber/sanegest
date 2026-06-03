@@ -18,9 +18,12 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const dados = useMemo(() => {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const map = new Map<string, EncarregadoRow>();
     ordens
       .filter(os => os.comprimento_real != null && os.comprimento_real > 0 && os.liberado_para)
+      .filter(os => (os.updated_at || '').slice(0, 7) === ym)
       .forEach(os => {
         const nome = os.liberado_para!;
         const cur = map.get(nome) ?? { nome, nsExecutadas: 0, totalMetros: 0, ns: [] };

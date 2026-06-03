@@ -179,8 +179,8 @@ const OrdensPage = () => {
       right: { style: 'thin' as const },
     };
 
-    // Title row 17 (B17:AB17)
-    ws.mergeCells('B17:AB17');
+    // Title row 17 (B17:AA17)
+    ws.mergeCells('B17:AA17');
     const title = ws.getCell('B17');
     title.value = 'Dados de Entrada';
     title.font = { name: 'Arial', size: 10, bold: true };
@@ -188,7 +188,7 @@ const OrdensPage = () => {
     title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF99CCFF' } };
     title.border = thinBorder;
     // Apply borders to all merged title cells
-    for (let i = 0; i < 27; i++) {
+    for (let i = 0; i < 26; i++) {
       ws.getCell(`${(() => { const n = i + 2; let s = ''; let x = n; while (x > 0) { const r = (x - 1) % 26; s = String.fromCharCode(65 + r) + s; x = Math.floor((x - 1) / 26); } return s; })()}17`).border = thinBorder;
     }
 

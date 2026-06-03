@@ -370,6 +370,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       toast.error('Latitude e Longitude do PV Montante são obrigatórios.');
       return;
     }
+    if (!validateCoords(latVal, lngVal, 'PV Montante')) return;
     setSavingMontante(true);
     const extra = extraPayload(montEnc, montProf, montNs);
     if (montante) {

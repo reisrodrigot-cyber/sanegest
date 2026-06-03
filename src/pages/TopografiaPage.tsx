@@ -762,7 +762,7 @@ const TopografiaPage = () => {
               <StatusBadge status={os.status} size="sm" />
               <button
                 onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
-                className="text-sm text-secondary hover:underline whitespace-nowrap"
+                className="text-sm text-primary hover:underline whitespace-nowrap"
               >
                 {expandedId === os.id ? 'Fechar' : 'Registrar Coordenadas'}
               </button>

@@ -88,6 +88,45 @@ export type Database = {
           },
         ]
       }
+      export_logs: {
+        Row: {
+          actor: string
+          created_at: string
+          error: string | null
+          exported_at: string
+          filename: string | null
+          id: string
+          registros_count: number | null
+          source: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          actor: string
+          created_at?: string
+          error?: string | null
+          exported_at?: string
+          filename?: string | null
+          id?: string
+          registros_count?: number | null
+          source?: string
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          actor?: string
+          created_at?: string
+          error?: string | null
+          exported_at?: string
+          filename?: string | null
+          id?: string
+          registros_count?: number | null
+          source?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       import_logs: {
         Row: {
           changes: Json

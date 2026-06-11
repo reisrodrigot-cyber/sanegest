@@ -26,15 +26,18 @@ function naturalCompare(a: string, b: string) {
 }
 
 const OrdensPage = () => {
-  const { ordens, loading } = useOrdensServico();
+  const { ordens, loading, refetch } = useOrdensServico();
   const { user, effectiveRole } = useAuth();
   const navigate = useNavigate();
   const role = effectiveRole || user?.role;
   const canImport = role === 'admin' || role === 'sala_tecnica';
+  const canLiberar = role === 'admin' || role === 'sala_tecnica' || role === 'gerencia';
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [responsavelFilter, setResponsavelFilter] = useState('TODOS');
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showLiberarModal, setShowLiberarModal] = useState(false);
 
   // Aggregated produção (sum comprimento_dia) per OS
   const [producaoByOs, setProducaoByOs] = useState<Record<string, number>>({});

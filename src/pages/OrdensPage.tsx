@@ -3,12 +3,14 @@ import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, UserPlus, X } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { LiberarLoteModal } from '@/components/LiberarLoteModal';
 import {
   Select,
   SelectContent,
@@ -24,15 +26,18 @@ function naturalCompare(a: string, b: string) {
 }
 
 const OrdensPage = () => {
-  const { ordens, loading } = useOrdensServico();
+  const { ordens, loading, refetch } = useOrdensServico();
   const { user, effectiveRole } = useAuth();
   const navigate = useNavigate();
   const role = effectiveRole || user?.role;
   const canImport = role === 'admin' || role === 'sala_tecnica';
+  const canLiberar = role === 'admin' || role === 'sala_tecnica' || role === 'gerencia';
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [responsavelFilter, setResponsavelFilter] = useState('TODOS');
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showLiberarModal, setShowLiberarModal] = useState(false);
 
   // Aggregated produção (sum comprimento_dia) per OS
   const [producaoByOs, setProducaoByOs] = useState<Record<string, number>>({});
@@ -258,12 +263,42 @@ const OrdensPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  const OSTable = ({ data }: { data: typeof ordens }) => (
+  const toggleOne = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleAll = (data: typeof ordens, checked: boolean) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (checked) data.forEach(o => next.add(o.id));
+      else data.forEach(o => next.delete(o.id));
+      return next;
+    });
+  };
+
+  const selectedOS = useMemo(() => ordens.filter(o => selected.has(o.id)), [ordens, selected]);
+
+  const OSTable = ({ data }: { data: typeof ordens }) => {
+    const allSelected = data.length > 0 && data.every(o => selected.has(o.id));
+    const someSelected = data.some(o => selected.has(o.id)) && !allSelected;
+    return (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
+              {canLiberar && (
+                <th className="px-3 py-3 w-10">
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                    onCheckedChange={(c) => toggleAll(data, c === true)}
+                    aria-label="Selecionar todas"
+                  />
+                </th>
+              )}
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Trecho</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Bacia</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Comp. (m)</th>
@@ -283,8 +318,14 @@ const OrdensPage = () => {
               const since = statusSinceByOs[os.id] || os.updated_at;
               const dias = daysSince(since);
               const parado = dias >= 5;
+              const isSel = selected.has(os.id);
               return (
-                <tr key={os.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                <tr key={os.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${isSel ? 'bg-primary/5' : ''}`}>
+                  {canLiberar && (
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox checked={isSel} onCheckedChange={() => toggleOne(os.id)} aria-label={`Selecionar ${os.trecho}`} />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <Link to={`/ordens/${os.id}`} className="font-medium text-primary hover:underline">{os.trecho}</Link>
                   </td>
@@ -296,10 +337,7 @@ const OrdensPage = () => {
                     <div className="flex items-center gap-2">
                       <span className="text-foreground tabular-nums w-10">{pct.toFixed(0)}%</span>
                       <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden min-w-[60px]">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
+                        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   </td>
@@ -315,9 +353,7 @@ const OrdensPage = () => {
                                 <AlertTriangle size={14} />
                               </span>
                             </TooltipTrigger>
-                            <TooltipContent>
-                              <span>⚠️ Parado há {dias} dias</span>
-                            </TooltipContent>
+                            <TooltipContent><span>⚠️ Parado há {dias} dias</span></TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       )}
@@ -340,7 +376,7 @@ const OrdensPage = () => {
             })}
             {data.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={canLiberar ? 10 : 9} className="px-4 py-8 text-center text-muted-foreground">
                   {ordens.length === 0
                     ? 'Nenhuma OS cadastrada. Importe o Planilhão para começar.'
                     : 'Nenhuma OS encontrada com os filtros aplicados.'}
@@ -351,7 +387,8 @@ const OrdensPage = () => {
         </table>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <AppLayout>
@@ -476,6 +513,32 @@ const OrdensPage = () => {
           </TabsContent>
         </Tabs>
       )}
+
+      {canLiberar && selected.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-card border border-border shadow-lg rounded-full px-4 py-2.5 flex items-center gap-3">
+          <span className="text-sm font-medium">{selected.size} OS selecionada{selected.size > 1 ? 's' : ''}</span>
+          <button
+            onClick={() => setShowLiberarModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+          >
+            <UserPlus size={14} /> Liberar para encarregado
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-muted text-muted-foreground"
+            aria-label="Limpar seleção"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      <LiberarLoteModal
+        open={showLiberarModal}
+        onClose={() => setShowLiberarModal(false)}
+        selectedOS={selectedOS}
+        onDone={() => { setSelected(new Set()); refetch(); }}
+      />
     </AppLayout>
   );
 };

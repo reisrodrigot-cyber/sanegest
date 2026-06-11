@@ -12,6 +12,7 @@ import DashboardPage from "./pages/DashboardPage";
 import OrdensPage from "./pages/OrdensPage";
 import OSDetailPage from "./pages/OSDetailPage";
 import ImportarPage from "./pages/ImportarPage";
+import ImportHistoricoPage from "./pages/ImportHistoricoPage";
 import ProducaoPage from "./pages/ProducaoPage";
 import MateriaisPage from "./pages/MateriaisPage";
 import TopografiaPage from "./pages/TopografiaPage";
@@ -26,6 +27,7 @@ const queryClient = new QueryClient();
 /** Maps each route prefix to the roles allowed to access it */
 const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/dashboard': ['admin', 'gerencia', 'sala_tecnica', 'encarregado', 'topografo'],
+  '/importar/historico': ['admin', 'sala_tecnica', 'gerencia'],
   '/importar': ['admin', 'sala_tecnica'],
   '/ordens': ['admin', 'gerencia', 'sala_tecnica'],
   '/producao': ['admin', 'encarregado'],
@@ -91,6 +93,7 @@ const AppRoutes = () => {
       <Route path="/ordens" element={<ProtectedRoute><OrdensPage /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetailPage /></ProtectedRoute>} />
       <Route path="/importar" element={<ProtectedRoute><ImportarPage /></ProtectedRoute>} />
+      <Route path="/importar/historico" element={<ProtectedRoute><ImportHistoricoPage /></ProtectedRoute>} />
       <Route path="/producao" element={<ProtectedRoute><ProducaoPage /></ProtectedRoute>} />
       <Route path="/materiais" element={<ProtectedRoute><MateriaisPage /></ProtectedRoute>} />
       <Route path="/topografia" element={<ProtectedRoute><TopografiaPage /></ProtectedRoute>} />

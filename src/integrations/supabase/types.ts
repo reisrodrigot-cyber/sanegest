@@ -88,6 +88,51 @@ export type Database = {
           },
         ]
       }
+      import_logs: {
+        Row: {
+          changes: Json
+          created_at: string
+          created_count: number
+          error_count: number
+          errors: Json
+          filename: string | null
+          id: string
+          total_rows: number
+          unchanged_count: number
+          updated_count: number
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          changes?: Json
+          created_at?: string
+          created_count?: number
+          error_count?: number
+          errors?: Json
+          filename?: string | null
+          id?: string
+          total_rows?: number
+          unchanged_count?: number
+          updated_count?: number
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          changes?: Json
+          created_at?: string
+          created_count?: number
+          error_count?: number
+          errors?: Json
+          filename?: string | null
+          id?: string
+          total_rows?: number
+          unchanged_count?: number
+          updated_count?: number
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       kmz_layer_groups: {
         Row: {
           created_at: string

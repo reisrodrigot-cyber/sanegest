@@ -583,58 +583,30 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             </div>
           </div>
           <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <h3 className="text-sm font-semibold text-foreground mb-2">Avanço por Bacia</h3>
-            <div className="overflow-y-auto flex-1">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-card">
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="pb-1 font-medium">Bacia</th>
-                    <th className="pb-1 font-medium text-right">Prev.</th>
-                    <th className="pb-1 font-medium text-right">Exec.</th>
-                    <th className="pb-1 font-medium text-right">%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {porBacia.length === 0 ? (
-                    <tr><td colSpan={4} className="text-center text-muted-foreground py-3">Sem dados</td></tr>
-                  ) : porBacia.map((b) => (
-                    <tr key={b.bacia} className="border-b border-border/40">
-                      <td className="py-1 text-foreground">{b.bacia}</td>
-                      <td className="py-1 text-right text-muted-foreground">{b.previsto.toLocaleString('pt-BR')}</td>
-                      <td className="py-1 text-right text-muted-foreground">{b.executado.toLocaleString('pt-BR')}</td>
-                      <td className="py-1 text-right font-semibold">{b.pct}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-2">
+              <Layers size={14} className="text-muted-foreground" />
+              Produtividade por Profundidade
             </div>
-            {/* Produtividade strip compacto */}
-            <div className="mt-2 pt-2 border-t border-border">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground mb-1.5">
-                <Layers size={12} className="text-muted-foreground" />
-                Produtividade por Profundidade
-              </div>
-              {loading ? (
-                <Loader2 className="animate-spin text-muted-foreground mx-auto my-2" size={14} />
-              ) : (
-                <div className="space-y-1">
-                  {profStats.map((s) => (
-                    <div key={s.label} className="flex items-center gap-2">
-                      <span className="text-[10px] text-foreground w-[110px] truncate">{s.label}</span>
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${s.pctBar}%`, backgroundColor: accent.blue }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-semibold text-foreground w-[58px] text-right">
-                        {s.media.toLocaleString('pt-BR')} m/d
-                      </span>
+            {loading ? (
+              <Loader2 className="animate-spin text-muted-foreground mx-auto my-2" size={14} />
+            ) : (
+              <div className="space-y-1.5 overflow-y-auto flex-1">
+                {profStats.map((s) => (
+                  <div key={s.label} className="flex items-center gap-2">
+                    <span className="text-[11px] text-foreground w-[110px] truncate">{s.label}</span>
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${s.pctBar}%`, backgroundColor: accent.blue }}
+                      />
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <span className="text-[11px] font-semibold text-foreground w-[58px] text-right">
+                      {s.media.toLocaleString('pt-BR')} m/d
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

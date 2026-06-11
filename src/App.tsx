@@ -27,6 +27,7 @@ const queryClient = new QueryClient();
 /** Maps each route prefix to the roles allowed to access it */
 const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/dashboard': ['admin', 'gerencia', 'sala_tecnica', 'encarregado', 'topografo'],
+  '/importar/historico': ['admin', 'sala_tecnica', 'gerencia'],
   '/importar': ['admin', 'sala_tecnica'],
   '/ordens': ['admin', 'gerencia', 'sala_tecnica'],
   '/producao': ['admin', 'encarregado'],

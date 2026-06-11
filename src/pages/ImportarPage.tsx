@@ -199,7 +199,7 @@ const ImportarPage = () => {
       await Promise.all(batch.map(async (a) => {
         const payload: Record<string, unknown> = {};
         for (const f of PROJ_FIELDS) payload[f] = (a.parsed as any)[f];
-        const { error } = await supabase.from('ordens_servico').update(payload).eq('id', a.existingId!);
+        const { error } = await supabase.from('ordens_servico').update(payload as any).eq('id', a.existingId!);
         if (error) erros.push({ trecho: a.parsed.trecho, erro: error.message });
         else updatedOk++;
       }));

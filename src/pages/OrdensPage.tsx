@@ -3,12 +3,14 @@ import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, UserPlus, X } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { LiberarLoteModal } from '@/components/LiberarLoteModal';
 import {
   Select,
   SelectContent,

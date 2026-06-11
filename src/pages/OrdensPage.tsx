@@ -513,6 +513,32 @@ const OrdensPage = () => {
           </TabsContent>
         </Tabs>
       )}
+
+      {canLiberar && selected.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-card border border-border shadow-lg rounded-full px-4 py-2.5 flex items-center gap-3">
+          <span className="text-sm font-medium">{selected.size} OS selecionada{selected.size > 1 ? 's' : ''}</span>
+          <button
+            onClick={() => setShowLiberarModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+          >
+            <UserPlus size={14} /> Liberar para encarregado
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-muted text-muted-foreground"
+            aria-label="Limpar seleção"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      <LiberarLoteModal
+        open={showLiberarModal}
+        onClose={() => setShowLiberarModal(false)}
+        selectedOS={selectedOS}
+        onDone={() => { setSelected(new Set()); refetch(); }}
+      />
     </AppLayout>
   );
 };

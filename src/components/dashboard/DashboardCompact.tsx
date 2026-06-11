@@ -898,7 +898,67 @@ const formatStamp = (d: Date) =>
   `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 const ActivityFeed = () => {
-  const events = MOCK_EVENTS.slice(0, 20);
+  const { events, loading } = useRealEvents();
+  return (
+    <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-full">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+          <Radio size={14} className="text-secondary" />
+          O que está acontecendo?
+        </h3>
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+          {(Object.keys(EVENT_META) as EventType[]).map((t) => (
+            <span key={t} className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: EVENT_META[t].color }} />
+              {EVENT_META[t].label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="overflow-y-auto flex-1 min-h-0 pr-1">
+        {loading ? (
+          <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+            <Loader2 className="animate-spin mr-2" size={14} /> Carregando…
+          </div>
+        ) : events.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-xs text-muted-foreground text-center px-4">
+            Nenhuma atividade registrada ainda.
+          </div>
+        ) : (
+        <ul className="space-y-1.5">
+          {events.map((e) => {
+            const meta = EVENT_META[e.type];
+            return (
+              <li
+                key={e.id}
+                className="flex items-start gap-3 rounded-md py-1.5 pl-2.5 pr-2 bg-muted/20 hover:bg-muted/40 transition-colors"
+                style={{ borderLeft: `3px solid ${meta.color}` }}
+              >
+                <div className="flex flex-col min-w-[88px]">
+                  <span className="text-[10px] font-semibold text-foreground">{formatStamp(e.ts)}</span>
+                  <span className="text-[10px] text-muted-foreground">{formatRelative(e.ts)}</span>
+                </div>
+                <span
+                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide whitespace-nowrap"
+                  style={{ color: meta.color, backgroundColor: meta.bg }}
+                >
+                  {meta.label}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-foreground">
+                    <span className="font-semibold">{e.who}</span>{' '}
+                    <span className="text-muted-foreground">— {e.description}</span>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        )}
+      </div>
+    </div>
+  );
+};
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-full">
       <div className="flex items-center justify-between mb-2">

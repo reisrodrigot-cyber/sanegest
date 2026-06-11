@@ -798,40 +798,90 @@ const EVENT_META: Record<EventType, { label: string; color: string; bg: string; 
   almoxarifado: { label: 'Almoxarifado', color: '#EA580C', bg: 'rgba(234,88,12,0.10)',  dot: '🟠' },
 };
 
-const MOCK_EVENTS: FeedEvent[] = (() => {
-  const now = Date.now();
-  const min = 60 * 1000;
-  const h = 60 * min;
-  const raw: Array<{ type: EventType; who: string; description: string; offset: number }> = [
-    { type: 'producao',     who: 'Cleiber',        description: 'registrou 12m na TR-1.3',                              offset: 8 * min },
-    { type: 'topografia',   who: 'Maria Topógrafa', description: 'estaqueou TR-2.1 — 45 pontos',                         offset: 22 * min },
-    { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-1.10 atribuída a Jonas',                         offset: 47 * min },
-    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Entrega: 50 tubos DN200 para Encarregado 1',          offset: 1 * h + 12 * min },
-    { type: 'producao',     who: 'Jonas',           description: 'registrou 18m na TR-1.10',                            offset: 1 * h + 50 * min },
-    { type: 'producao',     who: 'Encarregado 2',   description: 'registrou 9,5m na TR-3.4',                            offset: 2 * h + 5 * min },
-    { type: 'topografia',   who: 'Maria Topógrafa', description: 'cadastrou 12 ligações em TR-2.1',                     offset: 2 * h + 40 * min },
-    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Entrega: 80m de PVC DN150 para Cleiber',              offset: 3 * h + 18 * min },
-    { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-3.7 atribuída a Encarregado 2',                  offset: 4 * h + 2 * min },
-    { type: 'producao',     who: 'Cleiber',        description: 'registrou 15m na TR-1.3 (profundidade 2,4m)',          offset: 4 * h + 35 * min },
-    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Divergência: faltam 4 tampões TR-2.5',                offset: 5 * h + 10 * min },
-    { type: 'topografia',   who: 'Maria Topógrafa', description: 'estaqueou TR-3.7 — 28 pontos',                        offset: 6 * h + 5 * min },
-    { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-2.8 atribuída a Cleiber',                        offset: 7 * h + 22 * min },
-    { type: 'producao',     who: 'Encarregado 2',   description: 'registrou 11m na TR-3.4',                             offset: 1 * 24 * h + 1 * h },
-    { type: 'producao',     who: 'Jonas',           description: 'registrou 22m na TR-1.10',                            offset: 1 * 24 * h + 3 * h },
-    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Entrega: 30 anéis de borracha para Jonas',            offset: 1 * 24 * h + 5 * h },
-    { type: 'topografia',   who: 'Maria Topógrafa', description: 'as-built carregado para TR-1.3',                      offset: 1 * 24 * h + 7 * h },
-    { type: 'producao',     who: 'Cleiber',        description: 'registrou 14m na TR-2.8',                              offset: 2 * 24 * h + 2 * h },
-    { type: 'ns',           who: 'Ana Técnica',    description: 'NS TR-4.1 atribuída a Encarregado 2',                  offset: 2 * 24 * h + 4 * h },
-    { type: 'almoxarifado', who: 'João Almoxarife', description: 'Entrega: cimento (20 sacos) para frente TR-1',        offset: 2 * 24 * h + 6 * h },
-  ];
-  return raw.map((r, i) => ({
-    id: String(i),
-    type: r.type,
-    who: r.who,
-    description: r.description,
-    ts: new Date(now - r.offset),
-  }));
-})();
+const useRealEvents = () => {
+  const [events, setEvents] = useState<FeedEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [prod, topo, mat, status] = await Promise.all([
+        supabase.from('registros_producao')
+          .select('id, data_registro, comprimento_dia, ligacoes_dia, user_id, os_id, created_at')
+          .order('created_at', { ascending: false }).limit(30),
+        supabase.from('topografia_asbuilt')
+          .select('id, nome_estaca, registrado_por, os_id, created_at')
+          .order('created_at', { ascending: false }).limit(30),
+        supabase.from('materiais_entrega')
+          .select('id, descricao, quantidade, unidade, registrado_por, os_id, created_at')
+          .order('created_at', { ascending: false }).limit(30),
+        supabase.from('os_status_historico')
+          .select('id, status_anterior, status_novo, user_id, os_id, created_at')
+          .eq('status_novo', 'VERMELHO')
+          .order('created_at', { ascending: false }).limit(30),
+      ]);
+
+      const userIds = new Set<string>();
+      const osIds = new Set<string>();
+      (prod.data || []).forEach((r: any) => { r.user_id && userIds.add(r.user_id); r.os_id && osIds.add(r.os_id); });
+      (topo.data || []).forEach((r: any) => { r.registrado_por && userIds.add(r.registrado_por); r.os_id && osIds.add(r.os_id); });
+      (mat.data || []).forEach((r: any) => { r.registrado_por && userIds.add(r.registrado_por); r.os_id && osIds.add(r.os_id); });
+      (status.data || []).forEach((r: any) => { r.user_id && userIds.add(r.user_id); r.os_id && osIds.add(r.os_id); });
+
+      const [profs, oss] = await Promise.all([
+        userIds.size ? supabase.from('profiles').select('user_id, display_name, email').in('user_id', Array.from(userIds)) : Promise.resolve({ data: [] as any[] }),
+        osIds.size ? supabase.from('ordens_servico').select('id, trecho, liberado_para').in('id', Array.from(osIds)) : Promise.resolve({ data: [] as any[] }),
+      ]);
+      const uMap: Record<string, string> = {};
+      (profs.data || []).forEach((p: any) => { uMap[p.user_id] = p.display_name || p.email || ''; });
+      const oMap: Record<string, { trecho: string; liberado_para: string | null }> = {};
+      (oss.data || []).forEach((o: any) => { oMap[o.id] = { trecho: o.trecho, liberado_para: o.liberado_para }; });
+
+      const all: FeedEvent[] = [];
+      (prod.data || []).forEach((r: any) => {
+        const parts: string[] = [];
+        if (r.comprimento_dia) parts.push(`${Number(r.comprimento_dia).toLocaleString('pt-BR')}m`);
+        if (r.ligacoes_dia) parts.push(`${r.ligacoes_dia} ligações`);
+        all.push({
+          id: `p-${r.id}`, type: 'producao', ts: new Date(r.created_at),
+          who: uMap[r.user_id] || 'Usuário',
+          description: `registrou ${parts.join(' e ') || 'produção'}${oMap[r.os_id] ? ` em ${oMap[r.os_id].trecho}` : ''}`,
+        });
+      });
+      (topo.data || []).forEach((r: any) => {
+        all.push({
+          id: `t-${r.id}`, type: 'topografia', ts: new Date(r.created_at),
+          who: uMap[r.registrado_por] || 'Topógrafo',
+          description: `registrou estaca ${r.nome_estaca || ''}${oMap[r.os_id] ? ` em ${oMap[r.os_id].trecho}` : ''}`.trim(),
+        });
+      });
+      (mat.data || []).forEach((r: any) => {
+        all.push({
+          id: `m-${r.id}`, type: 'almoxarifado', ts: new Date(r.created_at),
+          who: uMap[r.registrado_por] || 'Almoxarifado',
+          description: `Entrega: ${r.quantidade} ${r.unidade} de ${r.descricao}${oMap[r.os_id] ? ` para ${oMap[r.os_id].trecho}` : ''}`,
+        });
+      });
+      (status.data || []).forEach((r: any) => {
+        const os = oMap[r.os_id];
+        all.push({
+          id: `s-${r.id}`, type: 'ns', ts: new Date(r.created_at),
+          who: uMap[r.user_id] || 'Sala Técnica',
+          description: `NS ${os?.trecho || ''} liberada${os?.liberado_para ? ` para ${os.liberado_para}` : ''}`,
+        });
+      });
+
+      all.sort((a, b) => b.ts.getTime() - a.ts.getTime());
+      if (!cancelled) {
+        setEvents(all.slice(0, 30));
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return { events, loading };
+};
 
 const formatRelative = (d: Date) => {
   const diff = Date.now() - d.getTime();

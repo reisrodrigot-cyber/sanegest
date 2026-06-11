@@ -906,14 +906,6 @@ const ActivityFeed = () => {
           <Radio size={14} className="text-secondary" />
           O que está acontecendo?
         </h3>
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-          {(Object.keys(EVENT_META) as EventType[]).map((t) => (
-            <span key={t} className="flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: EVENT_META[t].color }} />
-              {EVENT_META[t].label}
-            </span>
-          ))}
-        </div>
       </div>
       <div className="overflow-y-auto flex-1 min-h-0 pr-1">
         {loading ? (

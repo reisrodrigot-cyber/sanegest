@@ -244,6 +244,28 @@ async function fetchAllOrdens() {
   return all;
 }
 
+async function fetchAllRevisoes(osIds: string[]): Promise<Record<string, any[]>> {
+  const map: Record<string, any[]> = {};
+  if (osIds.length === 0) return map;
+  // .in() suporta listas grandes; paginar resultados
+  const pageSize = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await admin
+      .from('os_revisoes')
+      .select('*')
+      .in('os_id', osIds)
+      .order('versao', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) { console.error('Falha ao carregar revisões:', error); break; }
+    const rows = (data as any[]) || [];
+    for (const row of rows) { (map[row.os_id] ||= []).push(row); }
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+  return map;
+}
+
 function filename(date: Date) {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');

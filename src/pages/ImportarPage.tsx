@@ -183,25 +183,105 @@ const ImportarPage = () => {
     let createdOk = 0, updatedOk = 0;
     const erros: { trecho: string; erro: string }[] = [];
 
-    // INSERTs em batch
+    const REMOVAL_MARKERS = ['SUPRIMIDO', 'RETIRADO', 'REMOVER', 'CANCELADO'];
+    const isRemovalMarker = (v: unknown) =>
+      typeof v === 'string' && REMOVAL_MARKERS.includes(v.trim().toUpperCase());
+    const hasRemovalMarker = (p: ParsedOS) =>
+      PROJ_FIELDS.some(f => isRemovalMarker((p as any)[f]));
+    const isEmpty = (v: unknown) => v === null || v === undefined || v === '';
+    // snapshot dos 17 campos projetados (para os_revisoes)
+    const snapshotOf = (p: ParsedOS) => {
+      const snap: Record<string, unknown> = {};
+      for (const f of PROJ_FIELDS) snap[f] = (p as any)[f];
+      return snap;
+    };
+
+    // INSERTs em batch — cada novo trecho vira "Projeto Base" (versao 0)
     for (let i = 0; i < novas.length; i += 100) {
-      const slice = novas.slice(i, i + 100).map(a => ({ ...a.parsed, status: 'CINZA' as const, liberado: false }));
-      const { error } = await supabase.from('ordens_servico').insert(slice as any);
+      const slice = novas.slice(i, i + 100).map(a => ({
+        ...a.parsed,
+        status: 'CINZA' as const,
+        liberado: false,
+        status_vigencia: hasRemovalMarker(a.parsed) ? 'SUPRIMIDO' : 'ATIVO',
+      }));
+      const { data: inserted, error } = await supabase
+        .from('ordens_servico')
+        .insert(slice as any)
+        .select('id, trecho, bacia, pv_montante, pv_jusante');
       if (error) {
         slice.forEach(s => erros.push({ trecho: s.trecho, erro: error.message }));
-      } else createdOk += slice.length;
+        continue;
+      }
+      createdOk += slice.length;
+      // criar Projeto Base
+      const baseRows = (inserted || []).map((row: any) => {
+        const parsed = novas.find(a =>
+          a.parsed.trecho === row.trecho &&
+          a.parsed.bacia === row.bacia &&
+          a.parsed.pv_montante === row.pv_montante &&
+          a.parsed.pv_jusante === row.pv_jusante,
+        )?.parsed;
+        if (!parsed) return null;
+        return {
+          os_id: row.id,
+          versao: 0,
+          rotulo: 'Projeto Base',
+          user_id: supabaseUser?.id ?? null,
+          suprimido: hasRemovalMarker(parsed),
+          ...snapshotOf(parsed),
+        };
+      }).filter(Boolean);
+      if (baseRows.length) {
+        const { error: revErr } = await supabase.from('os_revisoes' as any).insert(baseRows as any);
+        if (revErr) console.error('Falha ao gravar Projeto Base:', revErr);
+      }
     }
 
-    // UPDATEs individuais (apenas PROJ_FIELDS)
-    const concurrency = 8;
+    // UPDATEs individuais: cria Rev.NN + atualiza vigente (apenas campos não-vazios)
+    const concurrency = 6;
     for (let i = 0; i < updates.length; i += concurrency) {
       const batch = updates.slice(i, i + concurrency);
       await Promise.all(batch.map(async (a) => {
+        // próxima versão
+        const { data: maxRow } = await supabase
+          .from('os_revisoes' as any)
+          .select('versao')
+          .eq('os_id', a.existingId!)
+          .order('versao', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextVersao = ((maxRow as any)?.versao ?? -1) + 1 || 1;
+        const versao = Math.max(nextVersao, 1);
+        const suprimido = hasRemovalMarker(a.parsed);
+
+        // 1) snapshot completo da nova versão
+        const { error: revErr } = await supabase.from('os_revisoes' as any).insert({
+          os_id: a.existingId!,
+          versao,
+          rotulo: `Rev.${String(versao).padStart(2, '0')}`,
+          user_id: supabaseUser?.id ?? null,
+          suprimido,
+          ...snapshotOf(a.parsed),
+        } as any);
+        if (revErr) {
+          erros.push({ trecho: a.parsed.trecho, erro: `Revisão: ${revErr.message}` });
+          return;
+        }
+
+        // 2) atualiza vigente — só campos não-vazios; remove marcador antes de gravar
         const payload: Record<string, unknown> = {};
-        for (const f of PROJ_FIELDS) payload[f] = (a.parsed as any)[f];
-        const { error } = await supabase.from('ordens_servico').update(payload as any).eq('id', a.existingId!);
-        if (error) erros.push({ trecho: a.parsed.trecho, erro: error.message });
-        else updatedOk++;
+        for (const f of PROJ_FIELDS) {
+          const v = (a.parsed as any)[f];
+          if (isEmpty(v)) continue;
+          if (isRemovalMarker(v)) continue; // marcador não vira valor vigente
+          payload[f] = v;
+        }
+        if (suprimido) payload['status_vigencia'] = 'SUPRIMIDO';
+        if (Object.keys(payload).length > 0) {
+          const { error } = await supabase.from('ordens_servico').update(payload as any).eq('id', a.existingId!);
+          if (error) { erros.push({ trecho: a.parsed.trecho, erro: error.message }); return; }
+        }
+        updatedOk++;
       }));
     }
 

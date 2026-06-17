@@ -318,7 +318,8 @@ Deno.serve(async (req) => {
     }
 
     const ordens = await fetchAllOrdens();
-    const wb = await buildWorkbook(ordens, now, source === 'backup' ? 'backup automático' : 'manual');
+    const revisoesByOsId = await fetchAllRevisoes(ordens.map((o: any) => o.id));
+    const wb = await buildWorkbook(ordens, now, source === 'backup' ? 'backup automático' : 'manual', revisoesByOsId);
     const buffer = await wb.xlsx.writeBuffer();
     const name = filename(now);
 

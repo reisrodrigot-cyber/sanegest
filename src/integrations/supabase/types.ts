@@ -441,6 +441,7 @@ export type Database = {
           pv_jusante: string | null
           pv_montante: string | null
           status: Database["public"]["Enums"]["os_status"]
+          status_vigencia: string
           trecho: string
           updated_at: string
         }
@@ -492,6 +493,7 @@ export type Database = {
           pv_jusante?: string | null
           pv_montante?: string | null
           status?: Database["public"]["Enums"]["os_status"]
+          status_vigencia?: string
           trecho: string
           updated_at?: string
         }
@@ -543,10 +545,113 @@ export type Database = {
           pv_jusante?: string | null
           pv_montante?: string | null
           status?: Database["public"]["Enums"]["os_status"]
+          status_vigencia?: string
           trecho?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      os_revisoes: {
+        Row: {
+          areia: string | null
+          bacia: string | null
+          bms: string | null
+          bomba_rebaixo: boolean | null
+          brita: string | null
+          comprimento_previsto: number | null
+          created_at: string
+          dn: number | null
+          id: string
+          import_log_id: string | null
+          imported_at: string
+          largura_pav_prevista: number | null
+          largura_vala: number | null
+          ligacoes_previstas: number | null
+          os_id: string
+          pav_m2_previsto: number | null
+          pav_previsto: string | null
+          prazo_arredondado: number | null
+          prazo_previsto: number | null
+          prof_jusante: number | null
+          prof_media_prevista: number | null
+          prof_montante: number | null
+          rotulo: string
+          suprimido: boolean
+          user_id: string | null
+          versao: number
+        }
+        Insert: {
+          areia?: string | null
+          bacia?: string | null
+          bms?: string | null
+          bomba_rebaixo?: boolean | null
+          brita?: string | null
+          comprimento_previsto?: number | null
+          created_at?: string
+          dn?: number | null
+          id?: string
+          import_log_id?: string | null
+          imported_at?: string
+          largura_pav_prevista?: number | null
+          largura_vala?: number | null
+          ligacoes_previstas?: number | null
+          os_id: string
+          pav_m2_previsto?: number | null
+          pav_previsto?: string | null
+          prazo_arredondado?: number | null
+          prazo_previsto?: number | null
+          prof_jusante?: number | null
+          prof_media_prevista?: number | null
+          prof_montante?: number | null
+          rotulo: string
+          suprimido?: boolean
+          user_id?: string | null
+          versao: number
+        }
+        Update: {
+          areia?: string | null
+          bacia?: string | null
+          bms?: string | null
+          bomba_rebaixo?: boolean | null
+          brita?: string | null
+          comprimento_previsto?: number | null
+          created_at?: string
+          dn?: number | null
+          id?: string
+          import_log_id?: string | null
+          imported_at?: string
+          largura_pav_prevista?: number | null
+          largura_vala?: number | null
+          ligacoes_previstas?: number | null
+          os_id?: string
+          pav_m2_previsto?: number | null
+          pav_previsto?: string | null
+          prazo_arredondado?: number | null
+          prazo_previsto?: number | null
+          prof_jusante?: number | null
+          prof_media_prevista?: number | null
+          prof_montante?: number | null
+          rotulo?: string
+          suprimido?: boolean
+          user_id?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_revisoes_import_log_id_fkey"
+            columns: ["import_log_id"]
+            isOneToOne: false
+            referencedRelation: "import_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_revisoes_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       os_status_historico: {
         Row: {

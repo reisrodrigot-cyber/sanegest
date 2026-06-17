@@ -1,8 +1,9 @@
 import ExcelJS from 'exceljs';
+import { supabase } from '@/integrations/supabase/client';
 import type { OrdemServico } from '@/types/sanegest';
 
 function naturalCompare(a: string, b: string) {
-  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  return String(a ?? '').localeCompare(String(b ?? ''), undefined, { numeric: true, sensitivity: 'base' });
 }
 
 const colLetter = (i: number) => {
@@ -17,17 +18,46 @@ const colLetter = (i: number) => {
   return s;
 };
 
+// Letter for absolute column (1 = A)
+const absLetter = (n: number) => {
+  let s = '';
+  let x = n;
+  while (x > 0) {
+    const r = (x - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    x = Math.floor((x - 1) / 26);
+  }
+  return s;
+};
+
 export interface PlanilhaoBuildOptions {
-  /** ISO timestamp included in the metadata row. Defaults to now. */
   generatedAt?: Date;
-  /** Optional label shown alongside the timestamp ("manual", "backup automático"...). */
   sourceLabel?: string;
+  /** Map de revisões por os_id (já ordenadas por versão asc). */
+  revisoesByOsId?: Record<string, any[]>;
 }
 
-/**
- * Builds the official "PLANILHÃO" workbook used by SaneGest.
- * Same layout used by the manual export button and the backup edge function.
- */
+/** Campos projetados controlados pela revisão (mesma lista do importador). */
+export const REV_FIELDS: { key: keyof OrdemServico; label: string }[] = [
+  { key: 'bacia', label: 'Bacia' },
+  { key: 'comprimento_previsto', label: 'Comprimento (m)' },
+  { key: 'largura_vala', label: 'Largura de Vala' },
+  { key: 'prof_media_prevista', label: 'Prof. Média (m)' },
+  { key: 'dn', label: 'DN (m)' },
+  { key: 'prof_montante', label: 'Prof. Mont. (m)' },
+  { key: 'prof_jusante', label: 'Prof. Jus. (m)' },
+  { key: 'pav_previsto', label: 'PAV' },
+  { key: 'largura_pav_prevista', label: 'Larg. PAV' },
+  { key: 'pav_m2_previsto', label: 'PAV (m²)' },
+  { key: 'areia', label: 'Areia' },
+  { key: 'brita', label: 'Brita' },
+  { key: 'ligacoes_previstas', label: 'Ligações previstas' },
+  { key: 'bomba_rebaixo', label: 'Bomba de Rebaixo' },
+  { key: 'prazo_previsto', label: 'Prazo (dias)' },
+  { key: 'prazo_arredondado', label: 'Prazo arred. (dias)' },
+  { key: 'bms', label: "BM's" },
+];
+
 export async function buildPlanilhaoWorkbook(
   ordens: OrdemServico[],
   options: PlanilhaoBuildOptions = {},
@@ -82,7 +112,6 @@ export async function buildPlanilhaoWorkbook(
     right: { style: 'thin' as const },
   };
 
-  // Metadata row (B16) — generation timestamp, ignored by the importer (it reads from row 22)
   const generatedAt = options.generatedAt ?? new Date();
   const ts =
     `${String(generatedAt.getDate()).padStart(2, '0')}/` +
@@ -95,7 +124,6 @@ export async function buildPlanilhaoWorkbook(
   metaCell.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF666666' } };
   ws.mergeCells('B16:AA16');
 
-  // Title row 17
   ws.mergeCells('B17:AA17');
   const title = ws.getCell('B17');
   title.value = 'Dados de Entrada';
@@ -107,7 +135,6 @@ export async function buildPlanilhaoWorkbook(
     ws.getCell(`${colLetter(i)}17`).border = thinBorder;
   }
 
-  // Headers row 18+19, sub-headers row 21
   headers.forEach((h, i) => {
     const letter = colLetter(i);
     ws.mergeCells(`${letter}18:${letter}19`);
@@ -152,7 +179,108 @@ export async function buildPlanilhaoWorkbook(
     });
   });
 
+  // Aba REVISÕES — comparação Projeto Base → Rev.NN → Atual
+  if (options.revisoesByOsId) {
+    addRevisoesSheet(wb, sorted, options.revisoesByOsId);
+  }
+
   return wb;
+}
+
+function fmtRevValue(field: keyof OrdemServico, v: any): any {
+  if (v === null || v === undefined || v === '') return '';
+  if (field === 'bomba_rebaixo') return v ? 'SIM' : 'NÃO';
+  return v;
+}
+
+function addRevisoesSheet(
+  wb: ExcelJS.Workbook,
+  ordens: OrdemServico[],
+  revisoesByOsId: Record<string, any[]>,
+) {
+  const ws = wb.addWorksheet('REVISÕES', {
+    views: [{ state: 'normal', zoomScale: 90, showGridLines: false }],
+  });
+
+  // Quantidade máxima de revisões (excluindo base versao=0)
+  let maxRev = 0;
+  for (const arr of Object.values(revisoesByOsId)) {
+    const top = arr.reduce((m, r) => Math.max(m, r.versao || 0), 0);
+    if (top > maxRev) maxRev = top;
+  }
+
+  const baseCols = ['Trecho', 'Bacia', 'PV Montante', 'PV Jusante', 'Vigência', 'Campo', 'Projeto Base'];
+  const revCols: string[] = [];
+  for (let v = 1; v <= maxRev; v++) revCols.push(`Rev.${String(v).padStart(2, '0')}`);
+  const allCols = [...baseCols, ...revCols, 'Atual / Vigente'];
+
+  const thinBorder = {
+    top: { style: 'thin' as const }, bottom: { style: 'thin' as const },
+    left: { style: 'thin' as const }, right: { style: 'thin' as const },
+  };
+
+  // Header
+  allCols.forEach((c, i) => {
+    const cell = ws.getCell(1, i + 1);
+    cell.value = c;
+    cell.font = { name: 'Arial', size: 10, bold: true };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF99CCFF' } };
+    cell.border = thinBorder;
+  });
+  ws.getRow(1).height = 26;
+
+  // Widths
+  ws.getColumn(1).width = 12;
+  ws.getColumn(2).width = 14;
+  ws.getColumn(3).width = 14;
+  ws.getColumn(4).width = 14;
+  ws.getColumn(5).width = 12;
+  ws.getColumn(6).width = 22;
+  for (let i = 7; i <= allCols.length; i++) ws.getColumn(i).width = 16;
+
+  let r = 2;
+  for (const os of ordens) {
+    const revs = (revisoesByOsId[os.id] || []).slice().sort((a, b) => (a.versao || 0) - (b.versao || 0));
+    const base = revs.find(x => (x.versao || 0) === 0);
+    const startRow = r;
+
+    for (const field of REV_FIELDS) {
+      const row = ws.getRow(r);
+      const cells: any[] = [
+        os.trecho, os.bacia, os.pv_montante, os.pv_jusante,
+        (os as any).status_vigencia || 'ATIVO',
+        field.label,
+        base ? fmtRevValue(field.key, base[field.key as string]) : '',
+      ];
+      for (let v = 1; v <= maxRev; v++) {
+        const rev = revs.find(x => (x.versao || 0) === v);
+        cells.push(rev ? fmtRevValue(field.key, rev[field.key as string]) : '');
+      }
+      cells.push(fmtRevValue(field.key, (os as any)[field.key]));
+
+      cells.forEach((val, i) => {
+        const cell = row.getCell(i + 1);
+        cell.value = val;
+        cell.font = { name: 'Arial', size: 9 };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = thinBorder;
+      });
+      r++;
+    }
+
+    // Mescla as 4 primeiras colunas (Trecho..PV Jusante) + Vigência para a OS
+    if (REV_FIELDS.length > 1) {
+      for (let col = 1; col <= 5; col++) {
+        ws.mergeCells(startRow, col, r - 1, col);
+        const c = ws.getCell(startRow, col);
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+    }
+  }
+
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: allCols.length } };
+  ws.views = [{ state: 'frozen', xSplit: 6, ySplit: 1 }];
 }
 
 export function planilhaoFilename(date: Date = new Date()) {
@@ -162,10 +290,34 @@ export function planilhaoFilename(date: Date = new Date()) {
   return `sanegest_japaratinga_planilhao_${yyyy}-${mm}-${dd}.xlsx`;
 }
 
-/** Triggers a browser download of the Planilhão for the given OS list. */
+/** Busca todas as revisões em lote e agrupa por os_id. */
+export async function fetchRevisoesByOsId(osIds: string[]): Promise<Record<string, any[]>> {
+  const map: Record<string, any[]> = {};
+  if (osIds.length === 0) return map;
+  const pageSize = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('os_revisoes' as any)
+      .select('*')
+      .in('os_id', osIds)
+      .order('versao', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) { console.error('Falha ao carregar revisões:', error); break; }
+    const rows = (data as any[]) || [];
+    for (const row of rows) {
+      (map[row.os_id] ||= []).push(row);
+    }
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+  return map;
+}
+
 export async function downloadPlanilhao(ordens: OrdemServico[]) {
   const now = new Date();
-  const wb = await buildPlanilhaoWorkbook(ordens, { generatedAt: now, sourceLabel: 'manual' });
+  const revisoesByOsId = await fetchRevisoesByOsId(ordens.map(o => o.id));
+  const wb = await buildPlanilhaoWorkbook(ordens, { generatedAt: now, sourceLabel: 'manual', revisoesByOsId });
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);

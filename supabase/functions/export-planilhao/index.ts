@@ -130,7 +130,6 @@ async function buildWorkbook(ordens: any[], generatedAt: Date, sourceLabel: stri
   });
 
   // Aba REVISÕES
-  const revisoesByOsId = (arguments[3] as Record<string, any[]>) || {};
   addRevisoesSheet(wb, sorted, revisoesByOsId);
 
   return wb;

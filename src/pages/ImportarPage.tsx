@@ -328,9 +328,12 @@ const ImportarPage = () => {
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><AlertCircle size={20} className="text-status-yellow" /> Como funciona</h2>
         <ul className="space-y-1.5 text-sm text-foreground mb-5">
           <li>• Chave única: <strong>Trecho + Bacia + PV Montante + PV Jusante</strong></li>
-          <li>• OS existentes têm <strong>apenas campos projetados</strong> atualizados</li>
-          <li>• Campos REAIS, status, liberação, produção, materiais e topografia são <strong>preservados</strong></li>
-          <li>• Arquivo .xlsx com aba <strong>PLANILHÃO</strong>, dados a partir da linha 22</li>
+          <li>• Trechos <strong>novos</strong> entram como <strong>Projeto Base</strong>.</li>
+          <li>• Trechos <strong>existentes</strong> geram uma <strong>nova revisão</strong> (Rev.01, Rev.02...) e a versão vigente é atualizada.</li>
+          <li>• Campos em branco na nova importação <strong>não apagam</strong> a informação vigente.</li>
+          <li>• Marcadores <code>SUPRIMIDO</code>, <code>RETIRADO</code>, <code>REMOVER</code> ou <code>CANCELADO</code> marcam o trecho como suprimido.</li>
+          <li>• Campos REAIS, status, liberação, produção, materiais e topografia são <strong>preservados</strong>.</li>
+          <li>• Base e revisões aparecem apenas na <strong>exportação do Planilhão</strong> (aba <em>REVISÕES</em>).</li>
         </ul>
         <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm cursor-pointer hover:opacity-90 transition-opacity">
           {(parsing || analyzing) ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}

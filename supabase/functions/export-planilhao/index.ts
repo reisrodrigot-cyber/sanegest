@@ -25,7 +25,7 @@ const colLetter = (i: number) => {
   return s;
 };
 
-async function buildWorkbook(ordens: any[], generatedAt: Date, sourceLabel: string) {
+async function buildWorkbook(ordens: any[], generatedAt: Date, sourceLabel: string, revisoesByOsId: Record<string, any[]> = {}) {
   const headers = [
     'Trecho','BACIA','PV de Montante','PV de Jusante',
     'Comprimento (m)','Comprimento REAL (m)','Largura de Vala',

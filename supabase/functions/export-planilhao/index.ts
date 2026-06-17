@@ -129,7 +129,101 @@ async function buildWorkbook(ordens: any[], generatedAt: Date, sourceLabel: stri
     });
   });
 
+  // Aba REVISÕES
+  const revisoesByOsId = (arguments[3] as Record<string, any[]>) || {};
+  addRevisoesSheet(wb, sorted, revisoesByOsId);
+
   return wb;
+}
+
+const REV_FIELDS: { key: string; label: string }[] = [
+  { key:'bacia', label:'Bacia' },
+  { key:'comprimento_previsto', label:'Comprimento (m)' },
+  { key:'largura_vala', label:'Largura de Vala' },
+  { key:'prof_media_prevista', label:'Prof. Média (m)' },
+  { key:'dn', label:'DN (m)' },
+  { key:'prof_montante', label:'Prof. Mont. (m)' },
+  { key:'prof_jusante', label:'Prof. Jus. (m)' },
+  { key:'pav_previsto', label:'PAV' },
+  { key:'largura_pav_prevista', label:'Larg. PAV' },
+  { key:'pav_m2_previsto', label:'PAV (m²)' },
+  { key:'areia', label:'Areia' },
+  { key:'brita', label:'Brita' },
+  { key:'ligacoes_previstas', label:'Ligações previstas' },
+  { key:'bomba_rebaixo', label:'Bomba de Rebaixo' },
+  { key:'prazo_previsto', label:'Prazo (dias)' },
+  { key:'prazo_arredondado', label:'Prazo arred. (dias)' },
+  { key:'bms', label:"BM's" },
+];
+
+function fmtRev(field: string, v: any) {
+  if (v === null || v === undefined || v === '') return '';
+  if (field === 'bomba_rebaixo') return v ? 'SIM' : 'NÃO';
+  return v;
+}
+
+function addRevisoesSheet(wb: any, ordens: any[], revisoesByOsId: Record<string, any[]>) {
+  const ws = wb.addWorksheet('REVISÕES', { views: [{ state: 'normal', zoomScale: 90, showGridLines: false }] });
+  let maxRev = 0;
+  for (const arr of Object.values(revisoesByOsId)) {
+    const top = arr.reduce((m, r) => Math.max(m, r.versao || 0), 0);
+    if (top > maxRev) maxRev = top;
+  }
+  const baseCols = ['Trecho','Bacia','PV Montante','PV Jusante','Vigência','Campo','Projeto Base'];
+  const revCols: string[] = [];
+  for (let v = 1; v <= maxRev; v++) revCols.push(`Rev.${String(v).padStart(2,'0')}`);
+  const allCols = [...baseCols, ...revCols, 'Atual / Vigente'];
+  const thin = { top:{style:'thin' as const}, bottom:{style:'thin' as const}, left:{style:'thin' as const}, right:{style:'thin' as const} };
+
+  allCols.forEach((c, i) => {
+    const cell = ws.getCell(1, i+1);
+    cell.value = c;
+    cell.font = { name:'Arial', size:10, bold:true };
+    cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+    cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF99CCFF' } };
+    cell.border = thin;
+  });
+  ws.getRow(1).height = 26;
+  ws.getColumn(1).width = 12; ws.getColumn(2).width = 14; ws.getColumn(3).width = 14;
+  ws.getColumn(4).width = 14; ws.getColumn(5).width = 12; ws.getColumn(6).width = 22;
+  for (let i = 7; i <= allCols.length; i++) ws.getColumn(i).width = 16;
+
+  let r = 2;
+  for (const os of ordens) {
+    const revs = (revisoesByOsId[os.id] || []).slice().sort((a,b) => (a.versao||0) - (b.versao||0));
+    const base = revs.find(x => (x.versao||0) === 0);
+    const startRow = r;
+    for (const field of REV_FIELDS) {
+      const row = ws.getRow(r);
+      const cells: any[] = [
+        os.trecho, os.bacia, os.pv_montante, os.pv_jusante,
+        os.status_vigencia || 'ATIVO',
+        field.label,
+        base ? fmtRev(field.key, base[field.key]) : '',
+      ];
+      for (let v = 1; v <= maxRev; v++) {
+        const rev = revs.find(x => (x.versao||0) === v);
+        cells.push(rev ? fmtRev(field.key, rev[field.key]) : '');
+      }
+      cells.push(fmtRev(field.key, os[field.key]));
+      cells.forEach((val, i) => {
+        const cell = row.getCell(i+1);
+        cell.value = val;
+        cell.font = { name:'Arial', size:9 };
+        cell.alignment = { horizontal:'center', vertical:'middle' };
+        cell.border = thin;
+      });
+      r++;
+    }
+    if (REV_FIELDS.length > 1) {
+      for (let col = 1; col <= 5; col++) {
+        ws.mergeCells(startRow, col, r-1, col);
+        ws.getCell(startRow, col).alignment = { horizontal:'center', vertical:'middle' };
+      }
+    }
+  }
+  ws.autoFilter = { from: { row:1, column:1 }, to: { row:1, column: allCols.length } };
+  ws.views = [{ state:'frozen', xSplit:6, ySplit:1 }];
 }
 
 async function fetchAllOrdens() {

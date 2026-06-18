@@ -245,6 +245,7 @@ function addRevisoesSheet(
   let r = 2;
   for (const os of ordens) {
     const revs = (revisoesByOsId[os.id] || []).slice().sort((a, b) => (a.versao || 0) - (b.versao || 0));
+    if (!revs.some(x => (x.versao || 0) > 0)) continue;
     const base = revs.find(x => (x.versao || 0) === 0);
     const startRow = r;
 

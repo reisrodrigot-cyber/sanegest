@@ -70,12 +70,6 @@ const toNum = (v: unknown): number | null => {
   const n = Number(normalized);
   return Number.isFinite(n) ? n : null;
 };
-const toNumFromRow = (row: unknown[], idx: number): number | null => {
-  const direct = toNum(row[idx]);
-  if (direct != null) return direct;
-  const formula = (row as any[])[idx + 1];
-  return toNum(formula);
-};
 const toStr = (v: unknown): string => v == null ? '' : String(v).trim();
 const toBool = (v: unknown): boolean | null => {
   const s = toStr(v).toUpperCase();
@@ -101,18 +95,26 @@ function parseExcel(data: ArrayBuffer): ParsedOS[] {
     const k = keyOf(trecho, toStr(row[2]));
     if (seen.has(k)) continue; seen.add(k);
 
+    const larguraPav = toNum(row[16]);
+    const pavM2 = toNum(row[18]);
+    const comprimento = toNum(row[5]) ?? (
+      larguraPav != null && larguraPav > 0 && pavM2 != null
+        ? Math.round((pavM2 / larguraPav) * 100) / 100
+        : null
+    );
+
     result.push({
       trecho, bacia: toStr(row[2]),
       pv_montante: toStr(row[3]), pv_jusante: toStr(row[4]),
-      comprimento_previsto: toNumFromRow(row, 5),
+      comprimento_previsto: comprimento,
       largura_vala: toNum(row[7]),
       prof_media_prevista: toNum(row[9]),
       dn: toNum(row[11]),
       prof_montante: toNum(row[12]),
       prof_jusante: toNum(row[13]),
       pav_previsto: toStr(row[14]) || null,
-      largura_pav_prevista: toNum(row[16]),
-      pav_m2_previsto: toNumFromRow(row, 18),
+      largura_pav_prevista: larguraPav,
+      pav_m2_previsto: pavM2,
       areia: toStr(row[20]) || null,
       brita: toStr(row[21]) || null,
       ligacoes_previstas: toNum(row[22]) != null ? Math.round(toNum(row[22])!) : null,

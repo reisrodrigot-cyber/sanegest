@@ -575,8 +575,11 @@ export type Database = {
           prof_jusante: number | null
           prof_media_prevista: number | null
           prof_montante: number | null
+          pv_jusante: string | null
+          pv_montante: string | null
           rotulo: string
           suprimido: boolean
+          trecho: string | null
           user_id: string | null
           versao: number
         }
@@ -603,8 +606,11 @@ export type Database = {
           prof_jusante?: number | null
           prof_media_prevista?: number | null
           prof_montante?: number | null
+          pv_jusante?: string | null
+          pv_montante?: string | null
           rotulo: string
           suprimido?: boolean
+          trecho?: string | null
           user_id?: string | null
           versao: number
         }
@@ -631,8 +637,11 @@ export type Database = {
           prof_jusante?: number | null
           prof_media_prevista?: number | null
           prof_montante?: number | null
+          pv_jusante?: string | null
+          pv_montante?: string | null
           rotulo?: string
           suprimido?: boolean
+          trecho?: string | null
           user_id?: string | null
           versao?: number
         }

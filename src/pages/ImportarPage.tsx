@@ -63,8 +63,8 @@ const toNum = (v: unknown): number | null => {
   const n = Number(v); return isNaN(n) ? null : n;
 };
 const toStr = (v: unknown): string => v == null ? '' : String(v).trim();
-const keyOf = (t: string, b: string, m: string, j: string) =>
-  `${t}|${b}|${m}|${j}`.toLowerCase();
+const keyOf = (t: string, b: string) =>
+  `${t.trim()}|${(b ?? '').trim()}`.toLowerCase();
 
 function parseExcel(data: ArrayBuffer): ParsedOS[] {
   const wb = XLSX.read(data, { type: 'array' });

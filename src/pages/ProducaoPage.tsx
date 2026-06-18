@@ -1,5 +1,5 @@
 import { AppLayout } from '@/components/AppLayout';
-import { StatusBadge } from '@/components/StatusBadge';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdensServico } from '@/hooks/useOrdensServico';

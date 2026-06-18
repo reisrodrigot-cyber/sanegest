@@ -159,6 +159,7 @@ const ImportarPage = () => {
         const diffs: DiffRow[] = [];
         for (const f of PROJ_FIELDS) {
           const newV = (p as any)[f];
+          if (newV === null || newV === undefined || newV === '') continue;
           const oldV = existing[f];
           if (!eq(oldV, newV)) diffs.push({ field: f, oldValue: oldV, newValue: newV });
         }

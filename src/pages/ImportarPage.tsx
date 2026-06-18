@@ -61,7 +61,14 @@ interface AnalyzedRow {
 
 const toNum = (v: unknown): number | null => {
   if (v == null || v === '') return null;
-  const n = Number(v); return isNaN(n) ? null : n;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const raw = String(v).trim();
+  if (!raw) return null;
+  let normalized = raw.replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
+  if (!normalized || normalized === '-' || normalized === ',' || normalized === '.') return null;
+  if (normalized.includes(',')) normalized = normalized.replace(/\./g, '').replace(',', '.');
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
 };
 const toNumFromRow = (row: unknown[], idx: number): number | null => {
   const direct = toNum(row[idx]);
@@ -70,6 +77,13 @@ const toNumFromRow = (row: unknown[], idx: number): number | null => {
   return toNum(formula);
 };
 const toStr = (v: unknown): string => v == null ? '' : String(v).trim();
+const toBool = (v: unknown): boolean | null => {
+  const s = toStr(v).toUpperCase();
+  if (!s) return null;
+  if (['SIM', 'S', 'TRUE', '1'].includes(s)) return true;
+  if (['NÃO', 'NAO', 'N', 'FALSE', '0'].includes(s)) return false;
+  return null;
+};
 const keyOf = (t: string, b: string) =>
   `${t.trim()}|${(b ?? '').trim()}`.toLowerCase();
 

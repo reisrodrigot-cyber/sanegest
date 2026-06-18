@@ -63,8 +63,8 @@ const toNum = (v: unknown): number | null => {
   const n = Number(v); return isNaN(n) ? null : n;
 };
 const toStr = (v: unknown): string => v == null ? '' : String(v).trim();
-const keyOf = (t: string, b: string, m: string, j: string) =>
-  `${t}|${b}|${m}|${j}`.toLowerCase();
+const keyOf = (t: string, b: string) =>
+  `${t.trim()}|${(b ?? '').trim()}`.toLowerCase();
 
 function parseExcel(data: ArrayBuffer): ParsedOS[] {
   const wb = XLSX.read(data, { type: 'array' });
@@ -143,10 +143,10 @@ const ImportarPage = () => {
         from += size;
       }
       const map = new Map<string, any>();
-      all.forEach(r => map.set(keyOf(r.trecho, r.bacia, r.pv_montante, r.pv_jusante), r));
+      all.forEach(r => map.set(keyOf(r.trecho, r.bacia), r));
 
       const result: AnalyzedRow[] = parsed.map(p => {
-        const k = keyOf(p.trecho, p.bacia, p.pv_montante, p.pv_jusante);
+        const k = keyOf(p.trecho, p.bacia);
         const existing = map.get(k);
         if (!existing) return { parsed: p, key: k, classification: 'NEW' };
         const diffs: DiffRow[] = [];
@@ -207,7 +207,7 @@ const ImportarPage = () => {
       const { data: inserted, error } = await supabase
         .from('ordens_servico')
         .insert(slice as any)
-        .select('id, trecho, bacia, pv_montante, pv_jusante');
+        .select('id, trecho, bacia');
       if (error) {
         slice.forEach(s => erros.push({ trecho: s.trecho, erro: error.message }));
         continue;
@@ -215,12 +215,8 @@ const ImportarPage = () => {
       createdOk += slice.length;
       // criar Projeto Base
       const baseRows = (inserted || []).map((row: any) => {
-        const parsed = novas.find(a =>
-          a.parsed.trecho === row.trecho &&
-          a.parsed.bacia === row.bacia &&
-          a.parsed.pv_montante === row.pv_montante &&
-          a.parsed.pv_jusante === row.pv_jusante,
-        )?.parsed;
+        const k = keyOf(row.trecho, row.bacia);
+        const parsed = novas.find(a => keyOf(a.parsed.trecho, a.parsed.bacia) === k)?.parsed;
         if (!parsed) return null;
         return {
           os_id: row.id,
@@ -327,7 +323,7 @@ const ImportarPage = () => {
       <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><AlertCircle size={20} className="text-status-yellow" /> Como funciona</h2>
         <ul className="space-y-1.5 text-sm text-foreground mb-5">
-          <li>• Chave única: <strong>Trecho + Bacia + PV Montante + PV Jusante</strong></li>
+          <li>• Chave única: <strong>Trecho + Bacia</strong> (cada trecho aparece uma única vez por bacia)</li>
           <li>• Trechos <strong>novos</strong> entram como <strong>Projeto Base</strong>.</li>
           <li>• Trechos <strong>existentes</strong> geram uma <strong>nova revisão</strong> (Rev.01, Rev.02...) e a versão vigente é atualizada.</li>
           <li>• Campos em branco na nova importação <strong>não apagam</strong> a informação vigente.</li>

@@ -323,7 +323,7 @@ const ImportarPage = () => {
       <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><AlertCircle size={20} className="text-status-yellow" /> Como funciona</h2>
         <ul className="space-y-1.5 text-sm text-foreground mb-5">
-          <li>• Chave única: <strong>Trecho + Bacia + PV Montante + PV Jusante</strong></li>
+          <li>• Chave única: <strong>Trecho + Bacia</strong> (cada trecho aparece uma única vez por bacia)</li>
           <li>• Trechos <strong>novos</strong> entram como <strong>Projeto Base</strong>.</li>
           <li>• Trechos <strong>existentes</strong> geram uma <strong>nova revisão</strong> (Rev.01, Rev.02...) e a versão vigente é atualizada.</li>
           <li>• Campos em branco na nova importação <strong>não apagam</strong> a informação vigente.</li>

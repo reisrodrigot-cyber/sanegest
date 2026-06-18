@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical, Upload, Download } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical, Upload, Download, Maximize2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
@@ -759,15 +759,22 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       return;
     }
     if (!('geolocation' in navigator)) {
-      toast.error('Geolocalização não suportada');
+      toast.error('Geolocalização não suportada neste dispositivo.');
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 17),
-      () => toast.error('Não foi possível obter sua localização'),
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          toast.error('Permita o acesso à sua localização no navegador para usar este recurso.');
+        } else {
+          toast.error('Não foi possível obter sua localização. Tente novamente.');
+        }
+      },
       { enableHighAccuracy: true, timeout: 10000 },
     );
   };
+
 
   const handleDelete = async (c: Camada) => {
     if (!confirm(`Excluir a camada "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
@@ -833,12 +840,40 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
 
   const focusCamada = (id: string) => {
     const map = mapRef.current;
-    const b = kmzBoundsRef.current.get(id);
-    if (map && b && b.isValid()) {
-      map.fitBounds(b, { padding: [40, 40], maxZoom: 17 });
+    if (!map) return;
+    const tryFit = (): boolean => {
+      const b = kmzBoundsRef.current.get(id);
+      if (!b || !b.isValid()) return false;
+      const ne = b.getNorthEast(), sw = b.getSouthWest();
+      if (Math.abs(ne.lat - sw.lat) < 1e-9 && Math.abs(ne.lng - sw.lng) < 1e-9) {
+        map.setView(b.getCenter(), 17);
+      } else {
+        map.fitBounds(b, { padding: [40, 40], maxZoom: 17 });
+      }
       setLayersOpen(false);
+      return true;
+    };
+    if (tryFit()) return;
+    // Camada oculta ou ainda carregando: ativa visibilidade e aguarda carregar
+    if (visivelRef.current[id] === false) {
+      setVisivel((v) => {
+        const next = { ...v, [id]: true };
+        visivelRef.current = next;
+        persistVisibility(next);
+        return next;
+      });
     }
+    let attempts = 0;
+    const intv = window.setInterval(() => {
+      attempts++;
+      if (tryFit()) { window.clearInterval(intv); return; }
+      if (attempts > 40) {
+        window.clearInterval(intv);
+        toast.error('Não foi possível enquadrar a camada (sem geometria carregada).');
+      }
+    }, 200);
   };
+
 
   // ===== Group helpers =====
   const handleCreateGroup = async () => {
@@ -1135,60 +1170,70 @@ ${placemarks.join('\n')}
                       onDoubleClick={() => focusCamada(c.id)}
                     >{c.nome}</span>
                   </button>
-                  {canManage && (
-                    <div className="flex items-center opacity-60 group-hover:opacity-100 transition-opacity">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-1 rounded hover:bg-background" title="Mover para grupo">
-                            <MoreVertical size={12} />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="z-[1100]">
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              <FolderOpen size={12} className="mr-2" /> Mover para
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="z-[1100]">
-                              {groups.length === 0 && (
-                                <DropdownMenuItem disabled>Nenhum grupo</DropdownMenuItem>
-                              )}
-                              {groups.map((g) => (
-                                <DropdownMenuItem
-                                  key={g.id}
-                                  disabled={c.group_id === g.id}
-                                  onClick={() => moveCamadaToGroup(c.id, g.id)}
-                                >
-                                  {g.name}
-                                </DropdownMenuItem>
-                              ))}
-                              {c.group_id && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => moveCamadaToGroup(c.id, null)}>
-                                    Remover do grupo
+                  <div className="flex items-center opacity-60 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => focusCamada(c.id)}
+                      className="p-1 rounded hover:bg-background"
+                      title="Enquadrar camada"
+                      aria-label="Enquadrar camada"
+                    >
+                      <Maximize2 size={12} />
+                    </button>
+                    {canManage && (
+                      <>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-1 rounded hover:bg-background" title="Mover para grupo">
+                              <MoreVertical size={12} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="z-[1100]">
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>
+                                <FolderOpen size={12} className="mr-2" /> Mover para
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="z-[1100]">
+                                {groups.length === 0 && (
+                                  <DropdownMenuItem disabled>Nenhum grupo</DropdownMenuItem>
+                                )}
+                                {groups.map((g) => (
+                                  <DropdownMenuItem
+                                    key={g.id}
+                                    disabled={c.group_id === g.id}
+                                    onClick={() => moveCamadaToGroup(c.id, g.id)}
+                                  >
+                                    {g.name}
                                   </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <button
-                        onClick={() => { setEditing(c); setModalOpen(true); setLayersOpen(false); }}
-                        className="p-1 rounded hover:bg-background"
-                        title="Editar"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(c)}
-                        className="p-1 rounded hover:bg-background text-destructive"
-                        title="Excluir"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  )}
+                                ))}
+                                {c.group_id && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => moveCamadaToGroup(c.id, null)}>
+                                      Remover do grupo
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <button
+                          onClick={() => { setEditing(c); setModalOpen(true); setLayersOpen(false); }}
+                          className="p-1 rounded hover:bg-background"
+                          title="Editar"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(c)}
+                          className="p-1 rounded hover:bg-background text-destructive"
+                          title="Excluir"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               );
 

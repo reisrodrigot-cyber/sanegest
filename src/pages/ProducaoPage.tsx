@@ -1,5 +1,5 @@
 import { AppLayout } from '@/components/AppLayout';
-import { StatusBadge } from '@/components/StatusBadge';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
@@ -599,7 +599,6 @@ const ProducaoPage = () => {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <StatusBadge status={os.status} size="sm" />
                   <button
                     onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
                     className="text-sm text-secondary hover:underline"

@@ -32,9 +32,12 @@ export const OSDetalhesTrecho = ({ os }: { os: OrdemServico }) => (
     <DataRow label="Prof. Montante (m)" previsto={os.prof_montante} />
     <DataRow label="Prof. Jusante (m)" previsto={os.prof_jusante} />
     <DataRow label="Pavimento" previsto={os.pav_previsto} real={os.pav_real} />
-    <DataRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} real={os.largura_pav_real} />
-    <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} real={os.pav_m2_real} />
-    <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real} />
+    {os.pav_previsto !== 'Solo Natural' && (
+      <>
+        <DataRow label="Largura PAV (m)" previsto={os.largura_pav_prevista} real={os.largura_pav_real} />
+        <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} real={os.pav_m2_real} />
+      </>
+    )}
     <DataRow label="Areia" previsto={os.areia} />
     <DataRow label="Brita" previsto={os.brita} />
     <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />

@@ -25,7 +25,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
-import { StatusBadge } from '@/components/StatusBadge';
+
 import type { OrdemServico } from '@/types/sanegest';
 
 interface DailyRow {
@@ -482,6 +482,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 preferCanvas={!isMobileLayout}
                 className=""
                 focusOsId={focusOsId}
+                showLocation
               />
             )}
           </div>
@@ -736,7 +737,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     <span className="text-[11px] text-foreground font-medium tabular-nums w-[58px] text-right">
                       {(os.comprimento_previsto ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}m
                     </span>
-                    <StatusBadge status={os.status} size="sm" />
+                    <span
+                      className={`status-dot-${(os.status || 'CINZA').toLowerCase()} w-2 h-2 rounded-full flex-shrink-0`}
+                      title={os.status}
+                      aria-label={`Status: ${os.status}`}
+                    />
+
                   </Link>
                 </li>
               ))}

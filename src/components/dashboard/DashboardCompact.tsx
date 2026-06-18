@@ -25,7 +25,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
-import { StatusBadge } from '@/components/StatusBadge';
+
 import type { OrdemServico } from '@/types/sanegest';
 
 interface DailyRow {

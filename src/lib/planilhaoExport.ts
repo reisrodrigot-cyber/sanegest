@@ -39,7 +39,10 @@ export interface PlanilhaoBuildOptions {
 
 /** Campos projetados controlados pela revisão (mesma lista do importador). */
 export const REV_FIELDS: { key: keyof OrdemServico; label: string }[] = [
+  { key: 'trecho', label: 'Trecho' },
   { key: 'bacia', label: 'Bacia' },
+  { key: 'pv_montante', label: 'PV Montante' },
+  { key: 'pv_jusante', label: 'PV Jusante' },
   { key: 'comprimento_previsto', label: 'Comprimento (m)' },
   { key: 'largura_vala', label: 'Largura de Vala' },
   { key: 'prof_media_prevista', label: 'Prof. Média (m)' },

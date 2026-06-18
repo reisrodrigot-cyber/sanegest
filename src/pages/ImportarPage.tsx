@@ -207,7 +207,7 @@ const ImportarPage = () => {
       const { data: inserted, error } = await supabase
         .from('ordens_servico')
         .insert(slice as any)
-        .select('id, trecho, bacia, pv_montante, pv_jusante');
+        .select('id, trecho, bacia');
       if (error) {
         slice.forEach(s => erros.push({ trecho: s.trecho, erro: error.message }));
         continue;
@@ -215,12 +215,8 @@ const ImportarPage = () => {
       createdOk += slice.length;
       // criar Projeto Base
       const baseRows = (inserted || []).map((row: any) => {
-        const parsed = novas.find(a =>
-          a.parsed.trecho === row.trecho &&
-          a.parsed.bacia === row.bacia &&
-          a.parsed.pv_montante === row.pv_montante &&
-          a.parsed.pv_jusante === row.pv_jusante,
-        )?.parsed;
+        const k = keyOf(row.trecho, row.bacia);
+        const parsed = novas.find(a => keyOf(a.parsed.trecho, a.parsed.bacia) === k)?.parsed;
         if (!parsed) return null;
         return {
           os_id: row.id,

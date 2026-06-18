@@ -833,12 +833,40 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
 
   const focusCamada = (id: string) => {
     const map = mapRef.current;
-    const b = kmzBoundsRef.current.get(id);
-    if (map && b && b.isValid()) {
-      map.fitBounds(b, { padding: [40, 40], maxZoom: 17 });
+    if (!map) return;
+    const tryFit = (): boolean => {
+      const b = kmzBoundsRef.current.get(id);
+      if (!b || !b.isValid()) return false;
+      const ne = b.getNorthEast(), sw = b.getSouthWest();
+      if (Math.abs(ne.lat - sw.lat) < 1e-9 && Math.abs(ne.lng - sw.lng) < 1e-9) {
+        map.setView(b.getCenter(), 17);
+      } else {
+        map.fitBounds(b, { padding: [40, 40], maxZoom: 17 });
+      }
       setLayersOpen(false);
+      return true;
+    };
+    if (tryFit()) return;
+    // Camada oculta ou ainda carregando: ativa visibilidade e aguarda carregar
+    if (visivelRef.current[id] === false) {
+      setVisivel((v) => {
+        const next = { ...v, [id]: true };
+        visivelRef.current = next;
+        persistVisibility(next);
+        return next;
+      });
     }
+    let attempts = 0;
+    const intv = window.setInterval(() => {
+      attempts++;
+      if (tryFit()) { window.clearInterval(intv); return; }
+      if (attempts > 40) {
+        window.clearInterval(intv);
+        toast.error('Não foi possível enquadrar a camada (sem geometria carregada).');
+      }
+    }, 200);
   };
+
 
   // ===== Group helpers =====
   const handleCreateGroup = async () => {

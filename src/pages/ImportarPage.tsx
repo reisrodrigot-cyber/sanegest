@@ -116,7 +116,7 @@ function parseExcel(data: ArrayBuffer): ParsedOS[] {
       areia: toStr(row[20]) || null,
       brita: toStr(row[21]) || null,
       ligacoes_previstas: toNum(row[22]) != null ? Math.round(toNum(row[22])!) : null,
-      bomba_rebaixo: toStr(row[24]).toUpperCase() === 'SIM',
+      bomba_rebaixo: toBool(row[24]),
       prazo_previsto: toNum(row[25]) != null ? Math.round(toNum(row[25])!) : null,
       prazo_arredondado: toNum(row[26]) != null ? Math.round(toNum(row[26])!) : null,
       bms: toStr(row[27]) || null,

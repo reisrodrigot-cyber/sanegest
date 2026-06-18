@@ -236,7 +236,7 @@ async function fetchAllOrdens() {
   while (true) {
     const { data, error } = await admin
       .from('ordens_servico')
-      .select('*')
+      .select('id,trecho,bacia,pv_montante,pv_jusante,status_vigencia,comprimento_previsto,comprimento_real,largura_vala,prof_media_prevista,prof_media_real,dn,prof_montante,prof_jusante,pav_previsto,pav_real,largura_pav_prevista,largura_pav_real,pav_m2_previsto,pav_m2_real,areia,brita,ligacoes_previstas,ligacoes_real,bomba_rebaixo,prazo_previsto,prazo_arredondado,bms')
       .order('trecho', { ascending: true })
       .range(from, from + pageSize - 1);
     if (error) throw error;
@@ -250,19 +250,21 @@ async function fetchAllOrdens() {
 async function fetchAllRevisoes(osIds: string[]): Promise<Record<string, any[]>> {
   const map: Record<string, any[]> = {};
   if (osIds.length === 0) return map;
-  // .in() suporta listas grandes; paginar resultados
+  const wanted = new Set(osIds);
   const pageSize = 1000;
   let from = 0;
   while (true) {
     const { data, error } = await admin
       .from('os_revisoes')
-      .select('*')
-      .in('os_id', osIds)
+      .select('os_id,versao,rotulo,trecho,bacia,pv_montante,pv_jusante,comprimento_previsto,largura_vala,prof_media_prevista,dn,prof_montante,prof_jusante,pav_previsto,largura_pav_prevista,pav_m2_previsto,areia,brita,ligacoes_previstas,bomba_rebaixo,prazo_previsto,prazo_arredondado,bms,suprimido')
+      .order('os_id', { ascending: true })
       .order('versao', { ascending: true })
       .range(from, from + pageSize - 1);
     if (error) { console.error('Falha ao carregar revisões:', error); break; }
     const rows = (data as any[]) || [];
-    for (const row of rows) { (map[row.os_id] ||= []).push(row); }
+    for (const row of rows) {
+      if (wanted.has(row.os_id)) (map[row.os_id] ||= []).push(row);
+    }
     if (rows.length < pageSize) break;
     from += pageSize;
   }

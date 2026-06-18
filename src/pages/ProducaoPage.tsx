@@ -599,7 +599,6 @@ const ProducaoPage = () => {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <StatusBadge status={os.status} size="sm" />
                   <button
                     onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
                     className="text-sm text-secondary hover:underline"

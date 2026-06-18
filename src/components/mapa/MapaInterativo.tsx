@@ -1163,60 +1163,70 @@ ${placemarks.join('\n')}
                       onDoubleClick={() => focusCamada(c.id)}
                     >{c.nome}</span>
                   </button>
-                  {canManage && (
-                    <div className="flex items-center opacity-60 group-hover:opacity-100 transition-opacity">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-1 rounded hover:bg-background" title="Mover para grupo">
-                            <MoreVertical size={12} />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="z-[1100]">
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              <FolderOpen size={12} className="mr-2" /> Mover para
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="z-[1100]">
-                              {groups.length === 0 && (
-                                <DropdownMenuItem disabled>Nenhum grupo</DropdownMenuItem>
-                              )}
-                              {groups.map((g) => (
-                                <DropdownMenuItem
-                                  key={g.id}
-                                  disabled={c.group_id === g.id}
-                                  onClick={() => moveCamadaToGroup(c.id, g.id)}
-                                >
-                                  {g.name}
-                                </DropdownMenuItem>
-                              ))}
-                              {c.group_id && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => moveCamadaToGroup(c.id, null)}>
-                                    Remover do grupo
+                  <div className="flex items-center opacity-60 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => focusCamada(c.id)}
+                      className="p-1 rounded hover:bg-background"
+                      title="Enquadrar camada"
+                      aria-label="Enquadrar camada"
+                    >
+                      <Maximize2 size={12} />
+                    </button>
+                    {canManage && (
+                      <>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-1 rounded hover:bg-background" title="Mover para grupo">
+                              <MoreVertical size={12} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="z-[1100]">
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>
+                                <FolderOpen size={12} className="mr-2" /> Mover para
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="z-[1100]">
+                                {groups.length === 0 && (
+                                  <DropdownMenuItem disabled>Nenhum grupo</DropdownMenuItem>
+                                )}
+                                {groups.map((g) => (
+                                  <DropdownMenuItem
+                                    key={g.id}
+                                    disabled={c.group_id === g.id}
+                                    onClick={() => moveCamadaToGroup(c.id, g.id)}
+                                  >
+                                    {g.name}
                                   </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <button
-                        onClick={() => { setEditing(c); setModalOpen(true); setLayersOpen(false); }}
-                        className="p-1 rounded hover:bg-background"
-                        title="Editar"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(c)}
-                        className="p-1 rounded hover:bg-background text-destructive"
-                        title="Excluir"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  )}
+                                ))}
+                                {c.group_id && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => moveCamadaToGroup(c.id, null)}>
+                                      Remover do grupo
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <button
+                          onClick={() => { setEditing(c); setModalOpen(true); setLayersOpen(false); }}
+                          className="p-1 rounded hover:bg-background"
+                          title="Editar"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(c)}
+                          className="p-1 rounded hover:bg-background text-destructive"
+                          title="Excluir"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               );
 

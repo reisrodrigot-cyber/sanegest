@@ -482,6 +482,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 preferCanvas={!isMobileLayout}
                 className=""
                 focusOsId={focusOsId}
+                showLocation
               />
             )}
           </div>

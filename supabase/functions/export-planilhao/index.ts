@@ -358,7 +358,7 @@ async function fetchAllRevisoes(osIds: string[]): Promise<Record<string, any[]>>
   while (true) {
     const { data, error } = await admin
       .from('os_revisoes')
-      .select('os_id,versao,rotulo,trecho,bacia,pv_montante,pv_jusante,comprimento_previsto,largura_vala,prof_media_prevista,dn,prof_montante,prof_jusante,pav_previsto,largura_pav_prevista,pav_m2_previsto,areia,brita,ligacoes_previstas,bomba_rebaixo,prazo_previsto,prazo_arredondado,bms,suprimido')
+      .select('os_id,versao,rotulo,imported_at,trecho,bacia,pv_montante,pv_jusante,comprimento_previsto,largura_vala,prof_media_prevista,dn,prof_montante,prof_jusante,pav_previsto,largura_pav_prevista,pav_m2_previsto,areia,brita,ligacoes_previstas,bomba_rebaixo,prazo_previsto,prazo_arredondado,bms,suprimido,import_log:import_logs(filename,user_email)')
       .order('os_id', { ascending: true })
       .order('versao', { ascending: true })
       .range(from, from + pageSize - 1);

@@ -38,7 +38,7 @@ interface ParsedOS {
   areia: string | null;
   brita: string | null;
   ligacoes_previstas: number | null;
-  bomba_rebaixo: boolean;
+  bomba_rebaixo: boolean | null;
   prazo_previsto: number | null;
   prazo_arredondado: number | null;
   bms: string | null;
@@ -156,7 +156,7 @@ const ImportarPage = () => {
       while (true) {
         const { data, error } = await supabase
           .from('ordens_servico')
-          .select(['id', ...PROJ_FIELDS, 'trecho', 'pv_montante', 'pv_jusante'].join(','))
+          .select(['id', ...PROJ_FIELDS].join(','))
           .range(from, from + size - 1);
         if (error) throw error;
         all = [...all, ...(data || [])];

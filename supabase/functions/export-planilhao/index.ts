@@ -129,10 +129,111 @@ async function buildWorkbook(ordens: any[], generatedAt: Date, sourceLabel: stri
     });
   });
 
+  // Blocos de revisão a partir da coluna AB
+  addRevisionBlocks(ws, sorted, revisoesByOsId, thinBorder);
+
   // Aba REVISÕES
   addRevisoesSheet(wb, sorted, revisoesByOsId);
 
   return wb;
+}
+
+const REV_BLOCK_FIELDS: { label: string; key: string }[] = [
+  { label: 'Comprimento (m)', key: 'comprimento_previsto' },
+  { label: 'PV Montante', key: 'pv_montante' },
+  { label: 'PV Jusante', key: 'pv_jusante' },
+  { label: 'Prof. Mont. (m)', key: 'prof_montante' },
+  { label: 'Prof. Jus. (m)', key: 'prof_jusante' },
+  { label: 'Largura de Vala', key: 'largura_vala' },
+  { label: 'Prof. Média (m)', key: 'prof_media_prevista' },
+  { label: 'DN (m)', key: 'dn' },
+  { label: 'PAV', key: 'pav_previsto' },
+  { label: 'Ligações previstas', key: 'ligacoes_previstas' },
+  { label: 'Data', key: '__data__' },
+  { label: 'Origem', key: '__origem__' },
+];
+
+function fmtBlockDate(iso: string) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+
+function fmtBlockOrigem(rev: any) {
+  const parts: string[] = [];
+  if (rev.rotulo) parts.push(rev.rotulo);
+  if (rev.import_log?.filename) parts.push(rev.import_log.filename);
+  if (rev.import_log?.user_email) parts.push(rev.import_log.user_email);
+  return parts.join(' · ');
+}
+
+function addRevisionBlocks(ws: any, ordens: any[], revisoesByOsId: Record<string, any[]>, thinBorder: any) {
+  let maxRev = 0;
+  for (const arr of Object.values(revisoesByOsId)) {
+    const top = arr.reduce((m, r) => Math.max(m, r.versao || 0), 0);
+    if (top > maxRev) maxRev = top;
+  }
+  if (maxRev === 0) return;
+
+  const PURPLE = 'FFE4D7F5';
+  const PURPLE_DARK = 'FFB39DDB';
+  const startCol = 27; // AB
+  const n = REV_BLOCK_FIELDS.length;
+
+  for (let v = 1; v <= maxRev; v++) {
+    const blockStart = startCol + (v - 1) * n;
+    const blockEnd = blockStart + n - 1;
+    ws.mergeCells(17, blockStart, 17, blockEnd);
+    const t = ws.getCell(17, blockStart);
+    t.value = `Revisão ${String(v).padStart(2,'0')}`;
+    t.font = { name:'Arial', size:10, bold:true };
+    t.alignment = { horizontal:'center', vertical:'middle' };
+    t.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: PURPLE_DARK } };
+    t.border = thinBorder;
+
+    REV_BLOCK_FIELDS.forEach((f, i) => {
+      const col = blockStart + i;
+      ws.mergeCells(18, col, 19, col);
+      const h = ws.getCell(18, col);
+      h.value = `${f.label} Rev.${String(v).padStart(2,'0')}`;
+      h.font = { name:'Arial', size:9, bold:true };
+      h.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+      h.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: PURPLE } };
+      h.border = thinBorder;
+      ws.getCell(19, col).border = thinBorder;
+
+      const sub = ws.getCell(21, col);
+      sub.value = `rev${String(v).padStart(2,'0')}_${f.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')}`;
+      sub.font = { name:'Arial', size:8, italic:true };
+      sub.alignment = { horizontal:'center', vertical:'middle' };
+      sub.border = thinBorder;
+
+      ws.getColumn(col).width = f.label === 'Origem' ? 28 : (f.label === 'DN (m)' ? 8 : 12);
+    });
+  }
+
+  ordens.forEach((os: any, idx: number) => {
+    const r = 22 + idx;
+    const revs = revisoesByOsId[os.id] || [];
+    for (let v = 1; v <= maxRev; v++) {
+      const rev = revs.find((x: any) => (x.versao || 0) === v);
+      const blockStart = startCol + (v - 1) * n;
+      REV_BLOCK_FIELDS.forEach((f, i) => {
+        const cell = ws.getCell(r, blockStart + i);
+        let val: any = '';
+        if (rev) {
+          if (f.key === '__data__') val = fmtBlockDate(rev.imported_at);
+          else if (f.key === '__origem__') val = fmtBlockOrigem(rev);
+          else val = rev[f.key];
+        }
+        cell.value = val === null || val === undefined ? '' : val;
+        cell.font = { name:'Arial', size:10 };
+        cell.alignment = { horizontal:'center', vertical:'middle' };
+        cell.border = thinBorder;
+      });
+    }
+  });
 }
 
 const REV_FIELDS: { key: string; label: string }[] = [
@@ -257,7 +358,7 @@ async function fetchAllRevisoes(osIds: string[]): Promise<Record<string, any[]>>
   while (true) {
     const { data, error } = await admin
       .from('os_revisoes')
-      .select('os_id,versao,rotulo,trecho,bacia,pv_montante,pv_jusante,comprimento_previsto,largura_vala,prof_media_prevista,dn,prof_montante,prof_jusante,pav_previsto,largura_pav_prevista,pav_m2_previsto,areia,brita,ligacoes_previstas,bomba_rebaixo,prazo_previsto,prazo_arredondado,bms,suprimido')
+      .select('os_id,versao,rotulo,imported_at,trecho,bacia,pv_montante,pv_jusante,comprimento_previsto,largura_vala,prof_media_prevista,dn,prof_montante,prof_jusante,pav_previsto,largura_pav_prevista,pav_m2_previsto,areia,brita,ligacoes_previstas,bomba_rebaixo,prazo_previsto,prazo_arredondado,bms,suprimido,import_log:import_logs(filename,user_email)')
       .order('os_id', { ascending: true })
       .order('versao', { ascending: true })
       .range(from, from + pageSize - 1);

@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical, Upload, Download } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical, Upload, Download, Maximize2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';

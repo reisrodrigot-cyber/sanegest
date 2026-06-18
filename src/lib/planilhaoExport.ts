@@ -39,7 +39,10 @@ export interface PlanilhaoBuildOptions {
 
 /** Campos projetados controlados pela revisão (mesma lista do importador). */
 export const REV_FIELDS: { key: keyof OrdemServico; label: string }[] = [
+  { key: 'trecho', label: 'Trecho' },
   { key: 'bacia', label: 'Bacia' },
+  { key: 'pv_montante', label: 'PV Montante' },
+  { key: 'pv_jusante', label: 'PV Jusante' },
   { key: 'comprimento_previsto', label: 'Comprimento (m)' },
   { key: 'largura_vala', label: 'Largura de Vala' },
   { key: 'prof_media_prevista', label: 'Prof. Média (m)' },
@@ -242,6 +245,7 @@ function addRevisoesSheet(
   let r = 2;
   for (const os of ordens) {
     const revs = (revisoesByOsId[os.id] || []).slice().sort((a, b) => (a.versao || 0) - (b.versao || 0));
+    if (!revs.some(x => (x.versao || 0) > 0)) continue;
     const base = revs.find(x => (x.versao || 0) === 0);
     const startRow = r;
 

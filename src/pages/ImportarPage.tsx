@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 
 // Campos que a planilha controla (PROJETADO). Demais campos são preservados.
 const PROJ_FIELDS = [
+  'trecho', 'pv_montante', 'pv_jusante',
   'bacia',
   'comprimento_previsto', 'largura_vala', 'prof_media_prevista',
   'dn', 'prof_montante', 'prof_jusante',
@@ -37,7 +38,7 @@ interface ParsedOS {
   areia: string | null;
   brita: string | null;
   ligacoes_previstas: number | null;
-  bomba_rebaixo: boolean;
+  bomba_rebaixo: boolean | null;
   prazo_previsto: number | null;
   prazo_arredondado: number | null;
   bms: string | null;
@@ -60,9 +61,23 @@ interface AnalyzedRow {
 
 const toNum = (v: unknown): number | null => {
   if (v == null || v === '') return null;
-  const n = Number(v); return isNaN(n) ? null : n;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const raw = String(v).trim();
+  if (!raw) return null;
+  let normalized = raw.replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
+  if (!normalized || normalized === '-' || normalized === ',' || normalized === '.') return null;
+  if (normalized.includes(',')) normalized = normalized.replace(/\./g, '').replace(',', '.');
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
 };
 const toStr = (v: unknown): string => v == null ? '' : String(v).trim();
+const toBool = (v: unknown): boolean | null => {
+  const s = toStr(v).toUpperCase();
+  if (!s) return null;
+  if (['SIM', 'S', 'TRUE', '1'].includes(s)) return true;
+  if (['NÃO', 'NAO', 'N', 'FALSE', '0'].includes(s)) return false;
+  return null;
+};
 const keyOf = (t: string, b: string) =>
   `${t.trim()}|${(b ?? '').trim()}`.toLowerCase();
 
@@ -77,25 +92,33 @@ function parseExcel(data: ArrayBuffer): ParsedOS[] {
   for (let i = 21; i < rows.length; i++) {
     const row = rows[i]; if (!row || row.length < 2) continue;
     const trecho = toStr(row[1]); if (!trecho) continue;
-    const k = `${trecho}|${toStr(row[2])}|${toStr(row[3])}|${toStr(row[4])}`;
+    const k = keyOf(trecho, toStr(row[2]));
     if (seen.has(k)) continue; seen.add(k);
+
+    const larguraPav = toNum(row[16]);
+    const pavM2 = toNum(row[18]);
+    const comprimento = toNum(row[5]) ?? (
+      larguraPav != null && larguraPav > 0 && pavM2 != null
+        ? Math.round((pavM2 / larguraPav) * 100) / 100
+        : null
+    );
 
     result.push({
       trecho, bacia: toStr(row[2]),
       pv_montante: toStr(row[3]), pv_jusante: toStr(row[4]),
-      comprimento_previsto: toNum(row[5]),
+      comprimento_previsto: comprimento,
       largura_vala: toNum(row[7]),
       prof_media_prevista: toNum(row[9]),
       dn: toNum(row[11]),
       prof_montante: toNum(row[12]),
       prof_jusante: toNum(row[13]),
       pav_previsto: toStr(row[14]) || null,
-      largura_pav_prevista: toNum(row[16]),
-      pav_m2_previsto: toNum(row[18]),
+      largura_pav_prevista: larguraPav,
+      pav_m2_previsto: pavM2,
       areia: toStr(row[20]) || null,
       brita: toStr(row[21]) || null,
       ligacoes_previstas: toNum(row[22]) != null ? Math.round(toNum(row[22])!) : null,
-      bomba_rebaixo: toStr(row[24]).toUpperCase() === 'SIM',
+      bomba_rebaixo: toBool(row[24]),
       prazo_previsto: toNum(row[25]) != null ? Math.round(toNum(row[25])!) : null,
       prazo_arredondado: toNum(row[26]) != null ? Math.round(toNum(row[26])!) : null,
       bms: toStr(row[27]) || null,
@@ -135,7 +158,7 @@ const ImportarPage = () => {
       while (true) {
         const { data, error } = await supabase
           .from('ordens_servico')
-          .select(['id', ...PROJ_FIELDS, 'trecho', 'pv_montante', 'pv_jusante'].join(','))
+          .select(['id', ...PROJ_FIELDS].join(','))
           .range(from, from + size - 1);
         if (error) throw error;
         all = [...all, ...(data || [])];
@@ -152,6 +175,7 @@ const ImportarPage = () => {
         const diffs: DiffRow[] = [];
         for (const f of PROJ_FIELDS) {
           const newV = (p as any)[f];
+          if (newV === null || newV === undefined || newV === '') continue;
           const oldV = existing[f];
           if (!eq(oldV, newV)) diffs.push({ field: f, oldValue: oldV, newValue: newV });
         }

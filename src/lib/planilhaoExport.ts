@@ -409,7 +409,7 @@ export async function fetchRevisoesByOsId(osIds: string[]): Promise<Record<strin
   while (true) {
     const { data, error } = await supabase
       .from('os_revisoes' as any)
-      .select('*')
+      .select('*, import_log:import_logs(filename,user_email,created_at)')
       .in('os_id', osIds)
       .order('versao', { ascending: true })
       .range(from, from + pageSize - 1);

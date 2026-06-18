@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 
 // Campos que a planilha controla (PROJETADO). Demais campos são preservados.
 const PROJ_FIELDS = [
+  'trecho', 'pv_montante', 'pv_jusante',
   'bacia',
   'comprimento_previsto', 'largura_vala', 'prof_media_prevista',
   'dn', 'prof_montante', 'prof_jusante',
@@ -62,6 +63,12 @@ const toNum = (v: unknown): number | null => {
   if (v == null || v === '') return null;
   const n = Number(v); return isNaN(n) ? null : n;
 };
+const toNumFromRow = (row: unknown[], idx: number): number | null => {
+  const direct = toNum(row[idx]);
+  if (direct != null) return direct;
+  const formula = (row as any[])[idx + 1];
+  return toNum(formula);
+};
 const toStr = (v: unknown): string => v == null ? '' : String(v).trim();
 const keyOf = (t: string, b: string) =>
   `${t.trim()}|${(b ?? '').trim()}`.toLowerCase();
@@ -77,13 +84,13 @@ function parseExcel(data: ArrayBuffer): ParsedOS[] {
   for (let i = 21; i < rows.length; i++) {
     const row = rows[i]; if (!row || row.length < 2) continue;
     const trecho = toStr(row[1]); if (!trecho) continue;
-    const k = `${trecho}|${toStr(row[2])}|${toStr(row[3])}|${toStr(row[4])}`;
+    const k = keyOf(trecho, toStr(row[2]));
     if (seen.has(k)) continue; seen.add(k);
 
     result.push({
       trecho, bacia: toStr(row[2]),
       pv_montante: toStr(row[3]), pv_jusante: toStr(row[4]),
-      comprimento_previsto: toNum(row[5]),
+      comprimento_previsto: toNumFromRow(row, 5),
       largura_vala: toNum(row[7]),
       prof_media_prevista: toNum(row[9]),
       dn: toNum(row[11]),
@@ -91,7 +98,7 @@ function parseExcel(data: ArrayBuffer): ParsedOS[] {
       prof_jusante: toNum(row[13]),
       pav_previsto: toStr(row[14]) || null,
       largura_pav_prevista: toNum(row[16]),
-      pav_m2_previsto: toNum(row[18]),
+      pav_m2_previsto: toNumFromRow(row, 18),
       areia: toStr(row[20]) || null,
       brita: toStr(row[21]) || null,
       ligacoes_previstas: toNum(row[22]) != null ? Math.round(toNum(row[22])!) : null,

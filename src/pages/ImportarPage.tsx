@@ -143,10 +143,10 @@ const ImportarPage = () => {
         from += size;
       }
       const map = new Map<string, any>();
-      all.forEach(r => map.set(keyOf(r.trecho, r.bacia, r.pv_montante, r.pv_jusante), r));
+      all.forEach(r => map.set(keyOf(r.trecho, r.bacia), r));
 
       const result: AnalyzedRow[] = parsed.map(p => {
-        const k = keyOf(p.trecho, p.bacia, p.pv_montante, p.pv_jusante);
+        const k = keyOf(p.trecho, p.bacia);
         const existing = map.get(k);
         if (!existing) return { parsed: p, key: k, classification: 'NEW' };
         const diffs: DiffRow[] = [];

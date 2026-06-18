@@ -759,15 +759,22 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       return;
     }
     if (!('geolocation' in navigator)) {
-      toast.error('Geolocalização não suportada');
+      toast.error('Geolocalização não suportada neste dispositivo.');
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 17),
-      () => toast.error('Não foi possível obter sua localização'),
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          toast.error('Permita o acesso à sua localização no navegador para usar este recurso.');
+        } else {
+          toast.error('Não foi possível obter sua localização. Tente novamente.');
+        }
+      },
       { enableHighAccuracy: true, timeout: 10000 },
     );
   };
+
 
   const handleDelete = async (c: Camada) => {
     if (!confirm(`Excluir a camada "${c.nome}"? Esta ação não pode ser desfeita.`)) return;

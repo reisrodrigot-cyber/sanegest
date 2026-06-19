@@ -11,6 +11,7 @@ interface UserRow {
   user_id: string;
   email: string | null;
   display_name: string | null;
+  apelido: string | null;
   role: UserRole | null;
 }
 
@@ -23,11 +24,14 @@ const UsuariosPage = () => {
   const [saving, setSaving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
+  const [apelidoDraft, setApelidoDraft] = useState<Record<string, string>>({});
+  const [savingApelido, setSavingApelido] = useState<string | null>(null);
+
   const fetchUsers = async () => {
     setLoading(true);
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, email, display_name')
+      .select('user_id, email, display_name, apelido')
       .order('created_at', { ascending: true });
 
     const { data: roles } = await supabase
@@ -41,10 +45,14 @@ const UsuariosPage = () => {
       user_id: p.user_id,
       email: p.email,
       display_name: p.display_name,
+      apelido: p.apelido ?? null,
       role: roleMap[p.user_id] ?? null,
     }));
 
     setUsers(merged);
+    const draft: Record<string, string> = {};
+    merged.forEach(u => { draft[u.user_id] = u.apelido ?? ''; });
+    setApelidoDraft(draft);
     setLoading(false);
   };
 
@@ -114,6 +122,22 @@ const UsuariosPage = () => {
     setDeleting(null);
   };
 
+  const handleSaveApelido = async (userId: string) => {
+    const val = (apelidoDraft[userId] ?? '').trim();
+    setSavingApelido(userId);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ apelido: val || null } as any)
+      .eq('user_id', userId);
+    if (error) {
+      toast.error('Erro ao salvar apelido: ' + error.message);
+    } else {
+      toast.success('Apelido atualizado!');
+      setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, apelido: val || null } : u));
+    }
+    setSavingApelido(null);
+  };
+
   if (user?.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
@@ -139,6 +163,7 @@ const UsuariosPage = () => {
               <thead>
                 <tr className="border-b border-border bg-muted/30">
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuário</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Apelido</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">E-mail</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Perfil Atual</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Ações</th>
@@ -151,10 +176,29 @@ const UsuariosPage = () => {
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                           <span className="text-xs font-bold text-primary">
-                            {(u.display_name || u.email || '?')[0].toUpperCase()}
+                            {(u.apelido || u.display_name || u.email || '?')[0].toUpperCase()}
                           </span>
                         </div>
                         <span className="font-medium text-foreground">{u.display_name || '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={apelidoDraft[u.user_id] ?? ''}
+                          onChange={e => setApelidoDraft(prev => ({ ...prev, [u.user_id]: e.target.value }))}
+                          placeholder="—"
+                          className="text-xs border border-input rounded px-2 py-1.5 bg-background text-foreground w-32"
+                        />
+                        {(apelidoDraft[u.user_id] ?? '') !== (u.apelido ?? '') && (
+                          <button
+                            onClick={() => handleSaveApelido(u.user_id)}
+                            disabled={savingApelido === u.user_id}
+                            className="text-xs text-primary hover:underline disabled:opacity-50"
+                          >
+                            {savingApelido === u.user_id ? <Loader2 size={11} className="animate-spin" /> : 'Salvar'}
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{u.email || '—'}</td>

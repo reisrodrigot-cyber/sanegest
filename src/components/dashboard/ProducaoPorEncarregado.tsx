@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import type { OrdemServico } from '@/types/sanegest';
 
 interface Props {
@@ -16,6 +17,22 @@ interface EncarregadoRow {
 
 export function ProducaoPorEncarregado({ ordens }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [apelidoMap, setApelidoMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, apelido, email');
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((p: any) => {
+        const friendly = p.apelido || p.display_name || p.email;
+        if (p.display_name && friendly) map[p.display_name] = friendly;
+        if (p.email && friendly) map[p.email] = friendly;
+      });
+      setApelidoMap(map);
+    })();
+  }, []);
 
   const dados = useMemo(() => {
     const now = new Date();
@@ -25,7 +42,8 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
       .filter(os => os.comprimento_real != null && os.comprimento_real > 0 && os.liberado_para)
       .filter(os => (os.updated_at || '').slice(0, 7) === ym)
       .forEach(os => {
-        const nome = os.liberado_para!;
+        const raw = os.liberado_para!;
+        const nome = apelidoMap[raw] || raw;
         const cur = map.get(nome) ?? { nome, nsExecutadas: 0, totalMetros: 0, ns: [] };
         cur.nsExecutadas += 1;
         cur.totalMetros += os.comprimento_real!;
@@ -39,7 +57,8 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
         map.set(nome, cur);
       });
     return Array.from(map.values()).sort((a, b) => b.totalMetros - a.totalMetros);
-  }, [ordens]);
+  }, [ordens, apelidoMap]);
+
 
   if (dados.length === 0) return null;
 

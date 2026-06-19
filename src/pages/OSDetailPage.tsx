@@ -4,6 +4,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck, Trash2, MapPin } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { OSHistoricoSection } from '@/components/OSHistoricoSection';
+import { LigacoesComprimentos } from '@/components/LigacoesComprimentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -918,6 +919,7 @@ const OSDetailPage = () => {
               <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} real={os.prazo_real} />
               <DataRow label="BMs" previsto={os.bms} real={os.bms_real} />
               <DataRow label="Executor" previsto={os.executor} real={os.executor_real} />
+              <LigacoesComprimentos osId={os.id} />
             </>
           )}
         </div>

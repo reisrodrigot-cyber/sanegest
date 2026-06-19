@@ -918,6 +918,7 @@ const OSDetailPage = () => {
               <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} real={os.prazo_real} />
               <DataRow label="BMs" previsto={os.bms} real={os.bms_real} />
               <DataRow label="Executor" previsto={os.executor} real={os.executor_real} />
+              <LigacoesComprimentos osId={os.id} />
             </>
           )}
         </div>

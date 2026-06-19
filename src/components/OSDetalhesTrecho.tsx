@@ -1,5 +1,6 @@
 import { OrdemServico } from '@/types/sanegest';
 import { formatDN } from '@/lib/format';
+import { LigacoesComprimentos } from './LigacoesComprimentos';
 
 function fmt(val: unknown): string {
   if (val == null) return '—';
@@ -43,5 +44,6 @@ export const OSDetalhesTrecho = ({ os }: { os: OrdemServico }) => (
     <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />
     <DataRow label="Prazo (dias)" previsto={os.prazo_previsto} />
     <DataRow label="BMs" previsto={os.bms} />
+    <LigacoesComprimentos osId={os.id} />
   </div>
 );

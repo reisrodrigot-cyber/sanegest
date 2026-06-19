@@ -11,6 +11,7 @@ interface UserRow {
   user_id: string;
   email: string | null;
   display_name: string | null;
+  apelido: string | null;
   role: UserRole | null;
 }
 
@@ -23,11 +24,14 @@ const UsuariosPage = () => {
   const [saving, setSaving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
+  const [apelidoDraft, setApelidoDraft] = useState<Record<string, string>>({});
+  const [savingApelido, setSavingApelido] = useState<string | null>(null);
+
   const fetchUsers = async () => {
     setLoading(true);
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, email, display_name')
+      .select('user_id, email, display_name, apelido')
       .order('created_at', { ascending: true });
 
     const { data: roles } = await supabase
@@ -41,10 +45,14 @@ const UsuariosPage = () => {
       user_id: p.user_id,
       email: p.email,
       display_name: p.display_name,
+      apelido: p.apelido ?? null,
       role: roleMap[p.user_id] ?? null,
     }));
 
     setUsers(merged);
+    const draft: Record<string, string> = {};
+    merged.forEach(u => { draft[u.user_id] = u.apelido ?? ''; });
+    setApelidoDraft(draft);
     setLoading(false);
   };
 

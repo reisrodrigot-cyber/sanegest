@@ -201,19 +201,6 @@ const UsuariosPage = () => {
                         )}
                       </div>
                     </td>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u.user_id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-xs font-bold text-primary">
-                            {(u.display_name || u.email || '?')[0].toUpperCase()}
-                          </span>
-                        </div>
-                        <span className="font-medium text-foreground">{u.display_name || '—'}</span>
-                      </div>
-                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{u.email || '—'}</td>
                     <td className="px-4 py-3">
                       {u.role ? (

@@ -86,6 +86,13 @@ export type Database = {
             referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "estacas_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
         ]
       }
       export_logs: {
@@ -251,11 +258,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ligacoes_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
+          {
             foreignKeyName: "ligacoes_registro_producao_id_fkey"
             columns: ["registro_producao_id"]
             isOneToOne: false
             referencedRelation: "registros_producao"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ligacoes_registro_producao_id_fkey"
+            columns: ["registro_producao_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["registro_id"]
           },
         ]
       }
@@ -389,6 +410,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materiais_entrega_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
           },
         ]
       }
@@ -660,6 +688,13 @@ export type Database = {
             referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "os_revisoes_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
         ]
       }
       os_status_historico: {
@@ -697,6 +732,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_status_historico_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
           },
         ]
       }
@@ -781,6 +823,13 @@ export type Database = {
             referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "registros_producao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
         ]
       }
       topografia_asbuilt: {
@@ -837,6 +886,13 @@ export type Database = {
             referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "topografia_asbuilt_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
         ]
       }
       user_roles: {
@@ -859,7 +915,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      relatorio_producao_diaria: {
+        Row: {
+          comprimento_total_ligacoes: number | null
+          comprimento_trecho_executado: number | null
+          data_producao: string | null
+          encarregado: string | null
+          encarregado_user_id: string | null
+          liberado_para: string | null
+          ligacoes_detalhadas: Json | null
+          obra_id: string | null
+          obra_nome: string | null
+          observacao: string | null
+          os_id: string | null
+          quantidade_ligacoes_realizadas: number | null
+          registro_id: string | null
+          tipo_pavimento: string | null
+          trecho: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {

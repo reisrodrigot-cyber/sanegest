@@ -1,0 +1,1 @@
+ALTER VIEW public.relatorio_producao_diaria SET (security_invoker = true);

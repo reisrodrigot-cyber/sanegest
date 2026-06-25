@@ -20,6 +20,7 @@ import MeuPerfilPage from "./pages/MeuPerfilPage";
 import MapaPage from "./pages/MapaPage";
 
 import UsuariosPage from "./pages/UsuariosPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -85,10 +86,18 @@ const AppRoutes = () => {
 
   const home = homeForRole(effectiveRole);
 
+  // Detect Supabase recovery flow in URL (hash or query). Never auto-redirect away from /reset-password.
+  const rawHash = typeof window !== 'undefined' ? window.location.hash : '';
+  const isRecoveryFlow =
+    rawHash.includes('type=recovery') ||
+    rawHash.includes('access_token=') ||
+    (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('code') !== null && window.location.pathname.startsWith('/reset-password'));
+
   return (
     <Routes>
-      <Route path="/login" element={supabaseUser ? <Navigate to={home} replace /> : <LoginPage />} />
-      <Route path="/" element={<Navigate to={supabaseUser ? home : "/login"} replace />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/login" element={supabaseUser && !isRecoveryFlow ? <Navigate to={home} replace /> : <LoginPage />} />
+      <Route path="/" element={<Navigate to={isRecoveryFlow ? "/reset-password" + window.location.hash : supabaseUser ? home : "/login"} replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/ordens" element={<ProtectedRoute><OrdensPage /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetailPage /></ProtectedRoute>} />

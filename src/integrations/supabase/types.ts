@@ -271,13 +271,6 @@ export type Database = {
             referencedRelation: "registros_producao"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "ligacoes_registro_producao_id_fkey"
-            columns: ["registro_producao_id"]
-            isOneToOne: false
-            referencedRelation: "relatorio_producao_diaria"
-            referencedColumns: ["registro_id"]
-          },
         ]
       }
       mapa_asbuilt_config: {
@@ -921,16 +914,12 @@ export type Database = {
           comprimento_trecho_executado: number | null
           data_producao: string | null
           encarregado: string | null
-          encarregado_user_id: string | null
           liberado_para: string | null
           ligacoes_detalhadas: Json | null
           obra_id: string | null
           obra_nome: string | null
-          observacao: string | null
           os_id: string | null
           quantidade_ligacoes_realizadas: number | null
-          registro_id: string | null
-          tipo_pavimento: string | null
           trecho: string | null
           updated_at: string | null
         }

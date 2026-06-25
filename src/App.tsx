@@ -20,6 +20,7 @@ import MeuPerfilPage from "./pages/MeuPerfilPage";
 import MapaPage from "./pages/MapaPage";
 
 import UsuariosPage from "./pages/UsuariosPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

@@ -220,7 +220,19 @@ const DashboardEncarregadoPage = () => {
                   />
                   <YAxis tick={{ fontSize: 11 }} unit="m" width={48} />
                   <Tooltip
-                    formatter={(v: number, name: string) => [`${v} m`, name]}
+                    contentStyle={{
+                      background: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: 8,
+                      color: 'hsl(var(--popover-foreground))',
+                      fontSize: 12,
+                    }}
+                    labelStyle={{ color: 'hsl(var(--popover-foreground))', fontWeight: 600 }}
+                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                    formatter={(v: number, name: string) => [
+                      `${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} m`,
+                      name,
+                    ]}
                     labelFormatter={(l) => `Data ${l}`}
                   />
                   <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} iconType="plainline" />

@@ -285,18 +285,6 @@ const DashboardEncarregadoPage = () => {
                       <p className="text-xl font-bold text-foreground mt-1">{pct}<span className="text-sm font-normal text-muted-foreground">%</span></p>
                     </div>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1.5">
-                      <span className="text-muted-foreground">Progresso</span>
-                      <span className="font-semibold text-foreground">{pct}% concluído</span>
-                    </div>
-                    <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full transition-all"
-                        style={{ width: `${pct}%`, background: 'hsl(var(--status-green))' }}
-                      />
-                    </div>
-                  </div>
                 </div>
               );
             })()}

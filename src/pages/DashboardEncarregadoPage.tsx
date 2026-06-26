@@ -27,6 +27,7 @@ interface OSRow {
   trecho: string;
   comprimento_previsto: number | null;
   prazo_previsto: number | null;
+  prazo_arredondado: number | null;
   liberado_para: string | null;
   executor: string | null;
   updated_at: string;

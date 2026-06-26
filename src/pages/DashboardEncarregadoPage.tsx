@@ -74,42 +74,58 @@ const DashboardEncarregadoPage = () => {
       .reduce((s, r) => s + (Number(r.comprimento_dia) || 0), 0);
   }, [allRegistros]);
 
-  // Avanço da Produção: executado acumulado vs. meta planejada linear ao longo do prazo da N.S.
+  // Avanço da Produção: executado acumulado vs. meta planejada SEQUENCIAL por OS
   const chartData = useMemo(() => {
     if (!effectiveUser) return [] as { date: string; label: string; meta: number; executado: number }[];
     if (myOS.length === 0) return [];
 
-    // Meta total = soma dos comprimentos previstos das OS atribuídas
     const metaTotal = myOS.reduce(
       (s, os) => s + (Number(os.comprimento_previsto) || 0),
       0,
     );
 
-    // Para cada OS: data de liberação (updated_at como melhor referência disponível) e prazo
-    const osPlans = myOS.map((os) => {
-      const liberacao = new Date(os.updated_at);
-      liberacao.setHours(0, 0, 0, 0);
-      const prazo =
-        (os.prazo_arredondado != null ? Number(os.prazo_arredondado) : null) ??
-        (os.prazo_previsto != null ? Number(os.prazo_previsto) : null);
-      const comprimento = Number(os.comprimento_previsto) || 0;
-      return { liberacao, prazo: prazo && prazo > 0 ? prazo : null, comprimento };
+    // Ordenar OS por ordem de execução: updated_at (liberação) → trecho
+    const ordered = [...myOS].sort((a, b) => {
+      const ta = new Date(a.updated_at).getTime();
+      const tb = new Date(b.updated_at).getTime();
+      if (ta !== tb) return ta - tb;
+      return (a.trecho || '').localeCompare(b.trecho || '');
     });
 
-    // Meta acumulada de uma OS na data dateKey
-    const metaAcumuladaOS = (plan: typeof osPlans[number], date: Date) => {
-      if (date < plan.liberacao) return 0;
-      if (plan.prazo == null) {
-        // Sem prazo: considera meta liberada integralmente na data de liberação
-        return plan.comprimento;
+    // Data inicial = primeira liberação
+    const startDate = new Date(ordered[0].updated_at);
+    startDate.setHours(0, 0, 0, 0);
+
+    // Fila sequencial: cada OS começa quando a anterior termina
+    type Plan = { startDay: number; prazo: number; comprimento: number; metaDiaria: number };
+    const plans: Plan[] = [];
+    let cursorDay = 0;
+    for (const os of ordered) {
+      const prazoRaw =
+        (os.prazo_arredondado != null ? Number(os.prazo_arredondado) : null) ??
+        (os.prazo_previsto != null ? Number(os.prazo_previsto) : null);
+      const prazo = prazoRaw && prazoRaw > 0 ? Math.ceil(prazoRaw) : 1;
+      const comprimento = Number(os.comprimento_previsto) || 0;
+      plans.push({
+        startDay: cursorDay,
+        prazo,
+        comprimento,
+        metaDiaria: comprimento / prazo,
+      });
+      cursorDay += prazo;
+    }
+    const totalDaysPlanned = cursorDay;
+
+    const metaAtDay = (day: number) => {
+      let acc = 0;
+      for (const p of plans) {
+        if (day <= p.startDay) break;
+        const diasDecorridos = Math.min(p.prazo, day - p.startDay);
+        acc += p.metaDiaria * diasDecorridos;
       }
-      const diasDecorridos =
-        Math.floor((date.getTime() - plan.liberacao.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-      const metaDiaria = plan.comprimento / plan.prazo;
-      return Math.min(plan.comprimento, metaDiaria * diasDecorridos);
+      return acc;
     };
 
-    // Realizado por dia
     const realByDay = new Map<string, number>();
     allRegistros
       .filter((r) => r.user_id === effectiveUser.id)
@@ -120,33 +136,32 @@ const DashboardEncarregadoPage = () => {
         );
       });
 
-    // Intervalo: da primeira liberação até hoje (ou fim do maior prazo, o que for maior)
-    const liberacaoTimes = osPlans.map((p) => p.liberacao.getTime());
-    const startDate = new Date(Math.min(...liberacaoTimes));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const fimPrazos = osPlans.map((p) =>
-      p.prazo ? p.liberacao.getTime() + p.prazo * 24 * 60 * 60 * 1000 : p.liberacao.getTime(),
+    const endTime = Math.max(
+      today.getTime(),
+      startDate.getTime() + totalDaysPlanned * 24 * 60 * 60 * 1000,
     );
-    const endDate = new Date(Math.max(today.getTime(), ...fimPrazos));
+    const endDate = new Date(endTime);
 
     const rows: { date: string; label: string; meta: number; executado: number }[] = [];
     let realAcc = 0;
     const cursor = new Date(startDate);
+    let dayIdx = 0;
     while (cursor <= endDate) {
       const key = toDateKey(cursor);
-      // Só acumula execução até hoje
       if (cursor <= today) {
         realAcc += realByDay.get(key) ?? 0;
       }
-      const metaAcc = osPlans.reduce((s, p) => s + metaAcumuladaOS(p, cursor), 0);
+      const metaAcc = Math.min(metaTotal, metaAtDay(dayIdx + 1));
       rows.push({
         date: key,
         label: formatDayLabel(key),
-        meta: Math.min(metaTotal, Math.round(metaAcc * 10) / 10),
+        meta: Math.round(metaAcc * 10) / 10,
         executado: Math.round(realAcc * 10) / 10,
       });
       cursor.setDate(cursor.getDate() + 1);
+      dayIdx++;
     }
     return rows;
   }, [allRegistros, myOS, effectiveUser]);

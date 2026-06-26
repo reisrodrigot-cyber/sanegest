@@ -588,24 +588,22 @@ const ProducaoPage = () => {
           Nenhuma OS liberada para você no momento.
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           {minhasOS.map((os) => (
-            <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-foreground">{os.trecho}</p>
-                  <p className="text-xs text-muted-foreground">
+            <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4 max-w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground truncate">{os.trecho}</p>
+                  <p className="text-xs text-muted-foreground truncate">
                     {os.bacia} • PV {os.pv_montante} → {os.pv_jusante} • {fmt(os.comprimento_previsto)}m previsto
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
-                    className="text-sm text-secondary hover:underline"
-                  >
-                    {expandedId === os.id ? 'Fechar' : 'Registrar Dia'}
-                  </button>
-                </div>
+                <button
+                  onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
+                  className="w-full sm:w-auto min-h-[44px] px-4 py-2 rounded-md text-sm font-medium bg-[hsl(var(--status-green))] text-white shadow-sm hover:bg-[hsl(135_64%_40%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--status-green))] focus-visible:ring-offset-2 focus-visible:ring-offset-card transition-colors"
+                >
+                  {expandedId === os.id ? 'Fechar' : 'Registrar Dia'}
+                </button>
               </div>
               {expandedId === os.id && <OSPanel os={os} />}
             </div>

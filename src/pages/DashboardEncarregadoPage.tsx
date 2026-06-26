@@ -74,16 +74,40 @@ const DashboardEncarregadoPage = () => {
       .reduce((s, r) => s + (Number(r.comprimento_dia) || 0), 0);
   }, [allRegistros]);
 
-  // Avanço da Produção: executado acumulado por dia vs. referência liberada (linha linear constante)
+  // Avanço da Produção: executado acumulado vs. meta planejada linear ao longo do prazo da N.S.
   const chartData = useMemo(() => {
-    if (!effectiveUser) return [] as { date: string; label: string; referencia: number; executado: number }[];
+    if (!effectiveUser) return [] as { date: string; label: string; meta: number; executado: number }[];
     if (myOS.length === 0) return [];
 
-    // Total liberado para este encarregado (referência fixa)
-    const totalLiberado = myOS.reduce(
+    // Meta total = soma dos comprimentos previstos das OS atribuídas
+    const metaTotal = myOS.reduce(
       (s, os) => s + (Number(os.comprimento_previsto) || 0),
       0,
     );
+
+    // Para cada OS: data de liberação (updated_at como melhor referência disponível) e prazo
+    const osPlans = myOS.map((os) => {
+      const liberacao = new Date(os.updated_at);
+      liberacao.setHours(0, 0, 0, 0);
+      const prazo =
+        (os.prazo_arredondado != null ? Number(os.prazo_arredondado) : null) ??
+        (os.prazo_previsto != null ? Number(os.prazo_previsto) : null);
+      const comprimento = Number(os.comprimento_previsto) || 0;
+      return { liberacao, prazo: prazo && prazo > 0 ? prazo : null, comprimento };
+    });
+
+    // Meta acumulada de uma OS na data dateKey
+    const metaAcumuladaOS = (plan: typeof osPlans[number], date: Date) => {
+      if (date < plan.liberacao) return 0;
+      if (plan.prazo == null) {
+        // Sem prazo: considera meta liberada integralmente na data de liberação
+        return plan.comprimento;
+      }
+      const diasDecorridos =
+        Math.floor((date.getTime() - plan.liberacao.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+      const metaDiaria = plan.comprimento / plan.prazo;
+      return Math.min(plan.comprimento, metaDiaria * diasDecorridos);
+    };
 
     // Realizado por dia
     const realByDay = new Map<string, number>();
@@ -96,25 +120,30 @@ const DashboardEncarregadoPage = () => {
         );
       });
 
-    // Intervalo: da primeira data relevante (liberação ou registro) até hoje
-    const liberacaoKeys = myOS.map((os) => toDateKey(new Date(os.updated_at)));
-    const allKeys = [...liberacaoKeys, ...realByDay.keys()].sort();
-    if (allKeys.length === 0) return [];
-    const startDate = new Date(allKeys[0] + 'T00:00:00');
-    const endDate = new Date();
-    endDate.setHours(0, 0, 0, 0);
+    // Intervalo: da primeira liberação até hoje (ou fim do maior prazo, o que for maior)
+    const liberacaoTimes = osPlans.map((p) => p.liberacao.getTime());
+    const startDate = new Date(Math.min(...liberacaoTimes));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const fimPrazos = osPlans.map((p) =>
+      p.prazo ? p.liberacao.getTime() + p.prazo * 24 * 60 * 60 * 1000 : p.liberacao.getTime(),
+    );
+    const endDate = new Date(Math.max(today.getTime(), ...fimPrazos));
 
-    const rows: { date: string; label: string; referencia: number; executado: number }[] = [];
+    const rows: { date: string; label: string; meta: number; executado: number }[] = [];
     let realAcc = 0;
     const cursor = new Date(startDate);
-    const refRounded = Math.round(totalLiberado * 10) / 10;
     while (cursor <= endDate) {
       const key = toDateKey(cursor);
-      realAcc += realByDay.get(key) ?? 0;
+      // Só acumula execução até hoje
+      if (cursor <= today) {
+        realAcc += realByDay.get(key) ?? 0;
+      }
+      const metaAcc = osPlans.reduce((s, p) => s + metaAcumuladaOS(p, cursor), 0);
       rows.push({
         date: key,
         label: formatDayLabel(key),
-        referencia: refRounded,
+        meta: Math.min(metaTotal, Math.round(metaAcc * 10) / 10),
         executado: Math.round(realAcc * 10) / 10,
       });
       cursor.setDate(cursor.getDate() + 1);

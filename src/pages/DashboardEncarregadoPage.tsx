@@ -186,7 +186,7 @@ const DashboardEncarregadoPage = () => {
       <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 mb-6">
         <h2 className="text-lg font-semibold text-foreground mb-1">Avanço da Produção</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Quanto você já executou do que foi liberado para você
+          Quanto você já executou comparado à meta planejada ao longo do prazo
         </p>
         {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">
@@ -206,18 +206,18 @@ const DashboardEncarregadoPage = () => {
                   <YAxis tick={{ fontSize: 11 }} unit="m" width={48} />
                   <Tooltip
                     formatter={(v: number, name: string) => [`${v} m`, name]}
-                    labelFormatter={(l) => `Dia ${l}`}
+                    labelFormatter={(l) => `Data ${l}`}
                   />
                   <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} iconType="plainline" />
                   <Line
                     type="monotone"
-                    dataKey="referencia"
-                    stroke="hsl(var(--muted-foreground))"
+                    dataKey="meta"
+                    stroke="hsl(var(--primary))"
                     strokeWidth={2}
                     strokeDasharray="8 4"
                     dot={false}
                     activeDot={false}
-                    name="Referência liberada"
+                    name="Meta planejada"
                   />
                   <Line
                     type="monotone"
@@ -232,18 +232,18 @@ const DashboardEncarregadoPage = () => {
             </div>
 
             {(() => {
+              const metaTotal = myOS.reduce((s, os) => s + (Number(os.comprimento_previsto) || 0), 0);
               const last = chartData[chartData.length - 1];
-              const liberado = last.referencia;
               const executado = last.executado;
-              const falta = Math.max(0, liberado - executado);
-              const pct = liberado > 0 ? Math.min(100, Math.round((executado / liberado) * 100)) : 0;
+              const falta = Math.max(0, metaTotal - executado);
+              const pct = metaTotal > 0 ? Math.min(100, Math.round((executado / metaTotal) * 100)) : 0;
               const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
               return (
                 <div className="mt-6 space-y-4">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Liberado</p>
-                      <p className="text-xl font-bold text-foreground mt-1">{fmt(liberado)} <span className="text-sm font-normal text-muted-foreground">m</span></p>
+                      <p className="text-xs text-muted-foreground">Meta</p>
+                      <p className="text-xl font-bold text-foreground mt-1">{fmt(metaTotal)} <span className="text-sm font-normal text-muted-foreground">m</span></p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground">Executado</p>

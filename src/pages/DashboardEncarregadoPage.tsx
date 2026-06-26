@@ -50,7 +50,7 @@ const DashboardEncarregadoPage = () => {
     const load = async () => {
       const [regAll, osAll] = await Promise.all([
         supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, user_id'),
-        supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, prazo_previsto, liberado_para, executor, updated_at'),
+        supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, prazo_previsto, prazo_arredondado, liberado_para, executor, updated_at'),
       ]);
       setAllRegistros((regAll.data ?? []) as RegistroRow[]);
       // OS atribuídas a este encarregado: usa "executor" (encarregado da OS),

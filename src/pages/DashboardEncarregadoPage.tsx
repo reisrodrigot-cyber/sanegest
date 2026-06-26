@@ -153,8 +153,8 @@ const DashboardEncarregadoPage = () => {
         </p>
       </div>
 
-      <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">
-        <h2 className="text-lg font-semibold text-foreground mb-1">Meu Progresso</h2>
+      <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 mb-6">
+        <h2 className="text-lg font-semibold text-foreground mb-1">Avanço da Produção</h2>
         <p className="text-sm text-muted-foreground mb-4">
           Quanto você já executou do que foi liberado para você
         </p>
@@ -164,37 +164,38 @@ const DashboardEncarregadoPage = () => {
           </p>
         ) : (
           <>
-            <div className="h-72">
+            <div className="h-64 sm:h-72 -mx-2 sm:mx-0">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
+                <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis
                     dataKey="label"
                     tick={{ fontSize: 11 }}
-                    interval={Math.max(0, Math.floor(chartData.length / 8))}
+                    interval={Math.max(0, Math.floor(chartData.length / 6))}
                   />
-                  <YAxis tick={{ fontSize: 11 }} unit="m" />
+                  <YAxis tick={{ fontSize: 11 }} unit="m" width={48} />
                   <Tooltip
                     formatter={(v: number, name: string) => [`${v} m`, name]}
                     labelFormatter={(l) => `Dia ${l}`}
                   />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} iconType="plainline" />
                   <Line
                     type="monotone"
-                    dataKey="meta"
+                    dataKey="referencia"
                     stroke="hsl(var(--muted-foreground))"
                     strokeWidth={2}
-                    strokeDasharray="6 4"
+                    strokeDasharray="8 4"
                     dot={false}
-                    name="Total liberado pra você (metros)"
+                    activeDot={false}
+                    name="Referência liberada"
                   />
                   <Line
                     type="monotone"
-                    dataKey="realizado"
-                    stroke="hsl(var(--secondary))"
-                    strokeWidth={2.5}
+                    dataKey="executado"
+                    stroke="hsl(var(--status-green))"
+                    strokeWidth={3}
                     dot={false}
-                    name="Quanto você já fez (metros)"
+                    name="Executado acumulado"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -202,25 +203,29 @@ const DashboardEncarregadoPage = () => {
 
             {(() => {
               const last = chartData[chartData.length - 1];
-              const liberado = last.meta;
-              const executado = last.realizado;
+              const liberado = last.referencia;
+              const executado = last.executado;
               const falta = Math.max(0, liberado - executado);
               const pct = liberado > 0 ? Math.min(100, Math.round((executado / liberado) * 100)) : 0;
               const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
               return (
                 <div className="mt-6 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground">Liberado</p>
                       <p className="text-xl font-bold text-foreground mt-1">{fmt(liberado)} <span className="text-sm font-normal text-muted-foreground">m</span></p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground">Executado</p>
-                      <p className="text-xl font-bold text-secondary mt-1">{fmt(executado)} <span className="text-sm font-normal text-muted-foreground">m</span></p>
+                      <p className="text-xl font-bold mt-1" style={{ color: 'hsl(var(--status-green))' }}>{fmt(executado)} <span className="text-sm font-normal text-muted-foreground">m</span></p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground">Falta</p>
                       <p className="text-xl font-bold text-foreground mt-1">{fmt(falta)} <span className="text-sm font-normal text-muted-foreground">m</span></p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Progresso</p>
+                      <p className="text-xl font-bold text-foreground mt-1">{pct}<span className="text-sm font-normal text-muted-foreground">%</span></p>
                     </div>
                   </div>
                   <div>
@@ -230,8 +235,8 @@ const DashboardEncarregadoPage = () => {
                     </div>
                     <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
                       <div
-                        className="h-full bg-secondary transition-all"
-                        style={{ width: `${pct}%` }}
+                        className="h-full transition-all"
+                        style={{ width: `${pct}%`, background: 'hsl(var(--status-green))' }}
                       />
                     </div>
                   </div>

@@ -73,20 +73,18 @@ const DashboardEncarregadoPage = () => {
       .reduce((s, r) => s + (Number(r.comprimento_dia) || 0), 0);
   }, [allRegistros]);
 
-  // Burn Up: meta acumulada por data de liberação da OS, realizado acumulado por data de registro
+  // Avanço da Produção: executado acumulado por dia vs. referência liberada (linha linear constante)
   const chartData = useMemo(() => {
-    if (!effectiveUser) return [] as { date: string; label: string; meta: number; realizado: number }[];
-
+    if (!effectiveUser) return [] as { date: string; label: string; referencia: number; executado: number }[];
     if (myOS.length === 0) return [];
 
-    // Soma das metas (comprimento previsto) por dia (data de liberação ≈ updated_at)
-    const metaByDay = new Map<string, number>();
-    myOS.forEach((os) => {
-      const key = toDateKey(new Date(os.updated_at));
-      metaByDay.set(key, (metaByDay.get(key) ?? 0) + (os.comprimento_previsto ?? 0));
-    });
+    // Total liberado para este encarregado (referência fixa)
+    const totalLiberado = myOS.reduce(
+      (s, os) => s + (Number(os.comprimento_previsto) || 0),
+      0,
+    );
 
-    // Soma do realizado por dia
+    // Realizado por dia
     const realByDay = new Map<string, number>();
     allRegistros
       .filter((r) => r.user_id === effectiveUser.id)
@@ -97,26 +95,26 @@ const DashboardEncarregadoPage = () => {
         );
       });
 
-    // Intervalo: do primeiro evento (meta ou registro) até hoje
-    const allKeys = [...metaByDay.keys(), ...realByDay.keys()].sort();
+    // Intervalo: da primeira data relevante (liberação ou registro) até hoje
+    const liberacaoKeys = myOS.map((os) => toDateKey(new Date(os.updated_at)));
+    const allKeys = [...liberacaoKeys, ...realByDay.keys()].sort();
     if (allKeys.length === 0) return [];
     const startDate = new Date(allKeys[0] + 'T00:00:00');
     const endDate = new Date();
     endDate.setHours(0, 0, 0, 0);
 
-    const rows: { date: string; label: string; meta: number; realizado: number }[] = [];
-    let metaAcc = 0;
+    const rows: { date: string; label: string; referencia: number; executado: number }[] = [];
     let realAcc = 0;
     const cursor = new Date(startDate);
+    const refRounded = Math.round(totalLiberado * 10) / 10;
     while (cursor <= endDate) {
       const key = toDateKey(cursor);
-      metaAcc += metaByDay.get(key) ?? 0;
       realAcc += realByDay.get(key) ?? 0;
       rows.push({
         date: key,
         label: formatDayLabel(key),
-        meta: Math.round(metaAcc * 10) / 10,
-        realizado: Math.round(realAcc * 10) / 10,
+        referencia: refRounded,
+        executado: Math.round(realAcc * 10) / 10,
       });
       cursor.setDate(cursor.getDate() + 1);
     }

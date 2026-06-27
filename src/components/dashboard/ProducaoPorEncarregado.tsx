@@ -13,54 +13,88 @@ interface EncarregadoRow {
   nsExecutadas: number;
   totalMetros: number;
   totalLigacoes: number;
-  ns: { id: string; trecho: string; bacia: string; metros: number; ligacoes: number; data: string }[];
+  ns: { id: string; trecho: string; bacia: string; metros: number; ligacoes: number; data: string; fonte: 'validado' | 'campo' }[];
+}
+
+interface RegistroRow {
+  os_id: string;
+  user_id: string;
+  data_registro: string;
+  comprimento_dia: number;
+  ligacoes_dia: number;
 }
 
 export function ProducaoPorEncarregado({ ordens }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [apelidoMap, setApelidoMap] = useState<Record<string, string>>({});
+  const [registros, setRegistros] = useState<RegistroRow[]>([]);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('display_name, apelido, email');
+      const [{ data: profs }, { data: regs }] = await Promise.all([
+        supabase.from('profiles').select('display_name, apelido, email'),
+        supabase
+          .from('registros_producao')
+          .select('os_id, user_id, data_registro, comprimento_dia, ligacoes_dia'),
+      ]);
       const map: Record<string, string> = {};
-      (data ?? []).forEach((p: any) => {
+      (profs ?? []).forEach((p: any) => {
         const friendly = p.apelido || p.display_name || p.email;
         if (p.display_name && friendly) map[p.display_name] = friendly;
         if (p.email && friendly) map[p.email] = friendly;
       });
       setApelidoMap(map);
+      setRegistros((regs ?? []) as RegistroRow[]);
     })();
   }, []);
 
   const dados = useMemo(() => {
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    // Soma de registros por OS no mês atual (produção informada em campo).
+    const sumByOs = new Map<string, { comp: number; lig: number; lastDate: string }>();
+    for (const r of registros) {
+      if (!r.data_registro.startsWith(ym)) continue;
+      const cur = sumByOs.get(r.os_id) ?? { comp: 0, lig: 0, lastDate: r.data_registro };
+      cur.comp += Number(r.comprimento_dia) || 0;
+      cur.lig += Number(r.ligacoes_dia) || 0;
+      if (r.data_registro > cur.lastDate) cur.lastDate = r.data_registro;
+      sumByOs.set(r.os_id, cur);
+    }
+
     const map = new Map<string, EncarregadoRow>();
     ordens
-      .filter(os => os.comprimento_real != null && os.comprimento_real > 0 && os.liberado_para)
-      .filter(os => (os.updated_at || '').slice(0, 7) === ym)
+      .filter(os => os.liberado_para)
       .forEach(os => {
+        const campo = sumByOs.get(os.id);
+        const validado = (os as any).real_validado === true;
+        // Regra: se validado → usa comprimento_real / ligacoes_real;
+        // senão → usa soma dos registros de campo no mês atual.
+        const metros = validado ? Number(os.comprimento_real) || 0 : campo?.comp ?? 0;
+        const ligs = validado ? Number(os.ligacoes_real) || 0 : campo?.lig ?? 0;
+        if (metros <= 0 && ligs <= 0) return;
         const raw = os.liberado_para!;
         const nome = apelidoMap[raw] || raw;
         const cur = map.get(nome) ?? { nome, nsExecutadas: 0, totalMetros: 0, totalLigacoes: 0, ns: [] };
         cur.nsExecutadas += 1;
-        cur.totalMetros += os.comprimento_real!;
-        cur.totalLigacoes += os.ligacoes_real ?? 0;
+        cur.totalMetros += metros;
+        cur.totalLigacoes += ligs;
+        const dataRef = validado ? new Date(os.updated_at) : new Date((campo?.lastDate ?? os.updated_at) + (campo?.lastDate ? 'T00:00:00' : ''));
         cur.ns.push({
           id: os.id,
           trecho: os.trecho,
           bacia: os.bacia,
-          metros: os.comprimento_real!,
-          ligacoes: os.ligacoes_real ?? 0,
-          data: new Date(os.updated_at).toLocaleDateString('pt-BR'),
+          metros,
+          ligacoes: ligs,
+          data: dataRef.toLocaleDateString('pt-BR'),
+          fonte: validado ? 'validado' : 'campo',
         });
         map.set(nome, cur);
       });
     return Array.from(map.values()).sort((a, b) => b.totalMetros - a.totalMetros);
-  }, [ordens, apelidoMap]);
+  }, [ordens, apelidoMap, registros]);
+
 
 
   if (dados.length === 0) return null;

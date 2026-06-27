@@ -26,11 +26,13 @@ interface OSRow {
   id: string;
   trecho: string;
   comprimento_previsto: number | null;
+  comprimento_real: number | null;
   prazo_previsto: number | null;
   prazo_arredondado: number | null;
   liberado_para: string | null;
   executor: string | null;
   updated_at: string;
+  real_validado: boolean;
 }
 
 const toDateKey = (d: Date) => d.toISOString().slice(0, 10);
@@ -50,7 +52,7 @@ const DashboardEncarregadoPage = () => {
     const load = async () => {
       const [regAll, osAll] = await Promise.all([
         supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, user_id'),
-        supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, prazo_previsto, prazo_arredondado, liberado_para, executor, updated_at'),
+        supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, comprimento_real, prazo_previsto, prazo_arredondado, liberado_para, executor, updated_at, real_validado'),
       ]);
       setAllRegistros((regAll.data ?? []) as RegistroRow[]);
       // OS atribuídas a este encarregado: usa "executor" (encarregado da OS),

@@ -269,15 +269,15 @@ const DashboardEncarregadoPage = () => {
                 <div className="mt-6 space-y-4">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Meta</p>
+                      <p className="text-xs text-muted-foreground">Meta de rede</p>
                       <p className="text-xl font-bold text-foreground mt-1">{fmt(metaTotal)} <span className="text-sm font-normal text-muted-foreground">m</span></p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Executado</p>
+                      <p className="text-xs text-muted-foreground">Rede executada</p>
                       <p className="text-xl font-bold mt-1" style={{ color: 'hsl(var(--status-green))' }}>{fmt(executado)} <span className="text-sm font-normal text-muted-foreground">m</span></p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">Falta</p>
+                      <p className="text-xs text-muted-foreground">Falta de rede</p>
                       <p className="text-xl font-bold text-foreground mt-1">{fmt(falta)} <span className="text-sm font-normal text-muted-foreground">m</span></p>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-3">

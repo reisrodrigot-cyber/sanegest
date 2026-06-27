@@ -505,7 +505,11 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           <DialogHeader>
             <DialogTitle>Ligações registradas — {os.trecho}</DialogTitle>
             <DialogDescription>
-              {ligacoesAll.length} ligação(ões) no total
+              {ligacoesAll.length} ligação(ões) · Extensão total:{' '}
+              {ligacoesAll
+                .reduce((s, l) => s + (Number(l.comprimento) || 0), 0)
+                .toLocaleString('pt-BR', { maximumFractionDigits: 2 })}{' '}
+              m <span className="italic">(separada da rede — não soma)</span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[65vh] overflow-y-auto">

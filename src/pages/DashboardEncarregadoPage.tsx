@@ -23,8 +23,10 @@ interface RegistroRow {
   os_id: string;
   data_registro: string;
   comprimento_dia: number;
+  ligacoes_dia: number;
   user_id: string;
 }
+
 
 interface OSRow {
   id: string;

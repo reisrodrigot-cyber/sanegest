@@ -26,11 +26,13 @@ interface OSRow {
   id: string;
   trecho: string;
   comprimento_previsto: number | null;
+  comprimento_real: number | null;
   prazo_previsto: number | null;
   prazo_arredondado: number | null;
   liberado_para: string | null;
   executor: string | null;
   updated_at: string;
+  real_validado: boolean;
 }
 
 const toDateKey = (d: Date) => d.toISOString().slice(0, 10);
@@ -50,7 +52,7 @@ const DashboardEncarregadoPage = () => {
     const load = async () => {
       const [regAll, osAll] = await Promise.all([
         supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, user_id'),
-        supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, prazo_previsto, prazo_arredondado, liberado_para, executor, updated_at'),
+        supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, comprimento_real, prazo_previsto, prazo_arredondado, liberado_para, executor, updated_at, real_validado'),
       ]);
       setAllRegistros((regAll.data ?? []) as RegistroRow[]);
       // OS atribuídas a este encarregado: usa "executor" (encarregado da OS),
@@ -126,15 +128,44 @@ const DashboardEncarregadoPage = () => {
       return acc;
     };
 
+    // Acumula registros de campo por dia, escalando por OS quando a Sala
+    // Técnica já validou o REAL (para honrar correções de duplicidade):
+    //   fator = comprimento_real_validado / soma_registros_da_OS
+    const myOsIds = new Set(myOS.map((o) => o.id));
+    const minhasRegistros = allRegistros.filter(
+      (r) => r.user_id === effectiveUser.id && myOsIds.has(r.os_id),
+    );
+    const somaRegPorOs = new Map<string, number>();
+    for (const r of minhasRegistros) {
+      somaRegPorOs.set(r.os_id, (somaRegPorOs.get(r.os_id) ?? 0) + (Number(r.comprimento_dia) || 0));
+    }
+    const fatorPorOs = new Map<string, number>();
+    for (const os of myOS) {
+      if (os.real_validado) {
+        const soma = somaRegPorOs.get(os.id) ?? 0;
+        const validado = Number(os.comprimento_real) || 0;
+        fatorPorOs.set(os.id, soma > 0 ? validado / soma : 0);
+      } else {
+        fatorPorOs.set(os.id, 1);
+      }
+    }
     const realByDay = new Map<string, number>();
-    allRegistros
-      .filter((r) => r.user_id === effectiveUser.id)
-      .forEach((r) => {
-        realByDay.set(
-          r.data_registro,
-          (realByDay.get(r.data_registro) ?? 0) + (Number(r.comprimento_dia) || 0),
-        );
-      });
+    minhasRegistros.forEach((r) => {
+      const fator = fatorPorOs.get(r.os_id) ?? 1;
+      const valor = (Number(r.comprimento_dia) || 0) * fator;
+      realByDay.set(r.data_registro, (realByDay.get(r.data_registro) ?? 0) + valor);
+    });
+    // OS validadas sem nenhum registro de campo: distribui o valor validado
+    // no dia da validação (updated_at) para refletir a produção real.
+    for (const os of myOS) {
+      if (os.real_validado && !(somaRegPorOs.get(os.id) > 0)) {
+        const validado = Number(os.comprimento_real) || 0;
+        if (validado > 0) {
+          const key = toDateKey(new Date(os.updated_at));
+          realByDay.set(key, (realByDay.get(key) ?? 0) + validado);
+        }
+      }
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

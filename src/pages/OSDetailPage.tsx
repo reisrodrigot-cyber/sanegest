@@ -6,7 +6,7 @@ import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { OSHistoricoSection } from '@/components/OSHistoricoSection';
 import { LigacoesComprimentos } from '@/components/LigacoesComprimentos';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { permissions } from '@/lib/permissions';
@@ -180,6 +180,27 @@ const OSDetailPage = () => {
   const [savingEncarregado, setSavingEncarregado] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingOs, setDeletingOs] = useState(false);
+  const [campoSums, setCampoSums] = useState<{ comprimento: number; ligacoes: number } | null>(null);
+
+  // Soma bruta de registros de campo desta OS — usada como fallback de exibição
+  // e para pré-preencher o editor de REAL quando ainda não houver validação.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('registros_producao')
+        .select('comprimento_dia, ligacoes_dia')
+        .eq('os_id', id);
+      if (cancelled) return;
+      const rows = data ?? [];
+      setCampoSums({
+        comprimento: rows.reduce((s, r: any) => s + (Number(r.comprimento_dia) || 0), 0),
+        ligacoes: rows.reduce((s, r: any) => s + (Number(r.ligacoes_dia) || 0), 0),
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
 
   const handleDeleteOs = async () => {
     if (!os) return;
@@ -340,8 +361,23 @@ const OSDetailPage = () => {
 
   const startEditingReal = () => {
     if (!os) return;
+    // Se ainda não validado, pré-preenche comprimento/ligações com a soma bruta
+    // dos registros de campo (produção informada). Sala técnica pode então
+    // corrigir duplicidades antes de validar.
+    const compFallback =
+      os.comprimento_real != null
+        ? String(os.comprimento_real)
+        : campoSums && campoSums.comprimento > 0
+        ? String(campoSums.comprimento)
+        : '';
+    const ligFallback =
+      os.ligacoes_real != null
+        ? String(os.ligacoes_real)
+        : campoSums && campoSums.ligacoes > 0
+        ? String(campoSums.ligacoes)
+        : '';
     const fields: Record<string, string> = {
-      comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
+      comprimento_real: compFallback,
       prof_media_real: os.prof_media_real != null ? String(os.prof_media_real) : '',
       dn_real: os.dn_real != null ? String(os.dn_real) : '',
       largura_vala_real: os.largura_vala_real != null ? String(os.largura_vala_real) : '',
@@ -350,7 +386,7 @@ const OSDetailPage = () => {
       pav_real: os.pav_real ?? '',
       largura_pav_real: os.largura_pav_real != null ? String(os.largura_pav_real) : '',
       pav_m2_real: os.pav_m2_real != null ? String(os.pav_m2_real) : '',
-      ligacoes_real: os.ligacoes_real != null ? String(os.ligacoes_real) : '',
+      ligacoes_real: ligFallback,
       areia_real: os.areia_real ?? '',
       brita_real: os.brita_real ?? '',
       prazo_real: os.prazo_real != null ? String(os.prazo_real) : '',
@@ -440,12 +476,18 @@ const OSDetailPage = () => {
       prazo_real: toInt(realFields.prazo_real),
       bms_real: realFields.bms_real || null,
       executor_real: realFields.executor_real || null,
+      // Sala Técnica está confirmando os valores → marca como validado.
+      // A partir daqui esses valores prevalecem sobre o somatório bruto de
+      // registros de campo em todos os cálculos oficiais.
+      real_validado: true,
+      real_validado_em: new Date().toISOString(),
+      real_validado_por: user?.id ?? null,
     };
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
     if (error) {
       toast.error('Erro ao salvar: ' + error.message);
     } else {
-      toast.success('Dados reais salvos com sucesso!');
+      toast.success('Valores REAIS validados pela Sala Técnica.');
       setEditingReal(false);
       window.location.reload();
     }
@@ -568,6 +610,15 @@ const OSDetailPage = () => {
               Liberada para {os.liberado_para}
             </span>
           )}
+          {os.real_validado ? (
+            <span className="text-xs px-2 py-1 rounded-full bg-status-green/20 text-status-green font-medium">
+              ✓ REAL validado pela Sala Técnica
+            </span>
+          ) : (campoSums && (campoSums.comprimento > 0 || campoSums.ligacoes > 0)) ? (
+            <span className="text-xs px-2 py-1 rounded-full bg-status-yellow/20 text-status-yellow font-medium">
+              REAL provisório (informado em campo)
+            </span>
+          ) : null}
           {locatable && (
             <button
               onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
@@ -899,7 +950,7 @@ const OSDetailPage = () => {
                 <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
                 <span className="text-xs font-semibold text-secondary uppercase">Real</span>
               </div>
-              <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
+              <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real ?? (campoSums && campoSums.comprimento > 0 ? campoSums.comprimento : null)} />
               <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
               <DataRow label="DN" previsto={formatDN(os.dn)} real={os.dn_real != null ? formatDN(os.dn_real) : null} />
               <DataRow label="Largura Vala (m)" previsto={os.largura_vala} real={os.largura_vala_real} />
@@ -912,7 +963,7 @@ const OSDetailPage = () => {
                   <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} real={os.pav_m2_real} />
                 </>
               )}
-              <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real} />
+              <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real ?? (campoSums && campoSums.ligacoes > 0 ? campoSums.ligacoes : null)} />
               <DataRow label="Areia" previsto={os.areia} real={os.areia_real} />
               <DataRow label="Brita" previsto={os.brita} real={os.brita_real} />
               <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />

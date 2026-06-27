@@ -48,6 +48,9 @@ function mapOS(row: any): OrdemServico {
     liberado_para: row.liberado_para ?? null,
     as_built_lat: row.as_built_lat != null ? Number(row.as_built_lat) : null,
     as_built_lng: row.as_built_lng != null ? Number(row.as_built_lng) : null,
+    real_validado: row.real_validado ?? false,
+    real_validado_em: row.real_validado_em ?? null,
+    real_validado_por: row.real_validado_por ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

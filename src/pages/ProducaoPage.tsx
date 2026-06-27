@@ -184,12 +184,17 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       }
     }
 
-    const novoAcumComp = acumComprimento + compNum;
-    const novoAcumLig = acumLigacoes + ligNum;
-    await supabase
-      .from('ordens_servico')
-      .update({ comprimento_real: novoAcumComp, ligacoes_real: novoAcumLig, pav_real: tipoPavimento })
-      .eq('id', os.id);
+    // Atualiza o "real informado em campo" cumulativo na OS — mas NUNCA
+    // sobrescreve valores já validados pela Sala Técnica (real_validado=true),
+    // que prevalecem para corrigir duplicidades de campo.
+    if (!(os as any).real_validado) {
+      const novoAcumComp = acumComprimento + compNum;
+      const novoAcumLig = acumLigacoes + ligNum;
+      await supabase
+        .from('ordens_servico')
+        .update({ comprimento_real: novoAcumComp, ligacoes_real: novoAcumLig, pav_real: tipoPavimento })
+        .eq('id', os.id);
+    }
 
     toast.success('Produção do dia registrada!');
     setComprimento('');

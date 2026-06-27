@@ -80,6 +80,7 @@ export const OSHistoricoSection = ({ osId }: Props) => {
         supabase
           .from('registros_producao')
           .select('id, data_registro, comprimento_dia, ligacoes_dia, user_id, created_at')
+          .eq('excluido', false)
           .eq('os_id', osId)
           .order('data_registro', { ascending: false }),
         supabase

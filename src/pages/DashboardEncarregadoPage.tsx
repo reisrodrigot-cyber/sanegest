@@ -57,7 +57,7 @@ const DashboardEncarregadoPage = () => {
     if (!effectiveUser) return;
     const load = async () => {
       const [regAll, osAll] = await Promise.all([
-        supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, ligacoes_dia, user_id'),
+        supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, ligacoes_dia, user_id').eq('excluido', false).eq('excluido', false),
         supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, comprimento_real, prazo_previsto, prazo_arredondado, liberado_para, executor, updated_at, real_validado'),
       ]);
       setAllRegistros((regAll.data ?? []) as RegistroRow[]);

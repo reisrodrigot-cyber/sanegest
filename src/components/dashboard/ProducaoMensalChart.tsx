@@ -26,6 +26,7 @@ export const ProducaoMensalChart = () => {
       supabase
         .from('registros_producao')
         .select('os_id, data_registro, comprimento_dia')
+        .eq('excluido', false)
         .gte('data_registro', sinceStr),
       supabase
         .from('ordens_servico')

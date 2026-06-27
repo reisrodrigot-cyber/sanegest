@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, CheckCircle2, Clock, AlertTriangle, MapPin } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, AlertTriangle, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/components/ui/use-toast';
 
 interface RegistroRow {
   id: string;
@@ -24,12 +30,14 @@ interface OSRow {
 
 type Filtro = 'hoje' | 'semana' | 'mes';
 
+const JANELA_MS = 2 * 60 * 60 * 1000; // 2h
+
 const startOf = (filtro: Filtro): string => {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   if (filtro === 'hoje') return now.toISOString().slice(0, 10);
   if (filtro === 'semana') {
-    const dow = (now.getDay() + 6) % 7; // segunda = 0
+    const dow = (now.getDay() + 6) % 7;
     now.setDate(now.getDate() - dow);
     return now.toISOString().slice(0, 10);
   }
@@ -39,32 +47,19 @@ const startOf = (filtro: Filtro): string => {
 
 const fmtDataCurta = (key: string) => {
   const today = new Date().toISOString().slice(0, 10);
-  const yest = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().slice(0, 10);
-  })();
+  const yest = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); })();
   const [y, m, d] = key.split('-');
   const label = `${d}/${m}/${y}`;
   if (key === today) return `Hoje — ${label}`;
   if (key === yest) return `Ontem — ${label}`;
   return label;
 };
-
-const fmtHora = (iso: string) => {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-};
-
-const fmtMetros = (n: number) =>
-  `${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
+const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const fmtMetros = (n: number) => `${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
 
 interface Props {
-  /** Limita a quantidade exibida. Usado em resumos no dashboard. */
   limit?: number;
-  /** Esconde a barra de filtros (usado em resumos compactos). */
   hideFilters?: boolean;
-  /** Filtro inicial. */
   filtroInicial?: Filtro;
 }
 
@@ -76,6 +71,24 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
   const [filtro, setFiltro] = useState<Filtro>(filtroInicial);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [, setTick] = useState(0);
+
+  // Edição
+  const [editing, setEditing] = useState<RegistroRow | null>(null);
+  const [editComp, setEditComp] = useState('');
+  const [editLig, setEditLig] = useState('');
+  const [editObs, setEditObs] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Exclusão
+  const [deleting, setDeleting] = useState<RegistroRow | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  // Re-render a cada 30s para atualizar countdown da janela de 2h
+  useEffect(() => {
+    const i = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(i);
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -87,6 +100,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
         .from('registros_producao')
         .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, observacao, tipo_pavimento, created_at')
         .eq('user_id', userId)
+        .eq('excluido', false)
         .gte('data_registro', since)
         .order('data_registro', { ascending: false })
         .order('created_at', { ascending: false });
@@ -109,7 +123,6 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     return () => { cancel = true; };
   }, [userId, filtro, reloadKey]);
 
-  // Realtime: atualiza se este encarregado inserir novo registro em outra aba
   useEffect(() => {
     if (!userId) return;
     const ch = supabase
@@ -122,7 +135,6 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const itens = useMemo(() => (limit ? registros.slice(0, limit) : registros), [registros, limit]);
 
-  // Soma de envios brutos por OS (para detectar quando o validado difere)
   const somaPorOs = useMemo(() => {
     const m = new Map<string, { comp: number; lig: number }>();
     registros.forEach((r) => {
@@ -133,6 +145,89 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     });
     return m;
   }, [registros]);
+
+  const podeEditar = (r: RegistroRow, os?: OSRow) => {
+    if (!os) return false;
+    if (os.real_validado) return false;
+    const enviadoMs = new Date(r.created_at).getTime();
+    return Date.now() - enviadoMs < JANELA_MS;
+  };
+
+  const limiteEdicao = (r: RegistroRow) => {
+    const d = new Date(new Date(r.created_at).getTime() + JANELA_MS);
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const abrirEdicao = (r: RegistroRow) => {
+    setEditing(r);
+    setEditComp(String(r.comprimento_dia ?? ''));
+    setEditLig(String(r.ligacoes_dia ?? ''));
+    setEditObs(r.observacao ?? '');
+  };
+
+  const salvarEdicao = async () => {
+    if (!editing) return;
+    const novoComp = Number(editComp.replace(',', '.')) || 0;
+    const novoLig = Math.max(0, Math.floor(Number(editLig) || 0));
+    if (novoComp < 0) { toast({ title: 'Valor inválido', variant: 'destructive' }); return; }
+    setSaving(true);
+    const valor_anterior = {
+      comprimento_dia: editing.comprimento_dia,
+      ligacoes_dia: editing.ligacoes_dia,
+      observacao: editing.observacao,
+    };
+    const valor_novo = { comprimento_dia: novoComp, ligacoes_dia: novoLig, observacao: editObs || null };
+    const { error } = await supabase
+      .from('registros_producao')
+      .update(valor_novo)
+      .eq('id', editing.id);
+    if (error) {
+      setSaving(false);
+      toast({ title: 'Não foi possível editar', description: error.message, variant: 'destructive' });
+      return;
+    }
+    await supabase.from('registros_producao_auditoria').insert({
+      registro_producao_id: editing.id,
+      usuario_id: userId,
+      acao: 'edicao',
+      valor_anterior,
+      valor_novo,
+    });
+    setSaving(false);
+    setEditing(null);
+    setReloadKey((k) => k + 1);
+    toast({ title: 'Registro atualizado' });
+  };
+
+  const confirmarExclusao = async () => {
+    if (!deleting) return;
+    setRemoving(true);
+    const valor_anterior = {
+      comprimento_dia: deleting.comprimento_dia,
+      ligacoes_dia: deleting.ligacoes_dia,
+      observacao: deleting.observacao,
+    };
+    const { error } = await supabase
+      .from('registros_producao')
+      .update({ excluido: true, excluido_em: new Date().toISOString(), excluido_por: userId })
+      .eq('id', deleting.id);
+    if (error) {
+      setRemoving(false);
+      toast({ title: 'Não foi possível excluir', description: error.message, variant: 'destructive' });
+      return;
+    }
+    await supabase.from('registros_producao_auditoria').insert({
+      registro_producao_id: deleting.id,
+      usuario_id: userId,
+      acao: 'exclusao',
+      valor_anterior,
+      valor_novo: { excluido: true },
+    });
+    setRemoving(false);
+    setDeleting(null);
+    setReloadKey((k) => k + 1);
+    toast({ title: 'Registro excluído' });
+  };
 
   const FilterBtn = ({ id, label }: { id: Filtro; label: string }) => (
     <button
@@ -153,7 +248,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       <div className="mb-3">
         <h2 className="text-lg font-bold text-foreground">Meus registros enviados</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Confira aqui o que você já lançou para evitar envio duplicado.
+          Confira aqui o que você já lançou. Você pode editar ou excluir cada registro por até 2 horas após o envio.
         </p>
       </div>
 
@@ -182,55 +277,39 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
             const soma = somaPorOs.get(r.os_id) ?? { comp: 0, lig: 0 };
             const compValid = Number(os?.comprimento_real) || 0;
             const ligValid = Number(os?.ligacoes_real) || 0;
-            const diferente =
-              validado &&
-              soma.comp > 0 &&
-              Math.abs(compValid - soma.comp) > 0.01;
+            const diferente = validado && soma.comp > 0 && Math.abs(compValid - soma.comp) > 0.01;
 
             const statusLabel = !validado
               ? 'Enviado — aguardando validação'
-              : diferente
-                ? 'Ajustado pela sala técnica'
-                : 'Validado pela sala técnica';
+              : diferente ? 'Ajustado pela sala técnica' : 'Validado pela sala técnica';
             const StatusIcon = !validado ? Clock : diferente ? AlertTriangle : CheckCircle2;
             const statusColor = !validado
               ? 'text-amber-600 dark:text-amber-400'
-              : diferente
-                ? 'text-orange-600 dark:text-orange-400'
-                : 'text-emerald-600 dark:text-emerald-400';
+              : diferente ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400';
+
+            const editavel = podeEditar(r, os);
 
             return (
-              <li
-                key={r.id}
-                className="rounded-lg border border-border bg-background p-3 sm:p-4"
-              >
+              <li key={r.id} className="rounded-lg border border-border bg-background p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
-                      {fmtDataCurta(r.data_registro)}
-                    </p>
+                    <p className="text-sm font-semibold text-foreground">{fmtDataCurta(r.data_registro)}</p>
                     <p className="text-base font-bold text-foreground mt-0.5 flex items-center gap-1.5">
                       <MapPin size={14} className="text-muted-foreground shrink-0" />
                       <span className="truncate">{trecho}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Enviado às {fmtHora(r.created_at)}
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Enviado às {fmtHora(r.created_at)}</p>
                   </div>
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <div className="rounded-md bg-muted/40 p-2">
                     <p className="text-[11px] text-muted-foreground">Comprimento informado</p>
-                    <p className="text-base font-bold text-foreground">
-                      {fmtMetros(Number(r.comprimento_dia) || 0)}
-                    </p>
+                    <p className="text-base font-bold text-foreground">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
                   </div>
                   <div className="rounded-md bg-muted/40 p-2">
                     <p className="text-[11px] text-muted-foreground">Ligações informadas</p>
-                    <p className="text-base font-bold text-foreground">
-                      {r.ligacoes_dia ?? 0}
-                    </p>
+                    <p className="text-base font-bold text-foreground">{r.ligacoes_dia ?? 0}</p>
                   </div>
                 </div>
 
@@ -250,20 +329,112 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                 )}
 
                 {r.observacao && (
-                  <p className="mt-2 text-xs text-muted-foreground italic">
-                    Obs.: {r.observacao}
-                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground italic">Obs.: {r.observacao}</p>
                 )}
 
                 <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${statusColor}`}>
                   <StatusIcon size={14} />
                   <span>{statusLabel}</span>
                 </div>
+
+                {/* Ações de edição/exclusão do encarregado */}
+                {!validado && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    {editavel ? (
+                      <>
+                        <p className="text-[11px] text-muted-foreground mb-2">
+                          Você pode ajustar este registro até {limiteEdicao(r)}.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-[44px]"
+                            onClick={() => abrirEdicao(r)}
+                          >
+                            <Pencil size={16} className="mr-1.5" /> Editar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-[44px] text-destructive hover:text-destructive"
+                            onClick={() => setDeleting(r)}
+                          >
+                            <Trash2 size={16} className="mr-1.5" /> Excluir
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground italic">
+                        Prazo de edição encerrado — ajustes somente pela sala técnica.
+                      </p>
+                    )}
+                  </div>
+                )}
               </li>
             );
           })}
         </ul>
       )}
+
+      {/* Modal edição */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar registro</DialogTitle>
+            <DialogDescription>
+              Ajuste apenas os dados operacionais. O trecho, a obra e a data original não podem ser alterados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="edit-comp">Comprimento informado (m)</Label>
+              <Input
+                id="edit-comp" inputMode="decimal" value={editComp}
+                onChange={(e) => setEditComp(e.target.value)} className="h-11"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-lig">Ligações informadas</Label>
+              <Input
+                id="edit-lig" inputMode="numeric" value={editLig}
+                onChange={(e) => setEditLig(e.target.value)} className="h-11"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-obs">Observação</Label>
+              <Textarea
+                id="edit-obs" rows={3} value={editObs}
+                onChange={(e) => setEditObs(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setEditing(null)} disabled={saving}>Cancelar</Button>
+            <Button onClick={salvarEdicao} disabled={saving}>
+              {saving ? <Loader2 className="animate-spin mr-2" size={16} /> : null} Salvar alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal exclusão */}
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir este registro?</DialogTitle>
+            <DialogDescription>
+              Essa ação remove o lançamento da sua produção provisória, mas ficará registrada para auditoria.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setDeleting(null)} disabled={removing}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmarExclusao} disabled={removing}>
+              {removing ? <Loader2 className="animate-spin mr-2" size={16} /> : null} Excluir registro
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

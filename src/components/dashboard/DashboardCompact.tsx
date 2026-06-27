@@ -189,7 +189,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('registros_producao').select('user_id, data_registro, comprimento_dia, os_id'),
+      supabase.from('registros_producao').select('user_id, data_registro, comprimento_dia, os_id').eq('excluido', false),
       supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
     ]).then(([r, o]) => {
       setRegistrosBrutos((r.data ?? []) as DailyRow[]);
@@ -800,6 +800,7 @@ const useRealEvents = () => {
       const [prod, topo, mat, status] = await Promise.all([
         supabase.from('registros_producao')
           .select('id, data_registro, comprimento_dia, ligacoes_dia, user_id, os_id, created_at')
+          .eq('excluido', false)
           .order('created_at', { ascending: false }).limit(30),
         supabase.from('topografia_asbuilt')
           .select('id, nome_estaca, registrado_por, os_id, created_at')

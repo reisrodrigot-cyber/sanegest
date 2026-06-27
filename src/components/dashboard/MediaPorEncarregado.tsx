@@ -21,7 +21,8 @@ export const MediaPorEncarregado = () => {
       const [{ data }, { data: o }] = await Promise.all([
         supabase
           .from('registros_producao')
-          .select('os_id, user_id, data_registro, comprimento_dia'),
+          .select('os_id, user_id, data_registro, comprimento_dia')
+          .eq('excluido', false),
         supabase
           .from('ordens_servico')
           .select('id, comprimento_real, ligacoes_real, real_validado'),

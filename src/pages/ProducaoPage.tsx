@@ -104,6 +104,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       supabase
         .from('registros_producao')
         .select('id, data_registro, comprimento_dia, ligacoes_dia, tipo_pavimento')
+        .eq('excluido', false)
         .eq('os_id', os.id)
         .eq('user_id', filterUserId)
         .order('data_registro', { ascending: false }),

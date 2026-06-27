@@ -191,6 +191,7 @@ const OSDetailPage = () => {
       const { data } = await supabase
         .from('registros_producao')
         .select('comprimento_dia, ligacoes_dia')
+        .eq('excluido', false)
         .eq('os_id', id);
       if (cancelled) return;
       const rows = data ?? [];

@@ -180,6 +180,27 @@ const OSDetailPage = () => {
   const [savingEncarregado, setSavingEncarregado] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingOs, setDeletingOs] = useState(false);
+  const [campoSums, setCampoSums] = useState<{ comprimento: number; ligacoes: number } | null>(null);
+
+  // Soma bruta de registros de campo desta OS — usada como fallback de exibição
+  // e para pré-preencher o editor de REAL quando ainda não houver validação.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('registros_producao')
+        .select('comprimento_dia, ligacoes_dia')
+        .eq('os_id', id);
+      if (cancelled) return;
+      const rows = data ?? [];
+      setCampoSums({
+        comprimento: rows.reduce((s, r: any) => s + (Number(r.comprimento_dia) || 0), 0),
+        ligacoes: rows.reduce((s, r: any) => s + (Number(r.ligacoes_dia) || 0), 0),
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
 
   const handleDeleteOs = async () => {
     if (!os) return;

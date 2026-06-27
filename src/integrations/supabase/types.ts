@@ -461,6 +461,9 @@ export type Database = {
           prof_montante_real: number | null
           pv_jusante: string | null
           pv_montante: string | null
+          real_validado: boolean
+          real_validado_em: string | null
+          real_validado_por: string | null
           status: Database["public"]["Enums"]["os_status"]
           status_vigencia: string
           trecho: string
@@ -513,6 +516,9 @@ export type Database = {
           prof_montante_real?: number | null
           pv_jusante?: string | null
           pv_montante?: string | null
+          real_validado?: boolean
+          real_validado_em?: string | null
+          real_validado_por?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           status_vigencia?: string
           trecho: string
@@ -565,6 +571,9 @@ export type Database = {
           prof_montante_real?: number | null
           pv_jusante?: string | null
           pv_montante?: string | null
+          real_validado?: boolean
+          real_validado_em?: string | null
+          real_validado_por?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           status_vigencia?: string
           trecho?: string

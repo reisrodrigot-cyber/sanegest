@@ -644,8 +644,15 @@ const ProducaoPage = () => {
           ))}
         </div>
       )}
+
+      {(effectiveUser?.role === 'encarregado' || effectiveUser?.role === 'admin') && (
+        <div className="mt-6">
+          <MeusRegistrosEnviados />
+        </div>
+      )}
     </AppLayout>
   );
 };
+
 
 export default ProducaoPage;

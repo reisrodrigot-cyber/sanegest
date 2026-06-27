@@ -95,15 +95,16 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
                   <td className="py-2 text-right font-semibold text-foreground">
                     {enc.totalMetros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                   </td>
+                  <td className="py-2 text-right text-muted-foreground">{enc.totalLigacoes}</td>
                 </tr>
                 {expanded === enc.nome && enc.ns.map(ns => (
                   <tr key={ns.id} className="bg-muted/30">
                     <td className="py-1.5"></td>
-                    <td className="py-1.5 pl-4 text-muted-foreground" colSpan={3}>
+                    <td className="py-1.5 pl-4 text-muted-foreground" colSpan={4}>
                       <Link to={`/ordens/${ns.id}`} className="hover:underline text-secondary">
                         ↳ {ns.trecho}
                       </Link>
-                      <span className="text-muted-foreground"> | {ns.bacia} | {ns.metros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m | {ns.data}</span>
+                      <span className="text-muted-foreground"> | {ns.bacia} | rede {ns.metros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m | {ns.ligacoes} ligações | {ns.data}</span>
                     </td>
                   </tr>
                 ))}

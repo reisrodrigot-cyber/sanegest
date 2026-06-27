@@ -610,6 +610,15 @@ const OSDetailPage = () => {
               Liberada para {os.liberado_para}
             </span>
           )}
+          {os.real_validado ? (
+            <span className="text-xs px-2 py-1 rounded-full bg-status-green/20 text-status-green font-medium">
+              ✓ REAL validado pela Sala Técnica
+            </span>
+          ) : (campoSums && (campoSums.comprimento > 0 || campoSums.ligacoes > 0)) ? (
+            <span className="text-xs px-2 py-1 rounded-full bg-status-yellow/20 text-status-yellow font-medium">
+              REAL provisório (informado em campo)
+            </span>
+          ) : null}
           {locatable && (
             <button
               onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}

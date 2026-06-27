@@ -206,11 +206,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [registrosBrutos, osRows],
   );
 
-      setRegistros((r.data ?? []) as DailyRow[]);
-      setOsRows((o.data ?? []) as OSRow[]);
-      setLoading(false);
-    });
-  }, []);
 
   // Force Recharts ResponsiveContainer to recalc on mount (fixes empty charts on mobile)
   useEffect(() => {

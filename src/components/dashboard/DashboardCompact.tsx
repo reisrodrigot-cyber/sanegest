@@ -189,7 +189,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('registros_producao').select('user_id, data_registro, comprimento_dia, os_id').eq('excluido', false).eq('excluido', false),
+      supabase.from('registros_producao').select('user_id, data_registro, comprimento_dia, os_id').eq('excluido', false),
       supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
     ]).then(([r, o]) => {
       setRegistrosBrutos((r.data ?? []) as DailyRow[]);

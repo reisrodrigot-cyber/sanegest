@@ -30,7 +30,7 @@ interface OSRow {
 
 type Filtro = 'hoje' | 'semana' | 'mes';
 
-const JANELA_MS = 2 * 60 * 60 * 1000; // 2h
+
 
 const startOf = (filtro: Filtro): string => {
   const now = new Date();

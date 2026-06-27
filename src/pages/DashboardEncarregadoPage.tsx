@@ -14,6 +14,10 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
+import { MeusRegistrosEnviados } from '@/components/encarregado/MeusRegistrosEnviados';
+import { Link } from 'react-router-dom';
+import { ListChecks } from 'lucide-react';
+
 
 interface RegistroRow {
   os_id: string;

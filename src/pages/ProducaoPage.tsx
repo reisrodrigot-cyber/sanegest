@@ -1,4 +1,6 @@
 import { AppLayout } from '@/components/AppLayout';
+import { MeusRegistrosEnviados } from '@/components/encarregado/MeusRegistrosEnviados';
+
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';

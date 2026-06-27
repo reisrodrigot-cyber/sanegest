@@ -361,8 +361,23 @@ const OSDetailPage = () => {
 
   const startEditingReal = () => {
     if (!os) return;
+    // Se ainda não validado, pré-preenche comprimento/ligações com a soma bruta
+    // dos registros de campo (produção informada). Sala técnica pode então
+    // corrigir duplicidades antes de validar.
+    const compFallback =
+      os.comprimento_real != null
+        ? String(os.comprimento_real)
+        : campoSums && campoSums.comprimento > 0
+        ? String(campoSums.comprimento)
+        : '';
+    const ligFallback =
+      os.ligacoes_real != null
+        ? String(os.ligacoes_real)
+        : campoSums && campoSums.ligacoes > 0
+        ? String(campoSums.ligacoes)
+        : '';
     const fields: Record<string, string> = {
-      comprimento_real: os.comprimento_real != null ? String(os.comprimento_real) : '',
+      comprimento_real: compFallback,
       prof_media_real: os.prof_media_real != null ? String(os.prof_media_real) : '',
       dn_real: os.dn_real != null ? String(os.dn_real) : '',
       largura_vala_real: os.largura_vala_real != null ? String(os.largura_vala_real) : '',
@@ -371,7 +386,7 @@ const OSDetailPage = () => {
       pav_real: os.pav_real ?? '',
       largura_pav_real: os.largura_pav_real != null ? String(os.largura_pav_real) : '',
       pav_m2_real: os.pav_m2_real != null ? String(os.pav_m2_real) : '',
-      ligacoes_real: os.ligacoes_real != null ? String(os.ligacoes_real) : '',
+      ligacoes_real: ligFallback,
       areia_real: os.areia_real ?? '',
       brita_real: os.brita_real ?? '',
       prazo_real: os.prazo_real != null ? String(os.prazo_real) : '',

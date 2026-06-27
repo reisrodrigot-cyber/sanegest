@@ -52,13 +52,15 @@ export const ProducaoMensalChart = () => {
       const label = `${MES_ABREV[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
       buckets.push({ key, label, metros: 0 });
     }
-    rows.forEach((r) => {
+    const ajustados = aplicarRealValidadoEmRegistros(rows, ordens);
+    ajustados.forEach((r) => {
       const k = r.data_registro.slice(0, 7);
       const b = buckets.find((x) => x.key === k);
       if (b) b.metros += Number(r.comprimento_dia) || 0;
     });
     return buckets.map((b) => ({ ...b, metros: Math.round(b.metros * 10) / 10 }));
-  }, [rows]);
+  }, [rows, ordens]);
+
 
   return (
     <div className="bg-card rounded-xl p-6 border border-border shadow-sm mb-6">

@@ -285,7 +285,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         <h3 className="text-sm font-semibold text-foreground">Registro de hoje</h3>
         <div className="grid md:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-muted-foreground">Comprimento do dia (m)</label>
+            <label className="text-xs text-muted-foreground">Rede do dia — comprimento de trecho (m)</label>
             <Input
               type="number"
               step="any"

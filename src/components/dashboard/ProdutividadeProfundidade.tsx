@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Layers } from 'lucide-react';
+import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
 
 interface RegistroRow {
   os_id: string;
@@ -11,6 +12,9 @@ interface RegistroRow {
 interface OSRow {
   id: string;
   prof_media_prevista: number | null;
+  comprimento_real: number | null;
+  ligacoes_real: number | null;
+  real_validado: boolean | null;
 }
 
 const FAIXAS = [
@@ -36,7 +40,7 @@ export const ProdutividadeProfundidade = () => {
   useEffect(() => {
     Promise.all([
       supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia'),
-      supabase.from('ordens_servico').select('id, prof_media_prevista'),
+      supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
     ]).then(([r, o]) => {
       setRegistros((r.data ?? []) as RegistroRow[]);
       setOrdens((o.data ?? []) as OSRow[]);
@@ -48,9 +52,11 @@ export const ProdutividadeProfundidade = () => {
     const osProf = new Map<string, number | null>();
     ordens.forEach((o) => osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null));
 
+    const ajustados = aplicarRealValidadoEmRegistros(registros, ordens as OSRealInput[]);
+
     // Por faixa: total metros + dias únicos
     const faixaData = FAIXAS.map(() => ({ total: 0, days: new Set<string>() }));
-    registros.forEach((r) => {
+    ajustados.forEach((r) => {
       const prof = osProf.get(r.os_id) ?? null;
       const idx = faixaIndex(prof);
       if (idx < 0) return;
@@ -63,6 +69,7 @@ export const ProdutividadeProfundidade = () => {
       total: Math.round(faixaData[i].total * 10) / 10,
     }));
   }, [registros, ordens]);
+
 
   if (loading) {
     return (

@@ -201,7 +201,7 @@ const DashboardEncarregadoPage = () => {
       <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 mb-6">
         <h2 className="text-lg font-semibold text-foreground mb-1">Avanço da Produção</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Quanto você já executou comparado à meta planejada ao longo do prazo
+          Rede executada (trechos) comparada à meta planejada ao longo do prazo. A extensão das ligações é informação separada e não entra neste somatório.
         </p>
         {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">

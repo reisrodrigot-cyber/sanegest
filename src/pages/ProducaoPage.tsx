@@ -362,7 +362,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="py-1 font-medium">Data</th>
-                <th className="py-1 font-medium text-right">Comp. (m)</th>
+                <th className="py-1 font-medium text-right">Rede (m)</th>
                 <th className="py-1 font-medium text-right">Ligações</th>
                 <th className="py-1 font-medium">Pavimento</th>
                 <th className="py-1 font-medium text-right w-12"></th>

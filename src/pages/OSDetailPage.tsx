@@ -950,7 +950,7 @@ const OSDetailPage = () => {
                 <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
                 <span className="text-xs font-semibold text-secondary uppercase">Real</span>
               </div>
-              <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
+              <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real ?? (campoSums && campoSums.comprimento > 0 ? campoSums.comprimento : null)} />
               <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
               <DataRow label="DN" previsto={formatDN(os.dn)} real={os.dn_real != null ? formatDN(os.dn_real) : null} />
               <DataRow label="Largura Vala (m)" previsto={os.largura_vala} real={os.largura_vala_real} />
@@ -963,7 +963,7 @@ const OSDetailPage = () => {
                   <DataRow label="PAV (m²)" previsto={os.pav_m2_previsto} real={os.pav_m2_real} />
                 </>
               )}
-              <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real} />
+              <DataRow label="Ligações" previsto={os.ligacoes_previstas} real={os.ligacoes_real ?? (campoSums && campoSums.ligacoes > 0 ? campoSums.ligacoes : null)} />
               <DataRow label="Areia" previsto={os.areia} real={os.areia_real} />
               <DataRow label="Brita" previsto={os.brita} real={os.brita_real} />
               <DataRow label="Bomba Rebaixo" previsto={os.bomba_rebaixo ? 'SIM' : 'NÃO'} />

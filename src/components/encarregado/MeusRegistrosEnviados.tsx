@@ -146,16 +146,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     return m;
   }, [registros]);
 
-  const podeEditar = (r: RegistroRow, os?: OSRow) => {
+  const podeEditar = (_r: RegistroRow, os?: OSRow) => {
     if (!os) return false;
     if (os.real_validado) return false;
-    const enviadoMs = new Date(r.created_at).getTime();
-    return Date.now() - enviadoMs < JANELA_MS;
-  };
-
-  const limiteEdicao = (r: RegistroRow) => {
-    const d = new Date(new Date(r.created_at).getTime() + JANELA_MS);
-    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return true;
   };
 
   const abrirEdicao = (r: RegistroRow) => {

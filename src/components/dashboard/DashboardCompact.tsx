@@ -25,6 +25,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
+import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
 
 import type { OrdemServico } from '@/types/sanegest';
 
@@ -38,7 +39,11 @@ interface DailyRow {
 interface OSRow {
   id: string;
   prof_media_prevista: number | null;
+  comprimento_real: number | null;
+  ligacoes_real: number | null;
+  real_validado: boolean | null;
 }
+
 
 const MES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const formatDayLabel = (d: Date) =>

@@ -14,13 +14,19 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
+import { MeusRegistrosEnviados } from '@/components/encarregado/MeusRegistrosEnviados';
+import { Link } from 'react-router-dom';
+import { ListChecks } from 'lucide-react';
+
 
 interface RegistroRow {
   os_id: string;
   data_registro: string;
   comprimento_dia: number;
+  ligacoes_dia: number;
   user_id: string;
 }
+
 
 interface OSRow {
   id: string;
@@ -51,7 +57,7 @@ const DashboardEncarregadoPage = () => {
     if (!effectiveUser) return;
     const load = async () => {
       const [regAll, osAll] = await Promise.all([
-        supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, user_id'),
+        supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, ligacoes_dia, user_id'),
         supabase.from('ordens_servico').select('id, trecho, comprimento_previsto, comprimento_real, prazo_previsto, prazo_arredondado, liberado_para, executor, updated_at, real_validado'),
       ]);
       setAllRegistros((regAll.data ?? []) as RegistroRow[]);
@@ -229,8 +235,54 @@ const DashboardEncarregadoPage = () => {
         </p>
       </div>
 
+      {/* Resumo "Registros de hoje" — ajuda o encarregado a confirmar envios e evitar duplicidade */}
+      {(() => {
+        const hoje = new Date().toISOString().slice(0, 10);
+        const meus = allRegistros.filter(
+          (r) => r.user_id === effectiveUser?.id && r.data_registro === hoje,
+        );
+        const totalM = meus.reduce((s, r) => s + (Number(r.comprimento_dia) || 0), 0);
+        const totalLig = meus.reduce((s, r) => s + (Number((r as any).ligacoes_dia) || 0), 0);
+        const trechos = new Set(meus.map((r) => r.os_id)).size;
+        return (
+          <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-5 mb-6">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Registros de hoje</p>
+                <p className="text-2xl font-bold text-foreground mt-1">
+                  {meus.length} <span className="text-sm font-normal text-muted-foreground">envio(s)</span>
+                </p>
+              </div>
+              <Link
+                to="/producao#meus-registros"
+                className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-md text-sm font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/90"
+              >
+                <ListChecks size={16} /> Ver meus registros
+              </Link>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-md bg-muted/40 p-2">
+                <p className="text-[11px] text-muted-foreground">Comprimento</p>
+                <p className="text-base font-bold text-foreground">
+                  {totalM.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
+                </p>
+              </div>
+              <div className="rounded-md bg-muted/40 p-2">
+                <p className="text-[11px] text-muted-foreground">Ligações</p>
+                <p className="text-base font-bold text-foreground">{totalLig}</p>
+              </div>
+              <div className="rounded-md bg-muted/40 p-2">
+                <p className="text-[11px] text-muted-foreground">Trechos</p>
+                <p className="text-base font-bold text-foreground">{trechos}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 mb-6">
         <h2 className="text-lg font-semibold text-foreground mb-1">Avanço da Produção</h2>
+
         <p className="text-sm text-muted-foreground mb-4">
           Rede executada (trechos) comparada à meta planejada ao longo do prazo. A extensão das ligações é informação separada e não entra neste somatório.
         </p>

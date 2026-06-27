@@ -1,4 +1,6 @@
 import { AppLayout } from '@/components/AppLayout';
+import { MeusRegistrosEnviados } from '@/components/encarregado/MeusRegistrosEnviados';
+
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -145,6 +147,17 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       toast.error('Informe comprimento ou ligações.');
       return;
     }
+    // Aviso de possível duplicidade: já existe envio hoje para esta OS pelo mesmo
+    // encarregado? Não bloqueia (pode haver produção complementar), apenas confirma.
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    const jaEnviadoHoje = registros.some((r) => r.data_registro === hojeStr);
+    if (jaEnviadoHoje) {
+      const ok = window.confirm(
+        `Você já enviou produção hoje para o trecho ${os.trecho}.\nDeseja registrar outro envio mesmo assim?`,
+      );
+      if (!ok) return;
+    }
+
     if (!tipoPavimento) {
       toast.error('Selecione o Tipo de Pavimento.');
       return;
@@ -581,11 +594,23 @@ const ProducaoPage = () => {
   const { ordens, loading } = useOrdensServico();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Scroll para "Meus registros enviados" quando vier do dashboard via #meus-registros
+  useEffect(() => {
+    if (loading) return;
+    if (typeof window === 'undefined') return;
+    if (window.location.hash === '#meus-registros') {
+      setTimeout(() => {
+        document.getElementById('meus-registros')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
+  }, [loading]);
+
   const minhasOS = ordens.filter((os) => {
     if (!os.liberado) return false;
     if (effectiveUser?.role === 'admin') return true;
     return os.liberado_para === effectiveUser?.nome || os.executor === effectiveUser?.nome;
   });
+
 
   if (loading) {
     return (
@@ -631,8 +656,15 @@ const ProducaoPage = () => {
           ))}
         </div>
       )}
+
+      {(effectiveUser?.role === 'encarregado' || effectiveUser?.role === 'admin') && (
+        <div className="mt-6">
+          <MeusRegistrosEnviados />
+        </div>
+      )}
     </AppLayout>
   );
 };
+
 
 export default ProducaoPage;

@@ -2,8 +2,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Loader2 } from 'lucide-react';
+import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
 
 interface DailyRow {
+  os_id: string;
   data_registro: string;
   comprimento_dia: number;
 }
@@ -13,21 +15,28 @@ const formatDayLabel = (d: Date) =>
 
 export const ProducaoDiariaChart = () => {
   const [rows, setRows] = useState<DailyRow[]>([]);
+  const [ordens, setOrdens] = useState<OSRealInput[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const since = new Date();
     since.setDate(since.getDate() - 30);
     const sinceStr = since.toISOString().slice(0, 10);
-    supabase
-      .from('registros_producao')
-      .select('data_registro, comprimento_dia')
-      .gte('data_registro', sinceStr)
-      .then(({ data }) => {
-        setRows((data ?? []) as DailyRow[]);
-        setLoading(false);
-      });
+    Promise.all([
+      supabase
+        .from('registros_producao')
+        .select('os_id, data_registro, comprimento_dia')
+        .gte('data_registro', sinceStr),
+      supabase
+        .from('ordens_servico')
+        .select('id, comprimento_real, ligacoes_real, real_validado'),
+    ]).then(([r, o]) => {
+      setRows((r.data ?? []) as DailyRow[]);
+      setOrdens((o.data ?? []) as OSRealInput[]);
+      setLoading(false);
+    });
   }, []);
+
 
   useEffect(() => {
     const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 100);

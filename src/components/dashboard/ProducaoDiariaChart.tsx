@@ -52,12 +52,14 @@ export const ProducaoDiariaChart = () => {
       const key = d.toISOString().slice(0, 10);
       buckets.push({ key, label: formatDayLabel(d), metros: 0 });
     }
-    rows.forEach((r) => {
+    const ajustados = aplicarRealValidadoEmRegistros(rows, ordens);
+    ajustados.forEach((r) => {
       const b = buckets.find((x) => x.key === r.data_registro);
       if (b) b.metros += Number(r.comprimento_dia) || 0;
     });
     return buckets.map((b) => ({ ...b, metros: Math.round(b.metros * 10) / 10 }));
-  }, [rows]);
+  }, [rows, ordens]);
+
 
   return (
     <div className="bg-card rounded-xl p-6 border border-border shadow-sm mb-6">

@@ -45,14 +45,16 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
       .forEach(os => {
         const raw = os.liberado_para!;
         const nome = apelidoMap[raw] || raw;
-        const cur = map.get(nome) ?? { nome, nsExecutadas: 0, totalMetros: 0, ns: [] };
+        const cur = map.get(nome) ?? { nome, nsExecutadas: 0, totalMetros: 0, totalLigacoes: 0, ns: [] };
         cur.nsExecutadas += 1;
         cur.totalMetros += os.comprimento_real!;
+        cur.totalLigacoes += os.ligacoes_real ?? 0;
         cur.ns.push({
           id: os.id,
           trecho: os.trecho,
           bacia: os.bacia,
           metros: os.comprimento_real!,
+          ligacoes: os.ligacoes_real ?? 0,
           data: new Date(os.updated_at).toLocaleDateString('pt-BR'),
         });
         map.set(nome, cur);
@@ -73,7 +75,8 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
               <th className="pb-2 font-medium w-8"></th>
               <th className="pb-2 font-medium">Encarregado</th>
               <th className="pb-2 font-medium text-right">NS executadas</th>
-              <th className="pb-2 font-medium text-right">Total executado (m)</th>
+              <th className="pb-2 font-medium text-right">Rede executada (m)</th>
+              <th className="pb-2 font-medium text-right">Ligações (qtd)</th>
             </tr>
           </thead>
           <tbody>

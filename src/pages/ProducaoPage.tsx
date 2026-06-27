@@ -249,7 +249,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       {/* Acumulado */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-card border border-border rounded-lg p-3">
-          <p className="text-xs text-muted-foreground">Comprimento acumulado</p>
+          <p className="text-xs text-muted-foreground">Rede executada (trechos)</p>
           <p className="text-xl font-bold text-foreground">
             {acumComprimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
           </p>
@@ -261,10 +261,22 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           className="bg-card border border-border rounded-lg p-3 text-left transition hover:border-secondary hover:bg-muted/40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
-            Ligações acumuladas
+            Ligações (quantidade)
             {acumLigacoes > 0 && <Eye size={11} className="opacity-60" />}
           </p>
           <p className="text-xl font-bold text-foreground">{acumLigacoes}</p>
+          {(() => {
+            const extensao = ligacoesAll.reduce(
+              (s, l) => s + (Number(l.comprimento) || 0),
+              0,
+            );
+            return extensao > 0 ? (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Extensão: {extensao.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
+                <span className="ml-1 italic">(não soma na rede)</span>
+              </p>
+            ) : null;
+          })()}
         </button>
       </div>
 

@@ -84,9 +84,9 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
   const [deleting, setDeleting] = useState<RegistroRow | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  // Re-render a cada 30s para atualizar countdown da janela de 2h
+  // Re-render leve para refletir mudanças de validação
   useEffect(() => {
-    const i = setInterval(() => setTick((t) => t + 1), 30_000);
+    const i = setInterval(() => setTick((t) => t + 1), 60_000);
     return () => clearInterval(i);
   }, []);
 

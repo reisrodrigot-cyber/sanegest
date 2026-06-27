@@ -785,8 +785,12 @@ export type Database = {
           comprimento_dia: number
           created_at: string
           data_registro: string
+          excluido: boolean
+          excluido_em: string | null
+          excluido_por: string | null
           id: string
           ligacoes_dia: number
+          motivo_exclusao: string | null
           observacao: string | null
           os_id: string
           tipo_pavimento: string | null
@@ -797,8 +801,12 @@ export type Database = {
           comprimento_dia?: number
           created_at?: string
           data_registro?: string
+          excluido?: boolean
+          excluido_em?: string | null
+          excluido_por?: string | null
           id?: string
           ligacoes_dia?: number
+          motivo_exclusao?: string | null
           observacao?: string | null
           os_id: string
           tipo_pavimento?: string | null
@@ -809,8 +817,12 @@ export type Database = {
           comprimento_dia?: number
           created_at?: string
           data_registro?: string
+          excluido?: boolean
+          excluido_em?: string | null
+          excluido_por?: string | null
           id?: string
           ligacoes_dia?: number
+          motivo_exclusao?: string | null
           observacao?: string | null
           os_id?: string
           tipo_pavimento?: string | null
@@ -833,6 +845,36 @@ export type Database = {
             referencedColumns: ["os_id"]
           },
         ]
+      }
+      registros_producao_auditoria: {
+        Row: {
+          acao: string
+          criado_em: string
+          id: string
+          registro_producao_id: string
+          usuario_id: string | null
+          valor_anterior: Json | null
+          valor_novo: Json | null
+        }
+        Insert: {
+          acao: string
+          criado_em?: string
+          id?: string
+          registro_producao_id: string
+          usuario_id?: string | null
+          valor_anterior?: Json | null
+          valor_novo?: Json | null
+        }
+        Update: {
+          acao?: string
+          criado_em?: string
+          id?: string
+          registro_producao_id?: string
+          usuario_id?: string | null
+          valor_anterior?: Json | null
+          valor_novo?: Json | null
+        }
+        Relationships: []
       }
       topografia_asbuilt: {
         Row: {
@@ -924,7 +966,7 @@ export type Database = {
           data_producao: string | null
           encarregado: string | null
           liberado_para: string | null
-          ligacoes_detalhadas: Json | null
+          ligacoes_detalhadas: number | null
           obra_id: string | null
           obra_nome: string | null
           os_id: string | null

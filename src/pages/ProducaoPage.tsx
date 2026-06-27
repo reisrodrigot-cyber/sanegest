@@ -145,6 +145,17 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       toast.error('Informe comprimento ou ligações.');
       return;
     }
+    // Aviso de possível duplicidade: já existe envio hoje para esta OS pelo mesmo
+    // encarregado? Não bloqueia (pode haver produção complementar), apenas confirma.
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    const jaEnviadoHoje = registros.some((r) => r.data_registro === hojeStr);
+    if (jaEnviadoHoje) {
+      const ok = window.confirm(
+        `Você já enviou produção hoje para o trecho ${os.trecho}.\nDeseja registrar outro envio mesmo assim?`,
+      );
+      if (!ok) return;
+    }
+
     if (!tipoPavimento) {
       toast.error('Selecione o Tipo de Pavimento.');
       return;

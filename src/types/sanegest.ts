@@ -76,6 +76,9 @@ export interface OrdemServico {
   liberado_para: string | null;
   as_built_lat: number | null;
   as_built_lng: number | null;
+  real_validado: boolean;
+  real_validado_em: string | null;
+  real_validado_por: string | null;
 
   created_at: string;
   updated_at: string;

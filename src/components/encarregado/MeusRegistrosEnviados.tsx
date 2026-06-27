@@ -332,38 +332,35 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                 </div>
 
                 {/* Ações de edição/exclusão do encarregado */}
-                {!validado && (
+                {editavel && (
                   <div className="mt-3 pt-3 border-t border-border">
-                    {editavel ? (
-                      <>
-                        <p className="text-[11px] text-muted-foreground mb-2">
-                          Você pode ajustar este registro até {limiteEdicao(r)}.
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="min-h-[44px]"
-                            onClick={() => abrirEdicao(r)}
-                          >
-                            <Pencil size={16} className="mr-1.5" /> Editar
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="min-h-[44px] text-destructive hover:text-destructive"
-                            onClick={() => setDeleting(r)}
-                          >
-                            <Trash2 size={16} className="mr-1.5" /> Excluir
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-[11px] text-muted-foreground italic">
-                        Prazo de edição encerrado — ajustes somente pela sala técnica.
-                      </p>
-                    )}
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      Editável até validação da sala técnica.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-[44px]"
+                        onClick={() => abrirEdicao(r)}
+                      >
+                        <Pencil size={16} className="mr-1.5" /> Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-[44px] text-destructive hover:text-destructive"
+                        onClick={() => setDeleting(r)}
+                      >
+                        <Trash2 size={16} className="mr-1.5" /> Excluir
+                      </Button>
+                    </div>
                   </div>
+                )}
+                {validado && (
+                  <p className="mt-3 pt-3 border-t border-border text-[11px] text-muted-foreground italic">
+                    Validado pela sala técnica — edição bloqueada.
+                  </p>
                 )}
               </li>
             );

@@ -12,7 +12,8 @@ interface EncarregadoRow {
   nome: string;
   nsExecutadas: number;
   totalMetros: number;
-  ns: { id: string; trecho: string; bacia: string; metros: number; data: string }[];
+  totalLigacoes: number;
+  ns: { id: string; trecho: string; bacia: string; metros: number; ligacoes: number; data: string }[];
 }
 
 export function ProducaoPorEncarregado({ ordens }: Props) {

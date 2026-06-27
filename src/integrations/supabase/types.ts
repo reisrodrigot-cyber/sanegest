@@ -929,6 +929,7 @@ export type Database = {
           obra_nome: string | null
           os_id: string | null
           quantidade_ligacoes_realizadas: number | null
+          real_validado: boolean | null
           responsavel_nome: string | null
           trecho: string | null
           updated_at: string | null

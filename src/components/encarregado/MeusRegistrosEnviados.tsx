@@ -30,7 +30,7 @@ interface OSRow {
 
 type Filtro = 'hoje' | 'semana' | 'mes';
 
-const JANELA_MS = 2 * 60 * 60 * 1000; // 2h
+
 
 const startOf = (filtro: Filtro): string => {
   const now = new Date();
@@ -84,9 +84,9 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
   const [deleting, setDeleting] = useState<RegistroRow | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  // Re-render a cada 30s para atualizar countdown da janela de 2h
+  // Re-render leve para refletir mudanças de validação
   useEffect(() => {
-    const i = setInterval(() => setTick((t) => t + 1), 30_000);
+    const i = setInterval(() => setTick((t) => t + 1), 60_000);
     return () => clearInterval(i);
   }, []);
 
@@ -146,16 +146,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     return m;
   }, [registros]);
 
-  const podeEditar = (r: RegistroRow, os?: OSRow) => {
+  const podeEditar = (_r: RegistroRow, os?: OSRow) => {
     if (!os) return false;
     if (os.real_validado) return false;
-    const enviadoMs = new Date(r.created_at).getTime();
-    return Date.now() - enviadoMs < JANELA_MS;
-  };
-
-  const limiteEdicao = (r: RegistroRow) => {
-    const d = new Date(new Date(r.created_at).getTime() + JANELA_MS);
-    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return true;
   };
 
   const abrirEdicao = (r: RegistroRow) => {
@@ -338,38 +332,35 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                 </div>
 
                 {/* Ações de edição/exclusão do encarregado */}
-                {!validado && (
+                {editavel && (
                   <div className="mt-3 pt-3 border-t border-border">
-                    {editavel ? (
-                      <>
-                        <p className="text-[11px] text-muted-foreground mb-2">
-                          Você pode ajustar este registro até {limiteEdicao(r)}.
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="min-h-[44px]"
-                            onClick={() => abrirEdicao(r)}
-                          >
-                            <Pencil size={16} className="mr-1.5" /> Editar
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="min-h-[44px] text-destructive hover:text-destructive"
-                            onClick={() => setDeleting(r)}
-                          >
-                            <Trash2 size={16} className="mr-1.5" /> Excluir
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-[11px] text-muted-foreground italic">
-                        Prazo de edição encerrado — ajustes somente pela sala técnica.
-                      </p>
-                    )}
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      Editável até validação da sala técnica.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-[44px]"
+                        onClick={() => abrirEdicao(r)}
+                      >
+                        <Pencil size={16} className="mr-1.5" /> Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-[44px] text-destructive hover:text-destructive"
+                        onClick={() => setDeleting(r)}
+                      >
+                        <Trash2 size={16} className="mr-1.5" /> Excluir
+                      </Button>
+                    </div>
                   </div>
+                )}
+                {validado && (
+                  <p className="mt-3 pt-3 border-t border-border text-[11px] text-muted-foreground italic">
+                    Validado pela sala técnica — edição bloqueada.
+                  </p>
                 )}
               </li>
             );

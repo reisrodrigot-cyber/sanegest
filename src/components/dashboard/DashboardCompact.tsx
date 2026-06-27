@@ -25,6 +25,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
+import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
 
 import type { OrdemServico } from '@/types/sanegest';
 
@@ -38,7 +39,11 @@ interface DailyRow {
 interface OSRow {
   id: string;
   prof_media_prevista: number | null;
+  comprimento_real: number | null;
+  ligacoes_real: number | null;
+  real_validado: boolean | null;
 }
+
 
 const MES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const formatDayLabel = (d: Date) =>
@@ -176,7 +181,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     mql.addEventListener?.('change', apply);
     return () => mql.removeEventListener?.('change', apply);
   }, []);
-  const [registros, setRegistros] = useState<DailyRow[]>([]);
+  const [registrosBrutos, setRegistrosBrutos] = useState<DailyRow[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [baciaFilter, setBaciaFilter] = useState('');
@@ -185,13 +190,22 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   useEffect(() => {
     Promise.all([
       supabase.from('registros_producao').select('user_id, data_registro, comprimento_dia, os_id'),
-      supabase.from('ordens_servico').select('id, prof_media_prevista'),
+      supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
     ]).then(([r, o]) => {
-      setRegistros((r.data ?? []) as DailyRow[]);
+      setRegistrosBrutos((r.data ?? []) as DailyRow[]);
       setOsRows((o.data ?? []) as OSRow[]);
       setLoading(false);
     });
   }, []);
+
+  // Aplica a regra do REAL validado da sala técnica: quando a OS está validada,
+  // os registros brutos são escalonados para que o total bata com o valor oficial.
+  // Isto evita que duplicidades de campo apareçam em qualquer dashboard/relatório.
+  const registros = useMemo(
+    () => aplicarRealValidadoEmRegistros(registrosBrutos, osRows as OSRealInput[]),
+    [registrosBrutos, osRows],
+  );
+
 
   // Force Recharts ResponsiveContainer to recalc on mount (fixes empty charts on mobile)
   useEffect(() => {

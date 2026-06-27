@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
 
 interface Row {
+  os_id: string;
   user_id: string;
   data_registro: string;
   comprimento_dia: number;
@@ -10,16 +12,23 @@ interface Row {
 
 export const MediaPorEncarregado = () => {
   const [rows, setRows] = useState<Row[]>([]);
+  const [ordens, setOrdens] = useState<OSRealInput[]>([]);
   const [users, setUsers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from('registros_producao')
-        .select('user_id, data_registro, comprimento_dia');
+      const [{ data }, { data: o }] = await Promise.all([
+        supabase
+          .from('registros_producao')
+          .select('os_id, user_id, data_registro, comprimento_dia'),
+        supabase
+          .from('ordens_servico')
+          .select('id, comprimento_real, ligacoes_real, real_validado'),
+      ]);
       const r = (data ?? []) as Row[];
       setRows(r);
+      setOrdens((o ?? []) as OSRealInput[]);
       const ids = Array.from(new Set(r.map((x) => x.user_id)));
       if (ids.length > 0) {
         const { data: profs } = await supabase
@@ -38,8 +47,9 @@ export const MediaPorEncarregado = () => {
   }, []);
 
   const stats = useMemo(() => {
+    const ajustados = aplicarRealValidadoEmRegistros(rows, ordens);
     const map = new Map<string, { total: number; days: Set<string> }>();
-    rows.forEach((r) => {
+    ajustados.forEach((r) => {
       const cur = map.get(r.user_id) ?? { total: 0, days: new Set<string>() };
       cur.total += Number(r.comprimento_dia) || 0;
       cur.days.add(r.data_registro);
@@ -54,7 +64,8 @@ export const MediaPorEncarregado = () => {
         media: v.days.size > 0 ? Math.round((v.total / v.days.size) * 10) / 10 : 0,
       }))
       .sort((a, b) => b.media - a.media);
-  }, [rows, users]);
+  }, [rows, ordens, users]);
+
 
   if (loading) {
     return (

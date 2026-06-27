@@ -2,8 +2,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Loader2 } from 'lucide-react';
+import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
 
 interface Row {
+  os_id: string;
   data_registro: string;
   comprimento_dia: number;
 }
@@ -12,6 +14,7 @@ const MES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'
 
 export const ProducaoMensalChart = () => {
   const [rows, setRows] = useState<Row[]>([]);
+  const [ordens, setOrdens] = useState<OSRealInput[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,15 +22,21 @@ export const ProducaoMensalChart = () => {
     since.setMonth(since.getMonth() - 4);
     since.setDate(1);
     const sinceStr = since.toISOString().slice(0, 10);
-    supabase
-      .from('registros_producao')
-      .select('data_registro, comprimento_dia')
-      .gte('data_registro', sinceStr)
-      .then(({ data }) => {
-        setRows((data ?? []) as Row[]);
-        setLoading(false);
-      });
+    Promise.all([
+      supabase
+        .from('registros_producao')
+        .select('os_id, data_registro, comprimento_dia')
+        .gte('data_registro', sinceStr),
+      supabase
+        .from('ordens_servico')
+        .select('id, comprimento_real, ligacoes_real, real_validado'),
+    ]).then(([r, o]) => {
+      setRows((r.data ?? []) as Row[]);
+      setOrdens((o.data ?? []) as OSRealInput[]);
+      setLoading(false);
+    });
   }, []);
+
 
   useEffect(() => {
     const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
@@ -43,13 +52,15 @@ export const ProducaoMensalChart = () => {
       const label = `${MES_ABREV[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
       buckets.push({ key, label, metros: 0 });
     }
-    rows.forEach((r) => {
+    const ajustados = aplicarRealValidadoEmRegistros(rows, ordens);
+    ajustados.forEach((r) => {
       const k = r.data_registro.slice(0, 7);
       const b = buckets.find((x) => x.key === k);
       if (b) b.metros += Number(r.comprimento_dia) || 0;
     });
     return buckets.map((b) => ({ ...b, metros: Math.round(b.metros * 10) / 10 }));
-  }, [rows]);
+  }, [rows, ordens]);
+
 
   return (
     <div className="bg-card rounded-xl p-6 border border-border shadow-sm mb-6">

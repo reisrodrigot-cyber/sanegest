@@ -200,8 +200,8 @@ export const OSHistoricoSection = ({ osId }: Props) => {
                         <tr className="border-b border-border text-left text-muted-foreground">
                           <th className="py-1 pr-3 font-medium">Data</th>
                           <th className="py-1 pr-3 font-medium">Encarregado</th>
-                          <th className="py-1 pr-3 font-medium text-right">Comp. (m)</th>
-                          <th className="py-1 pr-3 font-medium text-right">Ligações</th>
+                          <th className="py-1 pr-3 font-medium text-right">Rede (m)</th>
+                          <th className="py-1 pr-3 font-medium text-right">Ligações (qtd)</th>
                         </tr>
                       </thead>
                       <tbody>

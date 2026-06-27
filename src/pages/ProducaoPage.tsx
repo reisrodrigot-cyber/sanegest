@@ -249,7 +249,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       {/* Acumulado */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-card border border-border rounded-lg p-3">
-          <p className="text-xs text-muted-foreground">Comprimento acumulado</p>
+          <p className="text-xs text-muted-foreground">Rede executada (trechos)</p>
           <p className="text-xl font-bold text-foreground">
             {acumComprimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
           </p>
@@ -261,10 +261,22 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           className="bg-card border border-border rounded-lg p-3 text-left transition hover:border-secondary hover:bg-muted/40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
-            Ligações acumuladas
+            Ligações (quantidade)
             {acumLigacoes > 0 && <Eye size={11} className="opacity-60" />}
           </p>
           <p className="text-xl font-bold text-foreground">{acumLigacoes}</p>
+          {(() => {
+            const extensao = ligacoesAll.reduce(
+              (s, l) => s + (Number(l.comprimento) || 0),
+              0,
+            );
+            return extensao > 0 ? (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Extensão: {extensao.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
+                <span className="ml-1 italic">(não soma na rede)</span>
+              </p>
+            ) : null;
+          })()}
         </button>
       </div>
 
@@ -273,7 +285,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         <h3 className="text-sm font-semibold text-foreground">Registro de hoje</h3>
         <div className="grid md:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-muted-foreground">Comprimento do dia (m)</label>
+            <label className="text-xs text-muted-foreground">Rede do dia — comprimento de trecho (m)</label>
             <Input
               type="number"
               step="any"
@@ -350,7 +362,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="py-1 font-medium">Data</th>
-                <th className="py-1 font-medium text-right">Comp. (m)</th>
+                <th className="py-1 font-medium text-right">Rede (m)</th>
                 <th className="py-1 font-medium text-right">Ligações</th>
                 <th className="py-1 font-medium">Pavimento</th>
                 <th className="py-1 font-medium text-right w-12"></th>
@@ -493,7 +505,11 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           <DialogHeader>
             <DialogTitle>Ligações registradas — {os.trecho}</DialogTitle>
             <DialogDescription>
-              {ligacoesAll.length} ligação(ões) no total
+              {ligacoesAll.length} ligação(ões) · Extensão total:{' '}
+              {ligacoesAll
+                .reduce((s, l) => s + (Number(l.comprimento) || 0), 0)
+                .toLocaleString('pt-BR', { maximumFractionDigits: 2 })}{' '}
+              m <span className="italic">(separada da rede — não soma)</span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[65vh] overflow-y-auto">

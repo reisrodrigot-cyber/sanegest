@@ -12,7 +12,8 @@ interface EncarregadoRow {
   nome: string;
   nsExecutadas: number;
   totalMetros: number;
-  ns: { id: string; trecho: string; bacia: string; metros: number; data: string }[];
+  totalLigacoes: number;
+  ns: { id: string; trecho: string; bacia: string; metros: number; ligacoes: number; data: string }[];
 }
 
 export function ProducaoPorEncarregado({ ordens }: Props) {
@@ -44,14 +45,16 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
       .forEach(os => {
         const raw = os.liberado_para!;
         const nome = apelidoMap[raw] || raw;
-        const cur = map.get(nome) ?? { nome, nsExecutadas: 0, totalMetros: 0, ns: [] };
+        const cur = map.get(nome) ?? { nome, nsExecutadas: 0, totalMetros: 0, totalLigacoes: 0, ns: [] };
         cur.nsExecutadas += 1;
         cur.totalMetros += os.comprimento_real!;
+        cur.totalLigacoes += os.ligacoes_real ?? 0;
         cur.ns.push({
           id: os.id,
           trecho: os.trecho,
           bacia: os.bacia,
           metros: os.comprimento_real!,
+          ligacoes: os.ligacoes_real ?? 0,
           data: new Date(os.updated_at).toLocaleDateString('pt-BR'),
         });
         map.set(nome, cur);
@@ -72,7 +75,8 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
               <th className="pb-2 font-medium w-8"></th>
               <th className="pb-2 font-medium">Encarregado</th>
               <th className="pb-2 font-medium text-right">NS executadas</th>
-              <th className="pb-2 font-medium text-right">Total executado (m)</th>
+              <th className="pb-2 font-medium text-right">Rede executada (m)</th>
+              <th className="pb-2 font-medium text-right">Ligações (qtd)</th>
             </tr>
           </thead>
           <tbody>
@@ -91,15 +95,16 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
                   <td className="py-2 text-right font-semibold text-foreground">
                     {enc.totalMetros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                   </td>
+                  <td className="py-2 text-right text-muted-foreground">{enc.totalLigacoes}</td>
                 </tr>
                 {expanded === enc.nome && enc.ns.map(ns => (
                   <tr key={ns.id} className="bg-muted/30">
                     <td className="py-1.5"></td>
-                    <td className="py-1.5 pl-4 text-muted-foreground" colSpan={3}>
+                    <td className="py-1.5 pl-4 text-muted-foreground" colSpan={4}>
                       <Link to={`/ordens/${ns.id}`} className="hover:underline text-secondary">
                         ↳ {ns.trecho}
                       </Link>
-                      <span className="text-muted-foreground"> | {ns.bacia} | {ns.metros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m | {ns.data}</span>
+                      <span className="text-muted-foreground"> | {ns.bacia} | rede {ns.metros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}m | {ns.ligacoes} ligações | {ns.data}</span>
                     </td>
                   </tr>
                 ))}

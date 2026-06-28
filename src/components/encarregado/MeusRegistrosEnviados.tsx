@@ -225,11 +225,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const confirmarExclusao = async () => {
     if (!deleting) return;
-    const osAtual = ordens[deleting.os_id];
-    if (osAtual?.real_validado) {
+    if ((deleting.status ?? 'ativo') !== 'ativo') {
       toast({
         title: 'Exclusão bloqueada',
-        description: 'A sala técnica já validou o REAL desta N.S. A produção final está protegida e não pode mais ser excluída pelo encarregado.',
+        description: 'Este registro foi cancelado pela sala técnica e não está mais ativo.',
         variant: 'destructive',
       });
       setDeleting(null);
@@ -247,6 +246,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       .eq('id', deleting.id)
       .eq('user_id', userId)
       .eq('excluido', false)
+      .eq('status', 'ativo')
       .select('id');
     if (error) {
       setRemoving(false);
@@ -255,17 +255,9 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     }
     if (!updated || updated.length === 0) {
       setRemoving(false);
-      const { data: osCheck } = await supabase
-        .from('ordens_servico')
-        .select('real_validado')
-        .eq('id', deleting.os_id)
-        .maybeSingle();
-      const validadoAgora = !!osCheck?.real_validado;
       toast({
-        title: validadoAgora ? 'Exclusão bloqueada' : 'Não foi possível excluir',
-        description: validadoAgora
-          ? 'A sala técnica validou o REAL desta N.S. A produção final está protegida e não pode mais ser excluída pelo encarregado.'
-          : 'Não foi possível excluir este registro. Verifique se ele ainda é seu e se a N.S. ainda não foi validada pela sala técnica.',
+        title: 'Não foi possível excluir',
+        description: 'Verifique se o registro ainda é seu e se não foi cancelado pela sala técnica.',
         variant: 'destructive',
       });
       setDeleting(null);

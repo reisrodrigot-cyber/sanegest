@@ -324,24 +324,23 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
           {itens.map((r) => {
             const os = ordens[r.os_id];
             const trecho = os?.trecho ?? 'Trecho —';
-            const validado = !!os?.real_validado;
-            const soma = somaPorOs.get(r.os_id) ?? { comp: 0, lig: 0 };
-            const compValid = Number(os?.comprimento_real) || 0;
-            const ligValid = Number(os?.ligacoes_real) || 0;
-            const diferente = validado && soma.comp > 0 && Math.abs(compValid - soma.comp) > 0.01;
+            const cancelado = (r.status ?? 'ativo') === 'cancelado';
+            const ajustado = r.comprimento_ajustado != null || r.ligacoes_ajustadas != null;
+            const compContab = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+            const ligContab = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
-            const statusLabel = !validado
-              ? 'Enviado — aguardando validação'
-              : diferente ? 'Ajustado pela sala técnica' : 'Validado pela sala técnica';
-            const StatusIcon = !validado ? Clock : diferente ? AlertTriangle : CheckCircle2;
-            const statusColor = !validado
-              ? 'text-amber-600 dark:text-amber-400'
-              : diferente ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400';
+            const statusLabel = cancelado
+              ? 'Cancelado pela sala técnica'
+              : ajustado ? 'Ajustado pela sala técnica' : 'Contabilizado na produção';
+            const StatusIcon = cancelado ? AlertTriangle : ajustado ? AlertTriangle : CheckCircle2;
+            const statusColor = cancelado
+              ? 'text-destructive'
+              : ajustado ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400';
 
-            const editavel = podeEditar(r, os);
+            const editavel = podeEditar(r);
 
             return (
-              <li key={r.id} className="rounded-lg border border-border bg-background p-3 sm:p-4">
+              <li key={r.id} className={`rounded-lg border border-border bg-background p-3 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">{fmtDataCurta(r.data_registro)}</p>
@@ -357,26 +356,28 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                   <div className="rounded-md bg-muted/40 p-2">
                     <p className="text-[11px] text-muted-foreground">Comprimento informado</p>
                     <p className="text-base font-bold text-foreground">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
+                    {ajustado && r.comprimento_ajustado != null && (
+                      <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+                        Ajustado: <span className="font-semibold">{fmtMetros(compContab)}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="rounded-md bg-muted/40 p-2">
                     <p className="text-[11px] text-muted-foreground">Ligações informadas</p>
                     <p className="text-base font-bold text-foreground">{r.ligacoes_dia ?? 0}</p>
+                    {ajustado && r.ligacoes_ajustadas != null && (
+                      <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+                        Ajustado: <span className="font-semibold">{ligContab}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {diferente && (
-                  <div className="mt-3 rounded-md border border-orange-500/30 bg-orange-500/10 p-2 text-xs space-y-0.5">
-                    <p className="text-foreground">
-                      <span className="text-muted-foreground">Informado em campo (total da OS):</span>{' '}
-                      <span className="font-semibold">{fmtMetros(soma.comp)}</span>
-                      {soma.lig > 0 && <> · {soma.lig} ligação(ões)</>}
-                    </p>
-                    <p className="text-foreground">
-                      <span className="text-muted-foreground">REAL validado pela sala técnica:</span>{' '}
-                      <span className="font-semibold">{fmtMetros(compValid)}</span>
-                      {ligValid > 0 && <> · {ligValid} ligação(ões)</>}
-                    </p>
-                  </div>
+                {r.motivo_ajuste && (
+                  <p className="mt-2 text-[11px] text-orange-700 dark:text-orange-300 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
+                )}
+                {cancelado && r.motivo_cancelamento && (
+                  <p className="mt-2 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
                 )}
 
                 {r.observacao && (
@@ -392,7 +393,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                 {editavel && (
                   <div className="mt-3 pt-3 border-t border-border">
                     <p className="text-[11px] text-muted-foreground mb-2">
-                      Editável até validação da sala técnica.
+                      Este registro está ativo. Você pode editá-lo ou excluí-lo enquanto não for cancelado pela sala técnica.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
@@ -414,13 +415,13 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                     </div>
                   </div>
                 )}
-                {validado && (
+                {cancelado && (
                   <div className="mt-3 pt-3 border-t border-border">
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
-                      REAL validado pela sala técnica
+                    <p className="text-[11px] text-destructive font-semibold">
+                      Registro cancelado pela sala técnica
                     </p>
                     <p className="text-[11px] text-muted-foreground italic mt-0.5">
-                      A produção final da N.S. está protegida. O encarregado não pode mais editar nem excluir registros que impactem o quantitativo final.
+                      O lançamento não está contabilizado na produção. Solicite restauração à sala técnica se necessário.
                     </p>
                   </div>
                 )}

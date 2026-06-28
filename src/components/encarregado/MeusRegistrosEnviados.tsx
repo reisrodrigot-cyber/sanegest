@@ -183,6 +183,8 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       setEditing(null);
       return;
     }
+    const novoComp = Number(editComp.replace(',', '.')) || 0;
+    const novoLig = Math.max(0, Math.floor(Number(editLig) || 0));
     if (novoComp < 0) { toast({ title: 'Valor inválido', variant: 'destructive' }); return; }
     setSaving(true);
     const valor_anterior = {

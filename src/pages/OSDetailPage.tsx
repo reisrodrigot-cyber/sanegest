@@ -472,7 +472,7 @@ const OSDetailPage = () => {
       pav_real: realFields.pav_real || null,
       largura_pav_real: toNum(realFields.largura_pav_real),
       pav_m2_real: toNum(realFields.pav_m2_real),
-      ligacoes_real: toInt(realFields.ligacoes_real),
+      // ligacoes_real: cache automático — não sobrescrever pela UI.
       areia_real: realFields.areia_real || null,
       brita_real: realFields.brita_real || null,
       prazo_real: toInt(realFields.prazo_real),

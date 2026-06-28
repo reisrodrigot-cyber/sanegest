@@ -434,7 +434,7 @@ const OSDetailPage = () => {
       pav_m2_previsto: toNum(editFields.pav_m2_previsto),
       pav_m2_real: toNum(editFields.pav_m2_real),
       ligacoes_previstas: toInt(editFields.ligacoes_previstas),
-      ligacoes_real: toInt(editFields.ligacoes_real),
+      // ligacoes_real é cache automático dos registros_producao — não sobrescrever.
       areia: editFields.areia || null,
       areia_real: editFields.areia_real || null,
       brita: editFields.brita || null,

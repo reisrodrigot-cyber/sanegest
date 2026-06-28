@@ -35,8 +35,8 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
         supabase.from('profiles').select('display_name, apelido, email'),
         supabase
           .from('registros_producao')
-          .select('os_id, user_id, data_registro, comprimento_dia, ligacoes_dia')
-          .eq('excluido', false),
+          .select('os_id, user_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, status')
+          .eq('excluido', false).eq('status', 'ativo'),
       ]);
       const map: Record<string, string> = {};
       (profs ?? []).forEach((p: any) => {

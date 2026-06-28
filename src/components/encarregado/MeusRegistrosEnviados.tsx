@@ -175,13 +175,25 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       observacao: editing.observacao,
     };
     const valor_novo = { comprimento_dia: novoComp, ligacoes_dia: novoLig, observacao: editObs || null };
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('registros_producao')
       .update(valor_novo)
-      .eq('id', editing.id);
+      .eq('id', editing.id)
+      .eq('user_id', userId)
+      .eq('excluido', false)
+      .select('id');
     if (error) {
       setSaving(false);
       toast({ title: 'Não foi possível editar', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (!updated || updated.length === 0) {
+      setSaving(false);
+      toast({
+        title: 'Não foi possível editar',
+        description: 'Você não tem permissão para alterar este registro (talvez ele já tenha sido validado pela sala técnica ou você esteja autenticado como outro usuário).',
+        variant: 'destructive',
+      });
       return;
     }
     await supabase.from('registros_producao_auditoria').insert({

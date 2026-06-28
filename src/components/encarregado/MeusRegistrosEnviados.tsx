@@ -174,17 +174,15 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const salvarEdicao = async () => {
     if (!editing) return;
-    if ((editing.status ?? 'ativo') !== 'ativo') {
+    if (temIntervencaoTecnica(editing)) {
       toast({
         title: 'Edição bloqueada',
-        description: 'Este registro foi cancelado pela sala técnica. Solicite a restauração antes de editar.',
+        description: 'Registro ajustado pela sala técnica. Solicite nova correção se necessário.',
         variant: 'destructive',
       });
       setEditing(null);
       return;
     }
-    const novoComp = Number(editComp.replace(',', '.')) || 0;
-    const novoLig = Math.max(0, Math.floor(Number(editLig) || 0));
     if (novoComp < 0) { toast({ title: 'Valor inválido', variant: 'destructive' }); return; }
     setSaving(true);
     const valor_anterior = {

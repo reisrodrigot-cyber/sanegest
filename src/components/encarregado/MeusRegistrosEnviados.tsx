@@ -152,6 +152,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
   const podeEditar = (_r: RegistroRow, os?: OSRow) => {
     if (!os) return false;
     if (os.real_validado) return false;
+    if (isImpersonating) return false;
     return true;
   };
 

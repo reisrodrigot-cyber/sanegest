@@ -166,11 +166,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const salvarEdicao = async () => {
     if (!editing) return;
-    const osAtual = ordens[editing.os_id];
-    if (osAtual?.real_validado) {
+    if ((editing.status ?? 'ativo') !== 'ativo') {
       toast({
         title: 'Edição bloqueada',
-        description: 'A sala técnica já validou o REAL desta N.S. A produção final está protegida e não pode mais ser alterada pelo encarregado.',
+        description: 'Este registro foi cancelado pela sala técnica. Solicite a restauração antes de editar.',
         variant: 'destructive',
       });
       setEditing(null);
@@ -192,6 +191,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       .eq('id', editing.id)
       .eq('user_id', userId)
       .eq('excluido', false)
+      .eq('status', 'ativo')
       .select('id');
     if (error) {
       setSaving(false);
@@ -200,18 +200,9 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     }
     if (!updated || updated.length === 0) {
       setSaving(false);
-      // Recarrega a OS para checar se foi validada nesse meio tempo
-      const { data: osCheck } = await supabase
-        .from('ordens_servico')
-        .select('real_validado')
-        .eq('id', editing.os_id)
-        .maybeSingle();
-      const validadoAgora = !!osCheck?.real_validado;
       toast({
-        title: validadoAgora ? 'Edição bloqueada' : 'Não foi possível editar',
-        description: validadoAgora
-          ? 'A sala técnica validou o REAL desta N.S. A produção final está protegida e não pode mais ser alterada pelo encarregado.'
-          : 'Não foi possível editar este registro. Verifique se ele ainda é seu e se a N.S. ainda não foi validada pela sala técnica.',
+        title: 'Não foi possível editar',
+        description: 'Verifique se o registro ainda é seu e se não foi cancelado pela sala técnica.',
         variant: 'destructive',
       });
       setEditing(null);

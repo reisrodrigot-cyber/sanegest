@@ -972,6 +972,9 @@ const OSDetailPage = () => {
               <DataRow label="BMs" previsto={os.bms} real={os.bms_real} />
               <DataRow label="Executor" previsto={os.executor} real={os.executor_real} />
               <LigacoesComprimentos osId={os.id} />
+              <p className="text-[11px] text-muted-foreground mt-3 italic">
+                Executado de Comprimento e Ligações é calculado automaticamente pelos registros de produção ativos.
+              </p>
             </>
           )}
         </div>

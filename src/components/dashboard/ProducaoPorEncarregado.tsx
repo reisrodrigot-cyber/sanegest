@@ -56,13 +56,13 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    // Soma de registros por OS no mês atual (produção informada em campo).
+    // Soma de registros contabilizados (ajustado ?? informado) por OS no mês atual.
     const sumByOs = new Map<string, { comp: number; lig: number; lastDate: string }>();
     for (const r of registros) {
       if (!r.data_registro.startsWith(ym)) continue;
       const cur = sumByOs.get(r.os_id) ?? { comp: 0, lig: 0, lastDate: r.data_registro };
-      cur.comp += Number(r.comprimento_dia) || 0;
-      cur.lig += Number(r.ligacoes_dia) || 0;
+      cur.comp += Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+      cur.lig += Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
       if (r.data_registro > cur.lastDate) cur.lastDate = r.data_registro;
       sumByOs.set(r.os_id, cur);
     }
@@ -72,11 +72,8 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
       .filter(os => os.liberado_para)
       .forEach(os => {
         const campo = sumByOs.get(os.id);
-        const validado = (os as any).real_validado === true;
-        // Regra: se validado → usa comprimento_real / ligacoes_real;
-        // senão → usa soma dos registros de campo no mês atual.
-        const metros = validado ? Number(os.comprimento_real) || 0 : campo?.comp ?? 0;
-        const ligs = validado ? Number(os.ligacoes_real) || 0 : campo?.lig ?? 0;
+        const metros = campo?.comp ?? 0;
+        const ligs = campo?.lig ?? 0;
         if (metros <= 0 && ligs <= 0) return;
         const raw = os.liberado_para!;
         const nome = apelidoMap[raw] || raw;
@@ -84,7 +81,7 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
         cur.nsExecutadas += 1;
         cur.totalMetros += metros;
         cur.totalLigacoes += ligs;
-        const dataRef = validado ? new Date(os.updated_at) : new Date((campo?.lastDate ?? os.updated_at) + (campo?.lastDate ? 'T00:00:00' : ''));
+        const dataRef = new Date((campo?.lastDate ?? os.updated_at) + (campo?.lastDate ? 'T00:00:00' : ''));
         cur.ns.push({
           id: os.id,
           trecho: os.trecho,
@@ -92,7 +89,7 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
           metros,
           ligacoes: ligs,
           data: dataRef.toLocaleDateString('pt-BR'),
-          fonte: validado ? 'validado' : 'campo',
+          fonte: 'campo',
         });
         map.set(nome, cur);
       });

@@ -752,17 +752,9 @@ const OSDetailPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {isEncarregado && !editingReal && !editing && (
-        <div className="flex flex-wrap gap-3 mb-6">
-          <button
-            onClick={startEditingReal}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
-          >
-            <Pencil size={14} />
-            Editar Dados Reais
-          </button>
-        </div>
-      )}
+      {/* Botão "Editar Dados Reais" removido — comprimento_real/ligacoes_real
+          são cache automático dos registros_producao ativos. Toda correção do
+          executado deve passar pela seção "Registros de Produção" abaixo. */}
 
       {/* Encarregado Responsável — Sala Técnica */}
       {isSalaTecnica && !editing && (

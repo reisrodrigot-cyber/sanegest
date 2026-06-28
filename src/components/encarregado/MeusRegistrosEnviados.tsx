@@ -430,9 +430,14 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                   </div>
                 )}
                 {validado && (
-                  <p className="mt-3 pt-3 border-t border-border text-[11px] text-muted-foreground italic">
-                    Validado pela sala técnica — edição bloqueada.
-                  </p>
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                      REAL validado pela sala técnica
+                    </p>
+                    <p className="text-[11px] text-muted-foreground italic mt-0.5">
+                      A produção final da N.S. está protegida. O encarregado não pode mais editar nem excluir registros que impactem o quantitativo final.
+                    </p>
+                  </div>
                 )}
               </li>
             );

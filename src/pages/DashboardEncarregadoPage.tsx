@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
   Legend,
   CartesianGrid,
+  ReferenceLine,
 } from 'recharts';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 

@@ -710,16 +710,7 @@ const OSDetailPage = () => {
       {/* Ações da Sala Técnica */}
       {isSalaTecnica && (
         <div className="flex flex-wrap gap-3 mb-6">
-          {canValidar && (
-            <button
-              onClick={handleValidar}
-              disabled={validando}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-status-green text-white text-sm font-medium disabled:opacity-50"
-            >
-              {validando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-              ✓ Validar Produção
-            </button>
-          )}
+          {/* Validação manual removida — registros_producao é a fonte única da produção executada. */}
           {!editing && (
             <button
               onClick={startEditing}

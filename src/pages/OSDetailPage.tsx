@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, 
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { OSHistoricoSection } from '@/components/OSHistoricoSection';
 import { LigacoesComprimentos } from '@/components/LigacoesComprimentos';
+import { RegistrosProducaoOS } from '@/components/os/RegistrosProducaoOS';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';

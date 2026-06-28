@@ -15,6 +15,11 @@ interface RegistroRow {
   data_registro: string;
   comprimento_dia: number;
   ligacoes_dia: number;
+  comprimento_ajustado: number | null;
+  ligacoes_ajustadas: number | null;
+  status: string;
+  motivo_cancelamento: string | null;
+  motivo_ajuste: string | null;
   observacao: string | null;
   tipo_pavimento: string | null;
   created_at: string;
@@ -25,7 +30,6 @@ interface OSRow {
   trecho: string;
   comprimento_real: number | null;
   ligacoes_real: number | null;
-  real_validado: boolean | null;
 }
 
 type Filtro = 'hoje' | 'semana' | 'mes';

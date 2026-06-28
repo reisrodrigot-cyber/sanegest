@@ -232,6 +232,16 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const confirmarExclusao = async () => {
     if (!deleting) return;
+    const osAtual = ordens[deleting.os_id];
+    if (osAtual?.real_validado) {
+      toast({
+        title: 'Exclusão bloqueada',
+        description: 'A sala técnica já validou o REAL desta N.S. A produção final está protegida e não pode mais ser excluída pelo encarregado.',
+        variant: 'destructive',
+      });
+      setDeleting(null);
+      return;
+    }
     setRemoving(true);
     const valor_anterior = {
       comprimento_dia: deleting.comprimento_dia,
@@ -252,13 +262,24 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     }
     if (!updated || updated.length === 0) {
       setRemoving(false);
+      const { data: osCheck } = await supabase
+        .from('ordens_servico')
+        .select('real_validado')
+        .eq('id', deleting.os_id)
+        .maybeSingle();
+      const validadoAgora = !!osCheck?.real_validado;
       toast({
-        title: 'Não foi possível excluir',
-        description: 'Você não tem permissão para excluir este registro (talvez ele já tenha sido validado pela sala técnica ou você esteja autenticado como outro usuário).',
+        title: validadoAgora ? 'Exclusão bloqueada' : 'Não foi possível excluir',
+        description: validadoAgora
+          ? 'A sala técnica validou o REAL desta N.S. A produção final está protegida e não pode mais ser excluída pelo encarregado.'
+          : 'Não foi possível excluir este registro. Verifique se ele ainda é seu e se a N.S. ainda não foi validada pela sala técnica.',
         variant: 'destructive',
       });
+      setDeleting(null);
+      setReloadKey((k) => k + 1);
       return;
     }
+
     // Remove imediatamente da UI para feedback instantâneo
     setRegistros((prev) => prev.filter((x) => x.id !== deleting.id));
     await supabase.from('registros_producao_auditoria').insert({

@@ -299,7 +299,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       <div className="mb-3">
         <h2 className="text-lg font-bold text-foreground">Meus registros enviados</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Confira aqui o que você já lançou. Você pode editar ou excluir cada registro até que a sala técnica valide o REAL.
+          Cada envio já conta como produção. Você pode editar ou excluir seus registros enquanto eles estiverem ativos. A sala técnica pode ajustar, cancelar ou restaurar lançamentos com auditoria.
         </p>
       </div>
 

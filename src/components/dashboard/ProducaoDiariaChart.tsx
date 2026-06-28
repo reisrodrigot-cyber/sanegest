@@ -25,8 +25,8 @@ export const ProducaoDiariaChart = () => {
     Promise.all([
       supabase
         .from('registros_producao')
-        .select('os_id, data_registro, comprimento_dia')
-        .eq('excluido', false)
+        .select('os_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, status')
+        .eq('excluido', false).eq('status', 'ativo')
         .gte('data_registro', sinceStr),
       supabase
         .from('ordens_servico')

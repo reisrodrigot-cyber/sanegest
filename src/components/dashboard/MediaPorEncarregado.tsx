@@ -22,7 +22,7 @@ export const MediaPorEncarregado = () => {
         supabase
           .from('registros_producao')
           .select('os_id, user_id, data_registro, comprimento_dia')
-          .eq('excluido', false),
+          .eq('excluido', false).eq('status', 'ativo'),
         supabase
           .from('ordens_servico')
           .select('id, comprimento_real, ligacoes_real, real_validado'),

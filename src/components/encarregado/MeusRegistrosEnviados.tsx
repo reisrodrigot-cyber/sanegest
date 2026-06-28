@@ -153,10 +153,8 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     return m;
   }, [registros]);
 
-  const podeEditar = (_r: RegistroRow, os?: OSRow) => {
-    if (!os) return false;
-    if (os.real_validado) return false;
-    return true;
+  const podeEditar = (r: RegistroRow) => {
+    return (r.status ?? 'ativo') === 'ativo';
   };
 
   const abrirEdicao = (r: RegistroRow) => {

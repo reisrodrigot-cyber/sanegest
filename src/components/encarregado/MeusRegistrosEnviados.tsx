@@ -15,6 +15,11 @@ interface RegistroRow {
   data_registro: string;
   comprimento_dia: number;
   ligacoes_dia: number;
+  comprimento_ajustado: number | null;
+  ligacoes_ajustadas: number | null;
+  status: string;
+  motivo_cancelamento: string | null;
+  motivo_ajuste: string | null;
   observacao: string | null;
   tipo_pavimento: string | null;
   created_at: string;
@@ -25,7 +30,6 @@ interface OSRow {
   trecho: string;
   comprimento_real: number | null;
   ligacoes_real: number | null;
-  real_validado: boolean | null;
 }
 
 type Filtro = 'hoje' | 'semana' | 'mes';
@@ -101,7 +105,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       const since = startOf(filtro);
       const { data: regs } = await supabase
         .from('registros_producao')
-        .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, observacao, tipo_pavimento, created_at')
+        .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, status, motivo_cancelamento, motivo_ajuste, observacao, tipo_pavimento, created_at')
         .eq('user_id', userId)
         .eq('excluido', false)
         .gte('data_registro', since)
@@ -114,7 +118,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       if (osIds.length > 0) {
         const { data: os } = await supabase
           .from('ordens_servico')
-          .select('id, trecho, comprimento_real, ligacoes_real, real_validado')
+          .select('id, trecho, comprimento_real, ligacoes_real')
           .in('id', osIds);
         (os ?? []).forEach((o: any) => { osMap[o.id] = o as OSRow; });
       }
@@ -149,10 +153,8 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     return m;
   }, [registros]);
 
-  const podeEditar = (_r: RegistroRow, os?: OSRow) => {
-    if (!os) return false;
-    if (os.real_validado) return false;
-    return true;
+  const podeEditar = (r: RegistroRow) => {
+    return (r.status ?? 'ativo') === 'ativo';
   };
 
   const abrirEdicao = (r: RegistroRow) => {
@@ -164,11 +166,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const salvarEdicao = async () => {
     if (!editing) return;
-    const osAtual = ordens[editing.os_id];
-    if (osAtual?.real_validado) {
+    if ((editing.status ?? 'ativo') !== 'ativo') {
       toast({
         title: 'Edição bloqueada',
-        description: 'A sala técnica já validou o REAL desta N.S. A produção final está protegida e não pode mais ser alterada pelo encarregado.',
+        description: 'Este registro foi cancelado pela sala técnica. Solicite a restauração antes de editar.',
         variant: 'destructive',
       });
       setEditing(null);
@@ -190,6 +191,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       .eq('id', editing.id)
       .eq('user_id', userId)
       .eq('excluido', false)
+      .eq('status', 'ativo')
       .select('id');
     if (error) {
       setSaving(false);
@@ -198,18 +200,9 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     }
     if (!updated || updated.length === 0) {
       setSaving(false);
-      // Recarrega a OS para checar se foi validada nesse meio tempo
-      const { data: osCheck } = await supabase
-        .from('ordens_servico')
-        .select('real_validado')
-        .eq('id', editing.os_id)
-        .maybeSingle();
-      const validadoAgora = !!osCheck?.real_validado;
       toast({
-        title: validadoAgora ? 'Edição bloqueada' : 'Não foi possível editar',
-        description: validadoAgora
-          ? 'A sala técnica validou o REAL desta N.S. A produção final está protegida e não pode mais ser alterada pelo encarregado.'
-          : 'Não foi possível editar este registro. Verifique se ele ainda é seu e se a N.S. ainda não foi validada pela sala técnica.',
+        title: 'Não foi possível editar',
+        description: 'Verifique se o registro ainda é seu e se não foi cancelado pela sala técnica.',
         variant: 'destructive',
       });
       setEditing(null);
@@ -232,11 +225,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const confirmarExclusao = async () => {
     if (!deleting) return;
-    const osAtual = ordens[deleting.os_id];
-    if (osAtual?.real_validado) {
+    if ((deleting.status ?? 'ativo') !== 'ativo') {
       toast({
         title: 'Exclusão bloqueada',
-        description: 'A sala técnica já validou o REAL desta N.S. A produção final está protegida e não pode mais ser excluída pelo encarregado.',
+        description: 'Este registro foi cancelado pela sala técnica e não está mais ativo.',
         variant: 'destructive',
       });
       setDeleting(null);
@@ -254,6 +246,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       .eq('id', deleting.id)
       .eq('user_id', userId)
       .eq('excluido', false)
+      .eq('status', 'ativo')
       .select('id');
     if (error) {
       setRemoving(false);
@@ -262,17 +255,9 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     }
     if (!updated || updated.length === 0) {
       setRemoving(false);
-      const { data: osCheck } = await supabase
-        .from('ordens_servico')
-        .select('real_validado')
-        .eq('id', deleting.os_id)
-        .maybeSingle();
-      const validadoAgora = !!osCheck?.real_validado;
       toast({
-        title: validadoAgora ? 'Exclusão bloqueada' : 'Não foi possível excluir',
-        description: validadoAgora
-          ? 'A sala técnica validou o REAL desta N.S. A produção final está protegida e não pode mais ser excluída pelo encarregado.'
-          : 'Não foi possível excluir este registro. Verifique se ele ainda é seu e se a N.S. ainda não foi validada pela sala técnica.',
+        title: 'Não foi possível excluir',
+        description: 'Verifique se o registro ainda é seu e se não foi cancelado pela sala técnica.',
         variant: 'destructive',
       });
       setDeleting(null);
@@ -314,7 +299,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       <div className="mb-3">
         <h2 className="text-lg font-bold text-foreground">Meus registros enviados</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Confira aqui o que você já lançou. Você pode editar ou excluir cada registro até que a sala técnica valide o REAL.
+          Cada envio já conta como produção. Você pode editar ou excluir seus registros enquanto eles estiverem ativos. A sala técnica pode ajustar, cancelar ou restaurar lançamentos com auditoria.
         </p>
       </div>
 
@@ -339,24 +324,23 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
           {itens.map((r) => {
             const os = ordens[r.os_id];
             const trecho = os?.trecho ?? 'Trecho —';
-            const validado = !!os?.real_validado;
-            const soma = somaPorOs.get(r.os_id) ?? { comp: 0, lig: 0 };
-            const compValid = Number(os?.comprimento_real) || 0;
-            const ligValid = Number(os?.ligacoes_real) || 0;
-            const diferente = validado && soma.comp > 0 && Math.abs(compValid - soma.comp) > 0.01;
+            const cancelado = (r.status ?? 'ativo') === 'cancelado';
+            const ajustado = r.comprimento_ajustado != null || r.ligacoes_ajustadas != null;
+            const compContab = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+            const ligContab = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
-            const statusLabel = !validado
-              ? 'Enviado — aguardando validação'
-              : diferente ? 'Ajustado pela sala técnica' : 'Validado pela sala técnica';
-            const StatusIcon = !validado ? Clock : diferente ? AlertTriangle : CheckCircle2;
-            const statusColor = !validado
-              ? 'text-amber-600 dark:text-amber-400'
-              : diferente ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400';
+            const statusLabel = cancelado
+              ? 'Cancelado pela sala técnica'
+              : ajustado ? 'Ajustado pela sala técnica' : 'Contabilizado na produção';
+            const StatusIcon = cancelado ? AlertTriangle : ajustado ? AlertTriangle : CheckCircle2;
+            const statusColor = cancelado
+              ? 'text-destructive'
+              : ajustado ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400';
 
-            const editavel = podeEditar(r, os);
+            const editavel = podeEditar(r);
 
             return (
-              <li key={r.id} className="rounded-lg border border-border bg-background p-3 sm:p-4">
+              <li key={r.id} className={`rounded-lg border border-border bg-background p-3 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">{fmtDataCurta(r.data_registro)}</p>
@@ -372,26 +356,28 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                   <div className="rounded-md bg-muted/40 p-2">
                     <p className="text-[11px] text-muted-foreground">Comprimento informado</p>
                     <p className="text-base font-bold text-foreground">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
+                    {ajustado && r.comprimento_ajustado != null && (
+                      <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+                        Ajustado: <span className="font-semibold">{fmtMetros(compContab)}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="rounded-md bg-muted/40 p-2">
                     <p className="text-[11px] text-muted-foreground">Ligações informadas</p>
                     <p className="text-base font-bold text-foreground">{r.ligacoes_dia ?? 0}</p>
+                    {ajustado && r.ligacoes_ajustadas != null && (
+                      <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+                        Ajustado: <span className="font-semibold">{ligContab}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {diferente && (
-                  <div className="mt-3 rounded-md border border-orange-500/30 bg-orange-500/10 p-2 text-xs space-y-0.5">
-                    <p className="text-foreground">
-                      <span className="text-muted-foreground">Informado em campo (total da OS):</span>{' '}
-                      <span className="font-semibold">{fmtMetros(soma.comp)}</span>
-                      {soma.lig > 0 && <> · {soma.lig} ligação(ões)</>}
-                    </p>
-                    <p className="text-foreground">
-                      <span className="text-muted-foreground">REAL validado pela sala técnica:</span>{' '}
-                      <span className="font-semibold">{fmtMetros(compValid)}</span>
-                      {ligValid > 0 && <> · {ligValid} ligação(ões)</>}
-                    </p>
-                  </div>
+                {r.motivo_ajuste && (
+                  <p className="mt-2 text-[11px] text-orange-700 dark:text-orange-300 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
+                )}
+                {cancelado && r.motivo_cancelamento && (
+                  <p className="mt-2 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
                 )}
 
                 {r.observacao && (
@@ -407,7 +393,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                 {editavel && (
                   <div className="mt-3 pt-3 border-t border-border">
                     <p className="text-[11px] text-muted-foreground mb-2">
-                      Editável até validação da sala técnica.
+                      Este registro está ativo. Você pode editá-lo ou excluí-lo enquanto não for cancelado pela sala técnica.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
@@ -429,13 +415,13 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                     </div>
                   </div>
                 )}
-                {validado && (
+                {cancelado && (
                   <div className="mt-3 pt-3 border-t border-border">
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
-                      REAL validado pela sala técnica
+                    <p className="text-[11px] text-destructive font-semibold">
+                      Registro cancelado pela sala técnica
                     </p>
                     <p className="text-[11px] text-muted-foreground italic mt-0.5">
-                      A produção final da N.S. está protegida. O encarregado não pode mais editar nem excluir registros que impactem o quantitativo final.
+                      O lançamento não está contabilizado na produção. Solicite restauração à sala técnica se necessário.
                     </p>
                   </div>
                 )}

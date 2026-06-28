@@ -782,6 +782,11 @@ export type Database = {
       }
       registros_producao: {
         Row: {
+          ajustado_em: string | null
+          ajustado_por: string | null
+          cancelado_em: string | null
+          cancelado_por: string | null
+          comprimento_ajustado: number | null
           comprimento_dia: number
           created_at: string
           data_registro: string
@@ -789,15 +794,24 @@ export type Database = {
           excluido_em: string | null
           excluido_por: string | null
           id: string
+          ligacoes_ajustadas: number | null
           ligacoes_dia: number
+          motivo_ajuste: string | null
+          motivo_cancelamento: string | null
           motivo_exclusao: string | null
           observacao: string | null
           os_id: string
+          status: string
           tipo_pavimento: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          ajustado_em?: string | null
+          ajustado_por?: string | null
+          cancelado_em?: string | null
+          cancelado_por?: string | null
+          comprimento_ajustado?: number | null
           comprimento_dia?: number
           created_at?: string
           data_registro?: string
@@ -805,15 +819,24 @@ export type Database = {
           excluido_em?: string | null
           excluido_por?: string | null
           id?: string
+          ligacoes_ajustadas?: number | null
           ligacoes_dia?: number
+          motivo_ajuste?: string | null
+          motivo_cancelamento?: string | null
           motivo_exclusao?: string | null
           observacao?: string | null
           os_id: string
+          status?: string
           tipo_pavimento?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          ajustado_em?: string | null
+          ajustado_por?: string | null
+          cancelado_em?: string | null
+          cancelado_por?: string | null
+          comprimento_ajustado?: number | null
           comprimento_dia?: number
           created_at?: string
           data_registro?: string
@@ -821,10 +844,14 @@ export type Database = {
           excluido_em?: string | null
           excluido_por?: string | null
           id?: string
+          ligacoes_ajustadas?: number | null
           ligacoes_dia?: number
+          motivo_ajuste?: string | null
+          motivo_cancelamento?: string | null
           motivo_exclusao?: string | null
           observacao?: string | null
           os_id?: string
+          status?: string
           tipo_pavimento?: string | null
           updated_at?: string
           user_id?: string

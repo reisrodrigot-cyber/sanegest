@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, 
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { OSHistoricoSection } from '@/components/OSHistoricoSection';
 import { LigacoesComprimentos } from '@/components/LigacoesComprimentos';
+import { RegistrosProducaoOS } from '@/components/os/RegistrosProducaoOS';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -477,18 +478,14 @@ const OSDetailPage = () => {
       prazo_real: toInt(realFields.prazo_real),
       bms_real: realFields.bms_real || null,
       executor_real: realFields.executor_real || null,
-      // Sala Técnica está confirmando os valores → marca como validado.
-      // A partir daqui esses valores prevalecem sobre o somatório bruto de
-      // registros de campo em todos os cálculos oficiais.
-      real_validado: true,
-      real_validado_em: new Date().toISOString(),
-      real_validado_por: user?.id ?? null,
+      // Valores REAL editados manualmente são preservados como referência.
+      // A produção contabilizada da N.S. vem dos registros_producao ativos.
     };
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
     if (error) {
       toast.error('Erro ao salvar: ' + error.message);
     } else {
-      toast.success('Valores REAIS validados pela Sala Técnica.');
+      toast.success('Dados REAIS atualizados.');
       setEditingReal(false);
       window.location.reload();
     }
@@ -611,15 +608,11 @@ const OSDetailPage = () => {
               Liberada para {os.liberado_para}
             </span>
           )}
-          {os.real_validado ? (
+          {(campoSums && (campoSums.comprimento > 0 || campoSums.ligacoes > 0)) && (
             <span className="text-xs px-2 py-1 rounded-full bg-status-green/20 text-status-green font-medium">
-              ✓ REAL validado pela Sala Técnica
+              Produção executada — {campoSums.comprimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m · {campoSums.ligacoes} lig.
             </span>
-          ) : (campoSums && (campoSums.comprimento > 0 || campoSums.ligacoes > 0)) ? (
-            <span className="text-xs px-2 py-1 rounded-full bg-status-yellow/20 text-status-yellow font-medium">
-              REAL provisório (informado em campo)
-            </span>
-          ) : null}
+          )}
           {locatable && (
             <button
               onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
@@ -713,16 +706,7 @@ const OSDetailPage = () => {
       {/* Ações da Sala Técnica */}
       {isSalaTecnica && (
         <div className="flex flex-wrap gap-3 mb-6">
-          {canValidar && (
-            <button
-              onClick={handleValidar}
-              disabled={validando}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-status-green text-white text-sm font-medium disabled:opacity-50"
-            >
-              {validando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-              ✓ Validar Produção
-            </button>
-          )}
+          {/* Validação manual removida — registros_producao é a fonte única da produção executada. */}
           {!editing && (
             <button
               onClick={startEditing}
@@ -993,6 +977,10 @@ const OSDetailPage = () => {
           )}
         </div>
       </div>
+
+      {/* Registros de Produção — fonte única da produção executada */}
+      <RegistrosProducaoOS osId={os.id} />
+
 
       {/* Histórico — visível para Sala Técnica e Admin */}
       {isSalaTecnica && (

@@ -198,15 +198,13 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       }
     }
 
-    // Atualiza o "real informado em campo" cumulativo na OS — mas NUNCA
-    // sobrescreve valores já validados pela Sala Técnica (real_validado=true),
-    // que prevalecem para corrigir duplicidades de campo.
-    if (!(os as any).real_validado) {
-      const novoAcumComp = acumComprimento + compNum;
-      const novoAcumLig = acumLigacoes + ligNum;
+    // O cache `comprimento_real` / `ligacoes_real` em ordens_servico é
+    // mantido por trigger no banco a partir dos registros_producao ativos.
+    // Aqui só atualizamos o pavimento real, que não vem do registro.
+    if (tipoPavimento) {
       await supabase
         .from('ordens_servico')
-        .update({ comprimento_real: novoAcumComp, ligacoes_real: novoAcumLig, pav_real: tipoPavimento })
+        .update({ pav_real: tipoPavimento })
         .eq('id', os.id);
     }
 

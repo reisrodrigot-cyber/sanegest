@@ -1,69 +1,75 @@
-# Plano: Versionamento Base + Revisões por Trecho
+# Plano — registros_producao como fonte única de verdade
 
-## Objetivo
-O mesmo botão de importação detecta automaticamente se a N.S./trecho é novidade (vira **Projeto Base**) ou já existe (cria **Rev.NN** e atualiza o dado vigente). O app continua usando apenas o vigente — nenhuma tela nova. A base histórica e revisões aparecem **apenas na exportação do Planilhão**.
+## 1. Campos existentes em `registros_producao`
+- `id, os_id, user_id`
+- `data_registro` (date)
+- `comprimento_dia` (numeric), `ligacoes_dia` (int) — valores informados pelo encarregado
+- `observacao`, `tipo_pavimento`
+- `created_at, updated_at`
+- `excluido` (bool), `excluido_em`, `excluido_por`, `motivo_exclusao`
 
-## Chave de identificação
-Continua a chave já usada hoje no importador: `Trecho + Bacia + PV Montante + PV Jusante` (case-insensitive). Se houver match → revisão; se não → base.
+Já existe auditoria em `registros_producao_auditoria` e função `recompute_os_real_from_registros()` + trigger `tg_registros_producao_sync_os` que recalcula `ordens_servico.comprimento_real / ligacoes_real` quando `real_validado` ≠ true.
 
-## Comportamento por importação
+## 2. Campos novos necessários em `registros_producao`
+- `comprimento_ajustado` numeric NULL — ajuste técnico do comprimento
+- `ligacoes_ajustadas` int NULL — ajuste técnico das ligações
+- `ajustado_por` uuid NULL, `ajustado_em` timestamptz NULL, `motivo_ajuste` text NULL
+- `status` text NOT NULL DEFAULT `'ativo'` CHECK in (`'ativo'`,`'cancelado'`) — cancelamento lógico distinto de `excluido` (mantemos `excluido` por compatibilidade; UI nova usa `status`)
+- `cancelado_por`, `cancelado_em`, `motivo_cancelamento`
 
-```text
-para cada linha do .xlsx:
-  chave = (trecho, bacia, pv_montante, pv_jusante)
-  achou OS existente?
-    NÃO → INSERT em ordens_servico (base) + INSERT em os_revisoes (versao=0, "Projeto Base")
-    SIM → INSERT em os_revisoes (versao = max+1, "Rev.NN")
-           + UPDATE em ordens_servico apenas dos campos PROJETADOS não-vazios
-           (campo vazio = "sem alteração", nunca apaga vigente)
+A produção contabilizada do registro passa a ser:
 ```
+comprimento_contabilizado = COALESCE(comprimento_ajustado, comprimento_dia)
+ligacoes_contabilizadas   = COALESCE(ligacoes_ajustadas,   ligacoes_dia)
+```
+considerando apenas `excluido IS NOT TRUE AND status <> 'cancelado'`.
 
-Campos REAIS, status, liberação, produção, materiais, topografia → **nunca tocados**.
+## 3. Seção "Registros de Produção" na N.S. aberta
+Em `OSDetailPage`, abaixo de "Dados do Trecho" (`OSDetalhesTrecho`), nova seção com tabela enxuta:
 
-## Marcação de remoção
-Valores `SUPRIMIDO`, `RETIRADO`, `REMOVER`, `CANCELADO` em qualquer célula chave do trecho → cria revisão e marca `ordens_servico.status_vigencia = 'SUPRIMIDO'` (nova coluna). App pode filtrar/exibir badge depois — agora só preserva.
+| Data | Encarregado | Comp. informado | Comp. final | Ligações | Status | Ações |
+|---|---|---|---|---|---|---|
 
-## Mudanças de banco
-Migração única:
+- "Comp. final" = valor ajustado se houver (com badge "ajustado"), senão o informado.
+- Linha cancelada/excluída fica esmaecida, com motivo em tooltip.
+- Ações (apenas sala_tecnica/gerencia): **Ajustar**, **Cancelar**, **Restaurar**.
+- Rodapé: totais ativos (deve bater com "Executado" do cabeçalho).
 
-1. **Nova tabela `os_revisoes`**: guarda o snapshot completo dos 17 campos projetados a cada importação.
-   - `id`, `os_id` (FK), `versao` (int, 0=base), `rotulo` ("Projeto Base" / "Rev.01"...), `imported_at`, `import_log_id` (FK opcional), todos os 17 campos projetados (mesmas colunas/tipos de `ordens_servico`), `created_at`.
-   - Unique `(os_id, versao)`.
-   - GRANTs + RLS: `authenticated` lê; insert via service_role (ou authenticated com role sala_tecnica/admin/gerencia).
+Encarregado continua usando "Meus registros enviados" para editar/excluir os próprios — sem mudança de layout.
 
-2. **Nova coluna em `ordens_servico`**: `status_vigencia text default 'ATIVO'` (`ATIVO|SUPRIMIDO`).
+## 4. Componentes/telas impactadas
+- `src/pages/OSDetailPage.tsx` — inclui a nova seção.
+- novo `src/components/os/RegistrosProducaoOS.tsx` — tabela + modais Ajustar/Cancelar/Restaurar.
+- `src/components/OSDetalhesTrecho.tsx` — "Executado" passa a vir do somatório contabilizado (via `comprimento_real` recalculado, que continua sendo cache).
+- `src/components/encarregado/MeusRegistrosEnviados.tsx` — remover bloqueio por `real_validado`; passar a respeitar `status='cancelado'` (registro cancelado pela sala técnica não é editável pelo encarregado, só restaurável pela técnica).
+- `src/lib/realEfetivo.ts` / `planilhaoExport.ts` / dashboards — passam a ler do cache `comprimento_real` (já sincronizado), sem ler `real_validado`.
+- Remover UI/uso de "validar REAL" onde aparecer.
 
-3. **Backfill**: para cada OS já existente, criar uma linha `versao=0` em `os_revisoes` com os valores projetados atuais (rotulo "Projeto Base").
+## 5. Banco — funções, triggers, views
+- Alterar `recompute_os_real_from_registros(_os_id)`:
+  - remover o `IF v_validado IS TRUE THEN RETURN`;
+  - somar `COALESCE(comprimento_ajustado, comprimento_dia)` e `COALESCE(ligacoes_ajustadas, ligacoes_dia)`;
+  - filtrar `excluido IS NOT TRUE AND status <> 'cancelado'`.
+- Trigger `tg_registros_producao_sync_os` permanece (já cobre INSERT/UPDATE/DELETE).
+- Auditoria: ampliar `registros_producao_auditoria.acao` para aceitar `'ajuste'`, `'cancelamento'`, `'restauracao'` (texto livre — sem mudança de schema se já for text).
+- RLS em `registros_producao`: nova policy de UPDATE para `sala_tecnica`/`gerencia` (ajuste/cancelar/restaurar). Encarregado mantém policy atual.
+- `ordens_servico.real_validado` e `_real`: manter colunas como **cache**; não remover. `real_validado` deixa de ser usado pela aplicação (poderá ser depreciado depois).
 
-## Mudanças de código
+## 6. Migração de dados
+- Backfill: para cada OS, popular `comprimento_real`/`ligacoes_real` via `recompute_os_real_from_registros` com a nova lógica.
+- Onde `real_validado=true` e o somatório dos registros ≠ valor validado: criar um registro de auditoria informativo e **não** alterar dados históricos automaticamente; sala técnica pode ajustar via UI nova.
+- Nenhuma linha de `registros_producao` ou `registros_producao_auditoria` é apagada.
 
-### `src/pages/ImportarPage.tsx`
-- Mantém o mesmo botão e o mesmo fluxo de análise prévia (NEW / UPDATE / UNCHANGED).
-- No `handleConfirm`:
-  - **NEW** → insert em `ordens_servico` (como hoje) + insert em `os_revisoes` (versao 0, "Projeto Base").
-  - **UPDATE** → buscar `max(versao)` da OS, criar nova linha em `os_revisoes` (versao+1, "Rev.NN" zero-padded) com **snapshot completo dos novos valores projetados**; atualizar `ordens_servico` somente com campos não-vazios (vazio = sem alteração); se algum campo trouxer marcador de remoção → `status_vigencia='SUPRIMIDO'`.
-- O texto explicativo do card "Como funciona" passa a mencionar: "Trechos novos viram Projeto Base; trechos existentes geram Rev.NN e atualizam o vigente. Base e revisões só aparecem na exportação do Planilhão."
+## 7. Riscos
+- OS com `real_validado=true` cujo somatório atual diverge do valor validado: o "Executado" pode mudar após o deploy. Mitigar com relatório prévio das divergências e comunicar a sala técnica.
+- Dashboards/Planilhão dependem hoje de `comprimento_real`; como continuamos populando esse cache, o impacto é nulo se o backfill rodar.
+- Encarregado pode editar registros antigos que antes estavam congelados pela validação — comportamento desejado, mas precisa estar claro no texto da UI.
 
-### `src/lib/planilhaoExport.ts` + `supabase/functions/export-planilhao/index.ts`
-- Carregar para cada OS todas as linhas de `os_revisoes` ordenadas por `versao`.
-- Reestruturar layout: para cada um dos 17 campos projetados, gerar colunas `Campo - Projeto Base`, `Campo - Rev.01`, `Campo - Rev.02`, ... `Campo - Atual`. Número de colunas Rev cresce até o máximo de revisões existente na obra.
-- Cabeçalho duplo: linha de grupo (nome do campo, mesclada) + linha de versão.
-- Mantém metadado "Gerado em ...", autofilter, zoom 70%, bordas, paleta amarelo/azul/amarelo.
-- Mesma estrutura para o download manual (`OrdensPage`) e para a edge function de backup.
+## 8. Implementação em etapas seguras
+1. **Migração 1 (schema):** adicionar colunas de ajuste e `status` em `registros_producao`; ampliar policies para sala técnica; atualizar `recompute_os_real_from_registros` com a nova fórmula e filtros; backfill.
+2. **Backend de leitura:** ajustar `realEfetivo`, exports e dashboards para ignorar `real_validado` (passam a confiar apenas no cache recomputado).
+3. **UI sala técnica:** nova seção "Registros de Produção" em `OSDetailPage` com Ajustar / Cancelar / Restaurar e auditoria.
+4. **UI encarregado:** remover bloqueio por `real_validado` em `MeusRegistrosEnviados`; tratar `status='cancelado'` como bloqueado para o encarregado.
+5. **Limpeza:** esconder textos/badges de "validação técnica" remanescentes; manter colunas `real_validado/_real` no banco como cache até confirmar estabilidade.
 
-## O que NÃO muda
-- Nenhuma nova rota, tela, modal, ou botão.
-- Dashboards, mapa, OS detail, encarregado: continuam lendo `ordens_servico` (vigente). Nada na UI muda.
-- Status (VERMELHO/AMARELO/VERDE), liberação, produção, materiais, topografia, RLS dessas tabelas → intactos.
-- Endpoint da edge function `/functions/v1/export-planilhao` e o token estático seguem iguais — só o XLSX gerado muda de layout.
-
-## Ordem de execução
-1. Migração: `os_revisoes` + `status_vigencia` + backfill versao 0.
-2. Atualizar `ImportarPage.tsx` para gravar revisões.
-3. Atualizar `planilhaoExport.ts` (manual) e `export-planilhao/index.ts` (cron) com o novo layout multi-versão.
-4. Verificar build.
-
-## Pontos abertos para o usuário confirmar
-1. **Marcadores de remoção**: aceito a lista `SUPRIMIDO | RETIRADO | REMOVER | CANCELADO` em qualquer célula do trecho como sinal de supressão. OK?
-2. **Layout do Planilhão exportado**: o modelo "colunas por versão" (Campo - Base, Campo - Rev.01, ..., Campo - Atual) é o desejado, em uma única aba `PLANILHÃO`. OK?
-3. **Visibilidade do histórico no app**: confirmo que não devo expor nem badge "Rev.NN" nem painel de histórico em OS Detail nesta etapa — apenas preservar dados no banco. OK?
+Confirma este plano para eu executar a partir da Etapa 1?

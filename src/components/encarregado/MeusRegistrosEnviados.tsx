@@ -398,10 +398,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                 </div>
 
                 {/* Ações de edição/exclusão do encarregado */}
-                {editavel && (
+                {editavel ? (
                   <div className="mt-3 pt-3 border-t border-border">
                     <p className="text-[11px] text-muted-foreground mb-2">
-                      Este registro está ativo. Você pode editá-lo ou excluí-lo enquanto não for cancelado pela sala técnica.
+                      Este registro está ativo e ainda não foi ajustado pela sala técnica. Você pode editá-lo ou excluí-lo.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
@@ -422,14 +422,13 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                       </Button>
                     </div>
                   </div>
-                )}
-                {cancelado && (
+                ) : (
                   <div className="mt-3 pt-3 border-t border-border">
-                    <p className="text-[11px] text-destructive font-semibold">
-                      Registro cancelado pela sala técnica
+                    <p className={`text-[11px] font-semibold ${cancelado ? 'text-destructive' : 'text-orange-700 dark:text-orange-300'}`}>
+                      Registro {cancelado ? 'cancelado' : 'ajustado'} pela sala técnica
                     </p>
                     <p className="text-[11px] text-muted-foreground italic mt-0.5">
-                      O lançamento não está contabilizado na produção. Solicite restauração à sala técnica se necessário.
+                      Registro ajustado pela sala técnica. Solicite nova correção se necessário.
                     </p>
                   </div>
                 )}

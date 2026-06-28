@@ -978,6 +978,10 @@ const OSDetailPage = () => {
         </div>
       </div>
 
+      {/* Registros de Produção — fonte única da produção executada */}
+      <RegistrosProducaoOS osId={os.id} />
+
+
       {/* Histórico — visível para Sala Técnica e Admin */}
       {isSalaTecnica && (
         <div className="mt-6">

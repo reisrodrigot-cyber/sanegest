@@ -200,6 +200,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       .eq('user_id', userId)
       .eq('excluido', false)
       .eq('status', 'ativo')
+      .is('comprimento_ajustado', null)
+      .is('ligacoes_ajustadas', null)
+      .is('ajustado_por', null)
+      .is('cancelado_por', null)
       .select('id');
     if (error) {
       setSaving(false);

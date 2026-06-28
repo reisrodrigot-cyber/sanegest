@@ -17,6 +17,9 @@ interface RegistroRow {
   ligacoes_dia: number;
   comprimento_ajustado: number | null;
   ligacoes_ajustadas: number | null;
+  ajustado_por: string | null;
+  ajustado_em: string | null;
+  cancelado_por: string | null;
   status: string;
   motivo_cancelamento: string | null;
   motivo_ajuste: string | null;

@@ -478,12 +478,8 @@ const OSDetailPage = () => {
       prazo_real: toInt(realFields.prazo_real),
       bms_real: realFields.bms_real || null,
       executor_real: realFields.executor_real || null,
-      // Sala Técnica está confirmando os valores → marca como validado.
-      // A partir daqui esses valores prevalecem sobre o somatório bruto de
-      // registros de campo em todos os cálculos oficiais.
-      real_validado: true,
-      real_validado_em: new Date().toISOString(),
-      real_validado_por: user?.id ?? null,
+      // Valores REAL editados manualmente são preservados como referência.
+      // A produção contabilizada da N.S. vem dos registros_producao ativos.
     };
     const { error } = await supabase.from('ordens_servico').update(update).eq('id', os.id);
     if (error) {

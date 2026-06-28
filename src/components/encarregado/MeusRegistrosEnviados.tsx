@@ -156,9 +156,14 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     return m;
   }, [registros]);
 
-  const podeEditar = (r: RegistroRow) => {
-    return (r.status ?? 'ativo') === 'ativo';
-  };
+  const temIntervencaoTecnica = (r: RegistroRow) =>
+    (r.status ?? 'ativo') === 'cancelado'
+    || r.comprimento_ajustado != null
+    || r.ligacoes_ajustadas != null
+    || !!r.ajustado_por
+    || !!r.cancelado_por;
+
+  const podeEditar = (r: RegistroRow) => !temIntervencaoTecnica(r);
 
   const abrirEdicao = (r: RegistroRow) => {
     setEditing(r);

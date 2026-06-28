@@ -164,6 +164,16 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const salvarEdicao = async () => {
     if (!editing) return;
+    const osAtual = ordens[editing.os_id];
+    if (osAtual?.real_validado) {
+      toast({
+        title: 'Edição bloqueada',
+        description: 'A sala técnica já validou o REAL desta N.S. A produção final está protegida e não pode mais ser alterada pelo encarregado.',
+        variant: 'destructive',
+      });
+      setEditing(null);
+      return;
+    }
     const novoComp = Number(editComp.replace(',', '.')) || 0;
     const novoLig = Math.max(0, Math.floor(Number(editLig) || 0));
     if (novoComp < 0) { toast({ title: 'Valor inválido', variant: 'destructive' }); return; }
@@ -188,13 +198,25 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     }
     if (!updated || updated.length === 0) {
       setSaving(false);
+      // Recarrega a OS para checar se foi validada nesse meio tempo
+      const { data: osCheck } = await supabase
+        .from('ordens_servico')
+        .select('real_validado')
+        .eq('id', editing.os_id)
+        .maybeSingle();
+      const validadoAgora = !!osCheck?.real_validado;
       toast({
-        title: 'Não foi possível editar',
-        description: 'Você não tem permissão para alterar este registro (talvez ele já tenha sido validado pela sala técnica ou você esteja autenticado como outro usuário).',
+        title: validadoAgora ? 'Edição bloqueada' : 'Não foi possível editar',
+        description: validadoAgora
+          ? 'A sala técnica validou o REAL desta N.S. A produção final está protegida e não pode mais ser alterada pelo encarregado.'
+          : 'Não foi possível editar este registro. Verifique se ele ainda é seu e se a N.S. ainda não foi validada pela sala técnica.',
         variant: 'destructive',
       });
+      setEditing(null);
+      setReloadKey((k) => k + 1);
       return;
     }
+
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: editing.id,
       usuario_id: userId,
@@ -210,6 +232,16 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const confirmarExclusao = async () => {
     if (!deleting) return;
+    const osAtual = ordens[deleting.os_id];
+    if (osAtual?.real_validado) {
+      toast({
+        title: 'Exclusão bloqueada',
+        description: 'A sala técnica já validou o REAL desta N.S. A produção final está protegida e não pode mais ser excluída pelo encarregado.',
+        variant: 'destructive',
+      });
+      setDeleting(null);
+      return;
+    }
     setRemoving(true);
     const valor_anterior = {
       comprimento_dia: deleting.comprimento_dia,
@@ -230,13 +262,24 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     }
     if (!updated || updated.length === 0) {
       setRemoving(false);
+      const { data: osCheck } = await supabase
+        .from('ordens_servico')
+        .select('real_validado')
+        .eq('id', deleting.os_id)
+        .maybeSingle();
+      const validadoAgora = !!osCheck?.real_validado;
       toast({
-        title: 'Não foi possível excluir',
-        description: 'Você não tem permissão para excluir este registro (talvez ele já tenha sido validado pela sala técnica ou você esteja autenticado como outro usuário).',
+        title: validadoAgora ? 'Exclusão bloqueada' : 'Não foi possível excluir',
+        description: validadoAgora
+          ? 'A sala técnica validou o REAL desta N.S. A produção final está protegida e não pode mais ser excluída pelo encarregado.'
+          : 'Não foi possível excluir este registro. Verifique se ele ainda é seu e se a N.S. ainda não foi validada pela sala técnica.',
         variant: 'destructive',
       });
+      setDeleting(null);
+      setReloadKey((k) => k + 1);
       return;
     }
+
     // Remove imediatamente da UI para feedback instantâneo
     setRegistros((prev) => prev.filter((x) => x.id !== deleting.id));
     await supabase.from('registros_producao_auditoria').insert({
@@ -387,9 +430,14 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                   </div>
                 )}
                 {validado && (
-                  <p className="mt-3 pt-3 border-t border-border text-[11px] text-muted-foreground italic">
-                    Validado pela sala técnica — edição bloqueada.
-                  </p>
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                      REAL validado pela sala técnica
+                    </p>
+                    <p className="text-[11px] text-muted-foreground italic mt-0.5">
+                      A produção final da N.S. está protegida. O encarregado não pode mais editar nem excluir registros que impactem o quantitativo final.
+                    </p>
+                  </div>
                 )}
               </li>
             );

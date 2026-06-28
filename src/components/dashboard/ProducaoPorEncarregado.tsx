@@ -22,6 +22,9 @@ interface RegistroRow {
   data_registro: string;
   comprimento_dia: number;
   ligacoes_dia: number;
+  comprimento_ajustado: number | null;
+  ligacoes_ajustadas: number | null;
+  status: string;
 }
 
 export function ProducaoPorEncarregado({ ordens }: Props) {

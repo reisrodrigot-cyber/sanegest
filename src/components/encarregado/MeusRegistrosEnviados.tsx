@@ -217,15 +217,29 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       ligacoes_dia: deleting.ligacoes_dia,
       observacao: deleting.observacao,
     };
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('registros_producao')
       .update({ excluido: true, excluido_em: new Date().toISOString(), excluido_por: userId })
-      .eq('id', deleting.id);
+      .eq('id', deleting.id)
+      .eq('user_id', userId)
+      .eq('excluido', false)
+      .select('id');
     if (error) {
       setRemoving(false);
       toast({ title: 'Não foi possível excluir', description: error.message, variant: 'destructive' });
       return;
     }
+    if (!updated || updated.length === 0) {
+      setRemoving(false);
+      toast({
+        title: 'Não foi possível excluir',
+        description: 'Você não tem permissão para excluir este registro (talvez ele já tenha sido validado pela sala técnica ou você esteja autenticado como outro usuário).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    // Remove imediatamente da UI para feedback instantâneo
+    setRegistros((prev) => prev.filter((x) => x.id !== deleting.id));
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: deleting.id,
       usuario_id: userId,

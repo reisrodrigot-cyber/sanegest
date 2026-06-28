@@ -233,10 +233,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const confirmarExclusao = async () => {
     if (!deleting) return;
-    if ((deleting.status ?? 'ativo') !== 'ativo') {
+    if (temIntervencaoTecnica(deleting)) {
       toast({
         title: 'Exclusão bloqueada',
-        description: 'Este registro foi cancelado pela sala técnica e não está mais ativo.',
+        description: 'Registro ajustado pela sala técnica. Solicite nova correção se necessário.',
         variant: 'destructive',
       });
       setDeleting(null);

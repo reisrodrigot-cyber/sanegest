@@ -66,6 +66,9 @@ interface Props {
 export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoje' }: Props) {
   const { user, effectiveUser } = useAuth();
   const userId = effectiveUser?.id ?? user?.id ?? '';
+  // Quando admin está "vendo como" outro usuário, a sessão real é a do admin.
+  // A RLS exige user_id = auth.uid() para editar/excluir → impersonação não pode alterar dados.
+  const isImpersonating = !!user && !!effectiveUser && user.id !== effectiveUser.id;
   const [registros, setRegistros] = useState<RegistroRow[]>([]);
   const [ordens, setOrdens] = useState<Record<string, OSRow>>({});
   const [filtro, setFiltro] = useState<Filtro>(filtroInicial);
@@ -149,6 +152,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
   const podeEditar = (_r: RegistroRow, os?: OSRow) => {
     if (!os) return false;
     if (os.real_validado) return false;
+    if (isImpersonating) return false;
     return true;
   };
 
@@ -171,13 +175,25 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       observacao: editing.observacao,
     };
     const valor_novo = { comprimento_dia: novoComp, ligacoes_dia: novoLig, observacao: editObs || null };
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('registros_producao')
       .update(valor_novo)
-      .eq('id', editing.id);
+      .eq('id', editing.id)
+      .eq('user_id', userId)
+      .eq('excluido', false)
+      .select('id');
     if (error) {
       setSaving(false);
       toast({ title: 'Não foi possível editar', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (!updated || updated.length === 0) {
+      setSaving(false);
+      toast({
+        title: 'Não foi possível editar',
+        description: 'Você não tem permissão para alterar este registro (talvez ele já tenha sido validado pela sala técnica ou você esteja autenticado como outro usuário).',
+        variant: 'destructive',
+      });
       return;
     }
     await supabase.from('registros_producao_auditoria').insert({
@@ -201,15 +217,29 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       ligacoes_dia: deleting.ligacoes_dia,
       observacao: deleting.observacao,
     };
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('registros_producao')
       .update({ excluido: true, excluido_em: new Date().toISOString(), excluido_por: userId })
-      .eq('id', deleting.id);
+      .eq('id', deleting.id)
+      .eq('user_id', userId)
+      .eq('excluido', false)
+      .select('id');
     if (error) {
       setRemoving(false);
       toast({ title: 'Não foi possível excluir', description: error.message, variant: 'destructive' });
       return;
     }
+    if (!updated || updated.length === 0) {
+      setRemoving(false);
+      toast({
+        title: 'Não foi possível excluir',
+        description: 'Você não tem permissão para excluir este registro (talvez ele já tenha sido validado pela sala técnica ou você esteja autenticado como outro usuário).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    // Remove imediatamente da UI para feedback instantâneo
+    setRegistros((prev) => prev.filter((x) => x.id !== deleting.id));
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: deleting.id,
       usuario_id: userId,
@@ -242,7 +272,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       <div className="mb-3">
         <h2 className="text-lg font-bold text-foreground">Meus registros enviados</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Confira aqui o que você já lançou. Você pode editar ou excluir cada registro por até 2 horas após o envio.
+          Confira aqui o que você já lançou. Você pode editar ou excluir cada registro até que a sala técnica valide o REAL.
         </p>
       </div>
 

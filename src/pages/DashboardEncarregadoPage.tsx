@@ -275,16 +275,35 @@ const DashboardEncarregadoPage = () => {
                     stroke="hsl(var(--status-green))"
                     strokeWidth={3}
                     dot={false}
+                    connectNulls={false}
                     name="Executado acumulado"
                   />
+                  {(() => {
+                    const todayKey = toDateKey(new Date(new Date().setHours(0,0,0,0)));
+                    const hasToday = chartData.some((r) => r.date === todayKey);
+                    return hasToday ? (
+                      <ReferenceLine
+                        x={chartData.find((r) => r.date === todayKey)?.label}
+                        stroke="hsl(var(--muted-foreground))"
+                        strokeDasharray="2 4"
+                        label={{ value: 'Hoje', position: 'top', fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                    ) : null;
+                  })()}
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
             {(() => {
+              const myOsIds = new Set(myOS.map((o) => o.id));
+              const minhas = allRegistros.filter(
+                (r) => r.user_id === effectiveUser?.id && myOsIds.has(r.os_id),
+              );
+              const executado = minhas.reduce(
+                (s, r) => s + (Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0),
+                0,
+              );
               const metaTotal = myOS.reduce((s, os) => s + (Number(os.comprimento_previsto) || 0), 0);
-              const last = chartData[chartData.length - 1];
-              const executado = last.executado;
               const falta = Math.max(0, metaTotal - executado);
               const pct = metaTotal > 0 ? Math.min(100, Math.round((executado / metaTotal) * 100)) : 0;
               const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });

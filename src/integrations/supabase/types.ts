@@ -987,6 +987,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      recompute_os_real_from_registros: {
+        Args: { _os_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:

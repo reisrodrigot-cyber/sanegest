@@ -485,7 +485,7 @@ const OSDetailPage = () => {
     if (error) {
       toast.error('Erro ao salvar: ' + error.message);
     } else {
-      toast.success('Valores REAIS validados pela Sala Técnica.');
+      toast.success('Dados REAIS atualizados.');
       setEditingReal(false);
       window.location.reload();
     }

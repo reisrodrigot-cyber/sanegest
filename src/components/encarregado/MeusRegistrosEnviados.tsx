@@ -66,6 +66,9 @@ interface Props {
 export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoje' }: Props) {
   const { user, effectiveUser } = useAuth();
   const userId = effectiveUser?.id ?? user?.id ?? '';
+  // Quando admin está "vendo como" outro usuário, a sessão real é a do admin.
+  // A RLS exige user_id = auth.uid() para editar/excluir → impersonação não pode alterar dados.
+  const isImpersonating = !!user && !!effectiveUser && user.id !== effectiveUser.id;
   const [registros, setRegistros] = useState<RegistroRow[]>([]);
   const [ordens, setOrdens] = useState<Record<string, OSRow>>({});
   const [filtro, setFiltro] = useState<Filtro>(filtroInicial);

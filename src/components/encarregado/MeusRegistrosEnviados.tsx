@@ -105,7 +105,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       const since = startOf(filtro);
       const { data: regs } = await supabase
         .from('registros_producao')
-        .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, observacao, tipo_pavimento, created_at')
+        .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, status, motivo_cancelamento, motivo_ajuste, observacao, tipo_pavimento, created_at')
         .eq('user_id', userId)
         .eq('excluido', false)
         .gte('data_registro', since)
@@ -118,7 +118,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       if (osIds.length > 0) {
         const { data: os } = await supabase
           .from('ordens_servico')
-          .select('id, trecho, comprimento_real, ligacoes_real, real_validado')
+          .select('id, trecho, comprimento_real, ligacoes_real')
           .in('id', osIds);
         (os ?? []).forEach((o: any) => { osMap[o.id] = o as OSRow; });
       }

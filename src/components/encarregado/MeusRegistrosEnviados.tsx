@@ -17,6 +17,9 @@ interface RegistroRow {
   ligacoes_dia: number;
   comprimento_ajustado: number | null;
   ligacoes_ajustadas: number | null;
+  ajustado_por: string | null;
+  ajustado_em: string | null;
+  cancelado_por: string | null;
   status: string;
   motivo_cancelamento: string | null;
   motivo_ajuste: string | null;
@@ -105,7 +108,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       const since = startOf(filtro);
       const { data: regs } = await supabase
         .from('registros_producao')
-        .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, status, motivo_cancelamento, motivo_ajuste, observacao, tipo_pavimento, created_at')
+        .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, ajustado_por, ajustado_em, cancelado_por, status, motivo_cancelamento, motivo_ajuste, observacao, tipo_pavimento, created_at')
         .eq('user_id', userId)
         .eq('excluido', false)
         .gte('data_registro', since)
@@ -153,9 +156,14 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     return m;
   }, [registros]);
 
-  const podeEditar = (r: RegistroRow) => {
-    return (r.status ?? 'ativo') === 'ativo';
-  };
+  const temIntervencaoTecnica = (r: RegistroRow) =>
+    (r.status ?? 'ativo') === 'cancelado'
+    || r.comprimento_ajustado != null
+    || r.ligacoes_ajustadas != null
+    || !!r.ajustado_por
+    || !!r.cancelado_por;
+
+  const podeEditar = (r: RegistroRow) => !temIntervencaoTecnica(r);
 
   const abrirEdicao = (r: RegistroRow) => {
     setEditing(r);
@@ -166,10 +174,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const salvarEdicao = async () => {
     if (!editing) return;
-    if ((editing.status ?? 'ativo') !== 'ativo') {
+    if (temIntervencaoTecnica(editing)) {
       toast({
         title: 'Edição bloqueada',
-        description: 'Este registro foi cancelado pela sala técnica. Solicite a restauração antes de editar.',
+        description: 'Registro ajustado pela sala técnica. Solicite nova correção se necessário.',
         variant: 'destructive',
       });
       setEditing(null);
@@ -192,6 +200,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       .eq('user_id', userId)
       .eq('excluido', false)
       .eq('status', 'ativo')
+      .is('comprimento_ajustado', null)
+      .is('ligacoes_ajustadas', null)
+      .is('ajustado_por', null)
+      .is('cancelado_por', null)
       .select('id');
     if (error) {
       setSaving(false);
@@ -225,10 +237,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const confirmarExclusao = async () => {
     if (!deleting) return;
-    if ((deleting.status ?? 'ativo') !== 'ativo') {
+    if (temIntervencaoTecnica(deleting)) {
       toast({
         title: 'Exclusão bloqueada',
-        description: 'Este registro foi cancelado pela sala técnica e não está mais ativo.',
+        description: 'Registro ajustado pela sala técnica. Solicite nova correção se necessário.',
         variant: 'destructive',
       });
       setDeleting(null);
@@ -247,6 +259,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       .eq('user_id', userId)
       .eq('excluido', false)
       .eq('status', 'ativo')
+      .is('comprimento_ajustado', null)
+      .is('ligacoes_ajustadas', null)
+      .is('ajustado_por', null)
+      .is('cancelado_por', null)
       .select('id');
     if (error) {
       setRemoving(false);
@@ -390,10 +406,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                 </div>
 
                 {/* Ações de edição/exclusão do encarregado */}
-                {editavel && (
+                {editavel ? (
                   <div className="mt-3 pt-3 border-t border-border">
                     <p className="text-[11px] text-muted-foreground mb-2">
-                      Este registro está ativo. Você pode editá-lo ou excluí-lo enquanto não for cancelado pela sala técnica.
+                      Este registro está ativo e ainda não foi ajustado pela sala técnica. Você pode editá-lo ou excluí-lo.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
@@ -414,14 +430,13 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                       </Button>
                     </div>
                   </div>
-                )}
-                {cancelado && (
+                ) : (
                   <div className="mt-3 pt-3 border-t border-border">
-                    <p className="text-[11px] text-destructive font-semibold">
-                      Registro cancelado pela sala técnica
+                    <p className={`text-[11px] font-semibold ${cancelado ? 'text-destructive' : 'text-orange-700 dark:text-orange-300'}`}>
+                      Registro {cancelado ? 'cancelado' : 'ajustado'} pela sala técnica
                     </p>
                     <p className="text-[11px] text-muted-foreground italic mt-0.5">
-                      O lançamento não está contabilizado na produção. Solicite restauração à sala técnica se necessário.
+                      Registro ajustado pela sala técnica. Solicite nova correção se necessário.
                     </p>
                   </div>
                 )}

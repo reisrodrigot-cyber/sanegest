@@ -24,7 +24,7 @@ export const OSDetalhesTrecho = ({ os }: { os: OrdemServico }) => (
     <div className="grid grid-cols-3 gap-2 pb-1.5 border-b-2 border-border mb-1">
       <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
       <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
-      <span className="text-xs font-semibold text-secondary uppercase">Real</span>
+      <span className="text-xs font-semibold text-secondary uppercase">Executado</span>
     </div>
     <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real} />
     <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />

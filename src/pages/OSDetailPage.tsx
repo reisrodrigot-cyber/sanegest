@@ -416,7 +416,7 @@ const OSDetailPage = () => {
       bacia: editFields.bacia ?? '',
       trecho: editFields.trecho ?? '',
       comprimento_previsto: toNum(editFields.comprimento_previsto),
-      comprimento_real: toNum(editFields.comprimento_real),
+      // comprimento_real é cache automático dos registros_producao — não sobrescrever.
       prof_media_prevista: toNum(editFields.prof_media_prevista),
       prof_media_real: toNum(editFields.prof_media_real),
       dn: toNum(editFields.dn),
@@ -434,7 +434,7 @@ const OSDetailPage = () => {
       pav_m2_previsto: toNum(editFields.pav_m2_previsto),
       pav_m2_real: toNum(editFields.pav_m2_real),
       ligacoes_previstas: toInt(editFields.ligacoes_previstas),
-      ligacoes_real: toInt(editFields.ligacoes_real),
+      // ligacoes_real é cache automático dos registros_producao — não sobrescrever.
       areia: editFields.areia || null,
       areia_real: editFields.areia_real || null,
       brita: editFields.brita || null,
@@ -463,7 +463,7 @@ const OSDetailPage = () => {
     const toNum = (v: string) => v ? Number(v) : null;
     const toInt = (v: string) => v ? parseInt(v) : null;
     const update: any = {
-      comprimento_real: toNum(realFields.comprimento_real),
+      // comprimento_real: cache automático — não sobrescrever pela UI.
       prof_media_real: toNum(realFields.prof_media_real),
       dn_real: toNum(realFields.dn_real),
       largura_vala_real: toNum(realFields.largura_vala_real),
@@ -472,7 +472,7 @@ const OSDetailPage = () => {
       pav_real: realFields.pav_real || null,
       largura_pav_real: toNum(realFields.largura_pav_real),
       pav_m2_real: toNum(realFields.pav_m2_real),
-      ligacoes_real: toInt(realFields.ligacoes_real),
+      // ligacoes_real: cache automático — não sobrescrever pela UI.
       areia_real: realFields.areia_real || null,
       brita_real: realFields.brita_real || null,
       prazo_real: toInt(realFields.prazo_real),
@@ -752,17 +752,9 @@ const OSDetailPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {isEncarregado && !editingReal && !editing && (
-        <div className="flex flex-wrap gap-3 mb-6">
-          <button
-            onClick={startEditingReal}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
-          >
-            <Pencil size={14} />
-            Editar Dados Reais
-          </button>
-        </div>
-      )}
+      {/* Botão "Editar Dados Reais" removido — comprimento_real/ligacoes_real
+          são cache automático dos registros_producao ativos. Toda correção do
+          executado deve passar pela seção "Registros de Produção" abaixo. */}
 
       {/* Encarregado Responsável — Sala Técnica */}
       {isSalaTecnica && !editing && (
@@ -868,7 +860,7 @@ const OSDetailPage = () => {
               <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
                 <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
-                <span className="text-xs font-semibold text-secondary uppercase">Real</span>
+                <span className="text-xs font-semibold text-secondary uppercase">Executado</span>
               </div>
               <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-center">
                 <span className="text-sm text-muted-foreground">Bacia</span>
@@ -888,7 +880,18 @@ const OSDetailPage = () => {
                 />
                 <span />
               </div>
-              <EditableRow label="Comprimento (m)" previstoValue={editFields.comprimento_previsto} realValue={editFields.comprimento_real} previstoField="comprimento_previsto" realField="comprimento_real" onChange={updateEditField} />
+              {/* Comprimento e Ligações executados NÃO são editáveis aqui — vêm dos registros_producao ativos. */}
+              <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-center">
+                <span className="text-sm text-muted-foreground">Comprimento (m)</span>
+                <input
+                  value={editFields.comprimento_previsto}
+                  onChange={e => updateEditField('comprimento_previsto', e.target.value)}
+                  className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-full"
+                />
+                <span className="text-sm text-muted-foreground italic" title="Calculado pelos registros de produção ativos">
+                  {fmt(os.comprimento_real)} <span className="text-[10px]">(auto)</span>
+                </span>
+              </div>
               <EditableRow label="Prof. Média (m)" previstoValue={editFields.prof_media_prevista} realValue={editFields.prof_media_real} previstoField="prof_media_prevista" realField="prof_media_real" onChange={updateEditField} />
               <EditableRow label="DN (m)" previstoValue={editFields.dn} realValue={editFields.dn_real} previstoField="dn" realField="dn_real" onChange={updateEditField} />
               <EditableRow label="Largura Vala (m)" previstoValue={editFields.largura_vala} realValue={editFields.largura_vala_real} previstoField="largura_vala" realField="largura_vala_real" onChange={updateEditField} />
@@ -897,12 +900,25 @@ const OSDetailPage = () => {
               <EditableSelectRow label="Pavimento" previstoValue={editFields.pav_previsto} realValue={editFields.pav_real} previstoField="pav_previsto" realField="pav_real" options={PAV_OPTIONS} onChange={updateEditField} />
               <EditableRow label="Largura PAV (m)" previstoValue={editFields.largura_pav_prevista} realValue={editFields.largura_pav_real} previstoField="largura_pav_prevista" realField="largura_pav_real" onChange={updateEditField} />
               <EditableRow label="PAV (m²)" previstoValue={editFields.pav_m2_previsto} realValue={editFields.pav_m2_real} previstoField="pav_m2_previsto" realField="pav_m2_real" onChange={updateEditField} />
-              <EditableRow label="Ligações" previstoValue={editFields.ligacoes_previstas} realValue={editFields.ligacoes_real} previstoField="ligacoes_previstas" realField="ligacoes_real" onChange={updateEditField} />
+              <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-center">
+                <span className="text-sm text-muted-foreground">Ligações</span>
+                <input
+                  value={editFields.ligacoes_previstas}
+                  onChange={e => updateEditField('ligacoes_previstas', e.target.value)}
+                  className="px-2 py-1 rounded border border-input bg-background text-foreground text-sm w-full"
+                />
+                <span className="text-sm text-muted-foreground italic" title="Calculado pelos registros de produção ativos">
+                  {fmt(os.ligacoes_real)} <span className="text-[10px]">(auto)</span>
+                </span>
+              </div>
               <EditableRow label="Areia" previstoValue={editFields.areia} realValue={editFields.areia_real} previstoField="areia" realField="areia_real" onChange={updateEditField} />
               <EditableRow label="Brita" previstoValue={editFields.brita} realValue={editFields.brita_real} previstoField="brita" realField="brita_real" onChange={updateEditField} />
               <EditableRow label="Prazo (dias)" previstoValue={editFields.prazo_previsto} realValue={editFields.prazo_real} previstoField="prazo_previsto" realField="prazo_real" onChange={updateEditField} />
               <EditableRow label="BMs" previstoValue={editFields.bms} realValue={editFields.bms_real} previstoField="bms" realField="bms_real" onChange={updateEditField} />
               <EditableRow label="Executor" previstoValue={editFields.executor} realValue={editFields.executor_real} previstoField="executor" realField="executor_real" onChange={updateEditField} />
+              <p className="text-[11px] text-muted-foreground mt-3 italic">
+                Comprimento e Ligações executados são calculados automaticamente pelos registros de produção ativos — ajuste ou cancelamento devem ser feitos na seção "Registros de Produção".
+              </p>
             </>
           ) : editingReal ? (
             <>
@@ -933,7 +949,7 @@ const OSDetailPage = () => {
               <div className="grid grid-cols-3 gap-2 pb-2 border-b-2 border-border mb-1">
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Campo</span>
                 <span className="text-xs font-semibold text-foreground uppercase">Previsto</span>
-                <span className="text-xs font-semibold text-secondary uppercase">Real</span>
+                <span className="text-xs font-semibold text-secondary uppercase">Executado</span>
               </div>
               <DataRow label="Comprimento (m)" previsto={os.comprimento_previsto} real={os.comprimento_real ?? (campoSums && campoSums.comprimento > 0 ? campoSums.comprimento : null)} />
               <DataRow label="Prof. Média (m)" previsto={os.prof_media_prevista} real={os.prof_media_real} />
@@ -956,6 +972,9 @@ const OSDetailPage = () => {
               <DataRow label="BMs" previsto={os.bms} real={os.bms_real} />
               <DataRow label="Executor" previsto={os.executor} real={os.executor_real} />
               <LigacoesComprimentos osId={os.id} />
+              <p className="text-[11px] text-muted-foreground mt-3 italic">
+                Executado de Comprimento e Ligações é calculado automaticamente pelos registros de produção ativos.
+              </p>
             </>
           )}
         </div>

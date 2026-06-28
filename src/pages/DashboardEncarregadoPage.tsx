@@ -83,97 +83,105 @@ const DashboardEncarregadoPage = () => {
       .reduce((s, r) => s + (Number(r.comprimento_dia) || 0), 0);
   }, [allRegistros]);
 
-  // Avanço da Produção: executado acumulado vs. meta planejada SEQUENCIAL por OS
+  // Avanço da Produção: executado acumulado vs. meta planejada
+  // Janela: [hoje-3, max(hoje+7, data estimada de conclusão)]
   const chartData = useMemo(() => {
-    if (!effectiveUser) return [] as { date: string; label: string; meta: number; executado: number }[];
+    if (!effectiveUser) return [] as { date: string; label: string; meta: number; executado: number; isToday?: boolean }[];
     if (myOS.length === 0) return [];
 
-    const metaTotal = myOS.reduce(
-      (s, os) => s + (Number(os.comprimento_previsto) || 0),
-      0,
-    );
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = toDateKey(today);
 
-    // Ordenar OS por ordem de execução: updated_at (liberação) → trecho
-    const ordered = [...myOS].sort((a, b) => {
-      const ta = new Date(a.updated_at).getTime();
-      const tb = new Date(b.updated_at).getTime();
-      if (ta !== tb) return ta - tb;
-      return (a.trecho || '').localeCompare(b.trecho || '');
-    });
-
-    // Data inicial = primeira liberação
-    const startDate = new Date(ordered[0].updated_at);
-    startDate.setHours(0, 0, 0, 0);
-
-    // Fila sequencial: cada OS começa quando a anterior termina
-    type Plan = { startDay: number; prazo: number; comprimento: number; metaDiaria: number };
-    const plans: Plan[] = [];
-    let cursorDay = 0;
-    for (const os of ordered) {
-      const prazoRaw =
-        (os.prazo_arredondado != null ? Number(os.prazo_arredondado) : null) ??
-        (os.prazo_previsto != null ? Number(os.prazo_previsto) : null);
-      const prazo = prazoRaw && prazoRaw > 0 ? Math.ceil(prazoRaw) : 1;
-      const comprimento = Number(os.comprimento_previsto) || 0;
-      plans.push({
-        startDay: cursorDay,
-        prazo,
-        comprimento,
-        metaDiaria: comprimento / prazo,
-      });
-      cursorDay += prazo;
-    }
-    const totalDaysPlanned = cursorDay;
-
-    const metaAtDay = (day: number) => {
-      let acc = 0;
-      for (const p of plans) {
-        if (day <= p.startDay) break;
-        const diasDecorridos = Math.min(p.prazo, day - p.startDay);
-        acc += p.metaDiaria * diasDecorridos;
-      }
-      return acc;
-    };
-
-    // Curva REAL = soma dos registros_producao ativos do encarregado nas N.S. dele.
-    // Cada registro contabiliza `comprimento_ajustado ?? comprimento_dia`.
-    // Registros cancelados/excluídos já foram filtrados na query.
+    // Registros do encarregado nas suas OS (já filtrados por status='ativo' e excluido=false)
     const myOsIds = new Set(myOS.map((o) => o.id));
     const minhasRegistros = allRegistros.filter(
       (r) => r.user_id === effectiveUser.id && myOsIds.has(r.os_id),
     );
+
+    // Executado total e por dia (usa valor ajustado quando existir)
     const realByDay = new Map<string, number>();
+    let executadoTotal = 0;
     minhasRegistros.forEach((r) => {
       const valor = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+      executadoTotal += valor;
       realByDay.set(r.data_registro, (realByDay.get(r.data_registro) ?? 0) + valor);
     });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endTime = Math.max(
-      today.getTime(),
-      startDate.getTime() + totalDaysPlanned * 24 * 60 * 60 * 1000,
-    );
-    const endDate = new Date(endTime);
+    // Meta total = soma do saldo (previsto - executado_da_os, sem negativo)
+    // Para distribuição uniforme usamos o saldo total restante.
+    const previstoTotal = myOS.reduce((s, os) => s + (Number(os.comprimento_previsto) || 0), 0);
+    const executadoPorOs = new Map<string, number>();
+    minhasRegistros.forEach((r) => {
+      const v = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+      executadoPorOs.set(r.os_id, (executadoPorOs.get(r.os_id) ?? 0) + v);
+    });
+    const saldoTotal = myOS.reduce((s, os) => {
+      const prev = Number(os.comprimento_previsto) || 0;
+      const exec = executadoPorOs.get(os.id) ?? 0;
+      return s + Math.max(0, prev - exec);
+    }, 0);
 
-    const rows: { date: string; label: string; meta: number; executado: number }[] = [];
-    let realAcc = 0;
+    // Prazo total restante (soma dos prazos das OS liberadas) para estimar conclusão
+    const prazoTotalDias = myOS.reduce((s, os) => {
+      const p =
+        (os.prazo_arredondado != null ? Number(os.prazo_arredondado) : null) ??
+        (os.prazo_previsto != null ? Number(os.prazo_previsto) : null) ?? 0;
+      return s + (p > 0 ? Math.ceil(p) : 0);
+    }, 0);
+
+    // Início = hoje - 3
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - 3);
+
+    // Fim estimado = hoje + prazo restante (dias), mínimo hoje+7 (=> 11 dias de janela após start)
+    const estimatedEnd = new Date(today);
+    estimatedEnd.setDate(estimatedEnd.getDate() + Math.max(0, prazoTotalDias));
+    const minEnd = new Date(startDate);
+    minEnd.setDate(minEnd.getDate() + 6); // mínimo 7 dias no eixo
+    const sevenDayFloor = new Date(today);
+    sevenDayFloor.setDate(sevenDayFloor.getDate() + 7);
+    const endDate = new Date(Math.max(estimatedEnd.getTime(), minEnd.getTime(), sevenDayFloor.getTime()));
+
+    // Acumulado inicial: produção anterior à janela
+    let acumuladoInicial = 0;
+    minhasRegistros.forEach((r) => {
+      if (r.data_registro < toDateKey(startDate)) {
+        acumuladoInicial += Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+      }
+    });
+
+    // Meta: distribuir saldo uniformemente entre hoje e endDate; meta começa em executadoTotal hoje
+    const diasParaFim = Math.max(1, Math.round((endDate.getTime() - today.getTime()) / 86400000));
+    const metaDiaria = saldoTotal / diasParaFim;
+    const executadoAtual = executadoTotal; // = acumulado até hoje
+    const metaTotalFinal = executadoAtual + saldoTotal; // alinhado com previstoTotal quando não há excesso
+
+    const rows: { date: string; label: string; meta: number; executado: number; isToday?: boolean }[] = [];
+    let realAcc = acumuladoInicial;
     const cursor = new Date(startDate);
-    let dayIdx = 0;
     while (cursor <= endDate) {
       const key = toDateKey(cursor);
       if (cursor <= today) {
         realAcc += realByDay.get(key) ?? 0;
       }
-      const metaAcc = Math.min(metaTotal, metaAtDay(dayIdx + 1));
+      // meta acumulada: antes de hoje, projeção linear partindo de (hoje, executadoAtual) recuando metaDiaria;
+      // a partir de hoje, executadoAtual + metaDiaria * diasDesdeHoje
+      const diffDays = Math.round((cursor.getTime() - today.getTime()) / 86400000);
+      let metaAcc: number;
+      if (diffDays <= 0) {
+        metaAcc = Math.max(0, executadoAtual + metaDiaria * diffDays);
+      } else {
+        metaAcc = Math.min(metaTotalFinal, executadoAtual + metaDiaria * diffDays);
+      }
       rows.push({
         date: key,
         label: formatDayLabel(key),
         meta: Math.round(metaAcc * 10) / 10,
-        executado: Math.round(realAcc * 10) / 10,
+        executado: cursor <= today ? Math.round(realAcc * 10) / 10 : null as any,
+        isToday: key === todayKey,
       });
       cursor.setDate(cursor.getDate() + 1);
-      dayIdx++;
     }
     return rows;
   }, [allRegistros, myOS, effectiveUser]);

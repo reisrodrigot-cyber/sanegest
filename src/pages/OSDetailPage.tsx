@@ -416,7 +416,7 @@ const OSDetailPage = () => {
       bacia: editFields.bacia ?? '',
       trecho: editFields.trecho ?? '',
       comprimento_previsto: toNum(editFields.comprimento_previsto),
-      comprimento_real: toNum(editFields.comprimento_real),
+      // comprimento_real é cache automático dos registros_producao — não sobrescrever.
       prof_media_prevista: toNum(editFields.prof_media_prevista),
       prof_media_real: toNum(editFields.prof_media_real),
       dn: toNum(editFields.dn),

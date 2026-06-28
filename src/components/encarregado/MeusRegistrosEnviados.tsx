@@ -272,7 +272,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       <div className="mb-3">
         <h2 className="text-lg font-bold text-foreground">Meus registros enviados</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Confira aqui o que você já lançou. Você pode editar ou excluir cada registro por até 2 horas após o envio.
+          Confira aqui o que você já lançou. Você pode editar ou excluir cada registro até que a sala técnica valide o REAL.
         </p>
       </div>
 

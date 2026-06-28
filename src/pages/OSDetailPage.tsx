@@ -463,7 +463,7 @@ const OSDetailPage = () => {
     const toNum = (v: string) => v ? Number(v) : null;
     const toInt = (v: string) => v ? parseInt(v) : null;
     const update: any = {
-      comprimento_real: toNum(realFields.comprimento_real),
+      // comprimento_real: cache automático — não sobrescrever pela UI.
       prof_media_real: toNum(realFields.prof_media_real),
       dn_real: toNum(realFields.dn_real),
       largura_vala_real: toNum(realFields.largura_vala_real),

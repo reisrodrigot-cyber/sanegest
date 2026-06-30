@@ -407,6 +407,13 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                   <span>{statusLabel}</span>
                 </div>
 
+                {r.pv_final_assentado && !cancelado && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-secondary/10 px-2 py-1 text-[11px] font-semibold text-secondary">
+                    <CheckCircle2 size={12} />
+                    PV final assentado — trecho concluído pelo encarregado
+                  </div>
+                )}
+
                 {/* Ações de edição/exclusão do encarregado */}
                 {editavel ? (
                   <div className="mt-3 pt-3 border-t border-border">

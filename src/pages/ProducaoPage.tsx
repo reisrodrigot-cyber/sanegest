@@ -86,6 +86,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
   const [numLigacoes, setNumLigacoes] = useState('');
   const [tipoPavimento, setTipoPavimento] = useState<string>('');
   const [ligacoes, setLigacoes] = useState<LigacaoNova[]>([]);
+  const [pvFinalAssentado, setPvFinalAssentado] = useState(false);
   const [saving, setSaving] = useState(false);
   const [popupRegistroId, setPopupRegistroId] = useState<string | null>(null);
   const [popupAcumOpen, setPopupAcumOpen] = useState(false);

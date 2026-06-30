@@ -212,11 +212,16 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         .eq('id', os.id);
     }
 
-    toast.success('Produção do dia registrada!');
+    toast.success(
+      pvFinalAssentado
+        ? 'Produção registrada — trecho marcado como concluído (PV final assentado).'
+        : 'Produção do dia registrada!'
+    );
     setComprimento('');
     setNumLigacoes('');
     setTipoPavimento('');
     setLigacoes([]);
+    setPvFinalAssentado(false);
     fetchRegistros();
     setSaving(false);
   };

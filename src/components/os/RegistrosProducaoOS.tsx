@@ -268,6 +268,22 @@ export function RegistrosProducaoOS({ osId }: Props) {
         </div>
       </div>
 
+      {trechoConcluido && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+          <CheckCircle2 size={16} className="mt-0.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <div className="text-xs text-emerald-800 dark:text-emerald-200">
+            <p className="font-semibold">Trecho concluído pelo encarregado</p>
+            <p className="mt-0.5">
+              PV final assentado por <span className="font-medium">{nomes[trechoConcluido.pv_final_assentado_por ?? ''] ?? nomes[trechoConcluido.user_id] ?? '—'}</span>
+              {trechoConcluido.pv_final_assentado_em && (
+                <> em {new Date(trechoConcluido.pv_final_assentado_em).toLocaleString('pt-BR')}</>
+              )}.
+            </p>
+            <p className="mt-0.5 italic opacity-80">Não altera automaticamente os metros executados — confirme antes de fechar a O.S.</p>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
       ) : rows.length === 0 ? (

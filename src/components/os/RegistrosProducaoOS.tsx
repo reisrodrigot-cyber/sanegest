@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
-import { Loader2, Pencil, Ban, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Loader2, Pencil, Ban, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

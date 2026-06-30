@@ -114,6 +114,10 @@ export function RegistrosProducaoOS({ osId }: Props) {
   const ativos = rows.filter((r) => !r.excluido && r.status === 'ativo');
   const totalComp = ativos.reduce((s, r) => s + (Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0), 0);
   const totalLig = ativos.reduce((s, r) => s + (Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0), 0);
+  const concluidosPv = ativos
+    .filter((r) => r.pv_final_assentado)
+    .sort((a, b) => (b.pv_final_assentado_em ?? '').localeCompare(a.pv_final_assentado_em ?? ''));
+  const trechoConcluido = concluidosPv[0] ?? null;
 
   const abrirAjuste = (r: RegistroRow) => {
     setAjustando(r);

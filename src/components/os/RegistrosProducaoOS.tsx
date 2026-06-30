@@ -328,6 +328,14 @@ export function RegistrosProducaoOS({ osId }: Props) {
                       ) : (
                         <span className="text-xs text-emerald-600 dark:text-emerald-400">Ativo</span>
                       )}
+                      {r.pv_final_assentado && !inativo && (
+                        <div
+                          className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"
+                          title={r.pv_final_assentado_em ? `Marcado em ${new Date(r.pv_final_assentado_em).toLocaleString('pt-BR')}` : undefined}
+                        >
+                          <CheckCircle2 size={10} /> PV final assentado
+                        </div>
+                      )}
                     </td>
                     {podeGerir && (
                       <td className="px-3 py-2">

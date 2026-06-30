@@ -1005,7 +1005,11 @@ export type Database = {
           ligacoes_detalhadas: number | null
           obra_id: string | null
           obra_nome: string | null
+          observacao_conclusao: string | null
           os_id: string | null
+          pv_final_assentado: boolean | null
+          pv_final_assentado_em: string | null
+          pv_final_assentado_por_nome: string | null
           quantidade_ligacoes_realizadas: number | null
           real_validado: boolean | null
           responsavel_nome: string | null

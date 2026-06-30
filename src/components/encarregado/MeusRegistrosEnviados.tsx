@@ -25,6 +25,8 @@ interface RegistroRow {
   motivo_ajuste: string | null;
   observacao: string | null;
   tipo_pavimento: string | null;
+  pv_final_assentado: boolean | null;
+  pv_final_assentado_em: string | null;
   created_at: string;
 }
 

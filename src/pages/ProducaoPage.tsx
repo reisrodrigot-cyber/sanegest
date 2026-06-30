@@ -175,6 +175,9 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         comprimento_dia: compNum,
         ligacoes_dia: ligNum,
         tipo_pavimento: tipoPavimento,
+        pv_final_assentado: pvFinalAssentado,
+        pv_final_assentado_em: pvFinalAssentado ? new Date().toISOString() : null,
+        pv_final_assentado_por: pvFinalAssentado ? user.id : null,
       } as any)
       .select('id')
       .single();

@@ -35,6 +35,9 @@ interface RegistroRow {
   cancelado_por: string | null;
   excluido: boolean;
   observacao: string | null;
+  pv_final_assentado: boolean | null;
+  pv_final_assentado_em: string | null;
+  pv_final_assentado_por: string | null;
   created_at: string;
 }
 

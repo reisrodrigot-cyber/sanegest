@@ -86,6 +86,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
   const [numLigacoes, setNumLigacoes] = useState('');
   const [tipoPavimento, setTipoPavimento] = useState<string>('');
   const [ligacoes, setLigacoes] = useState<LigacaoNova[]>([]);
+  const [pvFinalAssentado, setPvFinalAssentado] = useState(false);
   const [saving, setSaving] = useState(false);
   const [popupRegistroId, setPopupRegistroId] = useState<string | null>(null);
   const [popupAcumOpen, setPopupAcumOpen] = useState(false);
@@ -174,6 +175,9 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         comprimento_dia: compNum,
         ligacoes_dia: ligNum,
         tipo_pavimento: tipoPavimento,
+        pv_final_assentado: pvFinalAssentado,
+        pv_final_assentado_em: pvFinalAssentado ? new Date().toISOString() : null,
+        pv_final_assentado_por: pvFinalAssentado ? user.id : null,
       } as any)
       .select('id')
       .single();
@@ -208,11 +212,16 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         .eq('id', os.id);
     }
 
-    toast.success('Produção do dia registrada!');
+    toast.success(
+      pvFinalAssentado
+        ? 'Produção registrada — trecho marcado como concluído (PV final assentado).'
+        : 'Produção do dia registrada!'
+    );
     setComprimento('');
     setNumLigacoes('');
     setTipoPavimento('');
     setLigacoes([]);
+    setPvFinalAssentado(false);
     fetchRegistros();
     setSaving(false);
   };
@@ -360,6 +369,25 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
             ))}
           </div>
         )}
+
+        <div className="pt-3 border-t border-border">
+          <label className="flex items-start gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-border accent-secondary"
+              checked={pvFinalAssentado}
+              onChange={(e) => setPvFinalAssentado(e.target.checked)}
+            />
+            <span>
+              <span className="block text-sm font-medium text-foreground">
+                PV final assentado / trecho concluído
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Marque apenas se o PV final do trecho já foi assentado/instalado.
+              </span>
+            </span>
+          </label>
+        </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
           {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save size={14} className="mr-2" />}

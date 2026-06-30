@@ -801,6 +801,9 @@ export type Database = {
           motivo_exclusao: string | null
           observacao: string | null
           os_id: string
+          pv_final_assentado: boolean
+          pv_final_assentado_em: string | null
+          pv_final_assentado_por: string | null
           status: string
           tipo_pavimento: string | null
           updated_at: string
@@ -826,6 +829,9 @@ export type Database = {
           motivo_exclusao?: string | null
           observacao?: string | null
           os_id: string
+          pv_final_assentado?: boolean
+          pv_final_assentado_em?: string | null
+          pv_final_assentado_por?: string | null
           status?: string
           tipo_pavimento?: string | null
           updated_at?: string
@@ -851,6 +857,9 @@ export type Database = {
           motivo_exclusao?: string | null
           observacao?: string | null
           os_id?: string
+          pv_final_assentado?: boolean
+          pv_final_assentado_em?: string | null
+          pv_final_assentado_por?: string | null
           status?: string
           tipo_pavimento?: string | null
           updated_at?: string

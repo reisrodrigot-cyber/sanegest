@@ -25,6 +25,8 @@ interface RegistroRow {
   motivo_ajuste: string | null;
   observacao: string | null;
   tipo_pavimento: string | null;
+  pv_final_assentado: boolean | null;
+  pv_final_assentado_em: string | null;
   created_at: string;
 }
 
@@ -108,7 +110,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       const since = startOf(filtro);
       const { data: regs } = await supabase
         .from('registros_producao')
-        .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, ajustado_por, ajustado_em, cancelado_por, status, motivo_cancelamento, motivo_ajuste, observacao, tipo_pavimento, created_at')
+        .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, ajustado_por, ajustado_em, cancelado_por, status, motivo_cancelamento, motivo_ajuste, observacao, tipo_pavimento, pv_final_assentado, pv_final_assentado_em, created_at')
         .eq('user_id', userId)
         .eq('excluido', false)
         .gte('data_registro', since)
@@ -404,6 +406,13 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
                   <StatusIcon size={14} />
                   <span>{statusLabel}</span>
                 </div>
+
+                {r.pv_final_assentado && !cancelado && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-secondary/10 px-2 py-1 text-[11px] font-semibold text-secondary">
+                    <CheckCircle2 size={12} />
+                    PV final assentado — trecho concluído pelo encarregado
+                  </div>
+                )}
 
                 {/* Ações de edição/exclusão do encarregado */}
                 {editavel ? (

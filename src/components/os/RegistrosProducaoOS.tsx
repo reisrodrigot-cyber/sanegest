@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
-import { Loader2, Pencil, Ban, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Loader2, Pencil, Ban, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,6 +35,9 @@ interface RegistroRow {
   cancelado_por: string | null;
   excluido: boolean;
   observacao: string | null;
+  pv_final_assentado: boolean | null;
+  pv_final_assentado_em: string | null;
+  pv_final_assentado_por: string | null;
   created_at: string;
 }
 
@@ -111,6 +114,10 @@ export function RegistrosProducaoOS({ osId }: Props) {
   const ativos = rows.filter((r) => !r.excluido && r.status === 'ativo');
   const totalComp = ativos.reduce((s, r) => s + (Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0), 0);
   const totalLig = ativos.reduce((s, r) => s + (Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0), 0);
+  const concluidosPv = ativos
+    .filter((r) => r.pv_final_assentado)
+    .sort((a, b) => (b.pv_final_assentado_em ?? '').localeCompare(a.pv_final_assentado_em ?? ''));
+  const trechoConcluido = concluidosPv[0] ?? null;
 
   const abrirAjuste = (r: RegistroRow) => {
     setAjustando(r);
@@ -261,6 +268,22 @@ export function RegistrosProducaoOS({ osId }: Props) {
         </div>
       </div>
 
+      {trechoConcluido && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+          <CheckCircle2 size={16} className="mt-0.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <div className="text-xs text-emerald-800 dark:text-emerald-200">
+            <p className="font-semibold">Trecho concluído pelo encarregado</p>
+            <p className="mt-0.5">
+              PV final assentado por <span className="font-medium">{nomes[trechoConcluido.pv_final_assentado_por ?? ''] ?? nomes[trechoConcluido.user_id] ?? '—'}</span>
+              {trechoConcluido.pv_final_assentado_em && (
+                <> em {new Date(trechoConcluido.pv_final_assentado_em).toLocaleString('pt-BR')}</>
+              )}.
+            </p>
+            <p className="mt-0.5 italic opacity-80">Não altera automaticamente os metros executados — confirme antes de fechar a O.S.</p>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
       ) : rows.length === 0 ? (
@@ -304,6 +327,14 @@ export function RegistrosProducaoOS({ osId }: Props) {
                         <span className="inline-flex items-center gap-1 text-xs text-destructive" title={r.motivo_cancelamento ?? undefined}><Ban size={12} /> Cancelado</span>
                       ) : (
                         <span className="text-xs text-emerald-600 dark:text-emerald-400">Ativo</span>
+                      )}
+                      {r.pv_final_assentado && !inativo && (
+                        <div
+                          className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"
+                          title={r.pv_final_assentado_em ? `Marcado em ${new Date(r.pv_final_assentado_em).toLocaleString('pt-BR')}` : undefined}
+                        >
+                          <CheckCircle2 size={10} /> PV final assentado
+                        </div>
                       )}
                     </td>
                     {podeGerir && (

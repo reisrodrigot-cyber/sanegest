@@ -57,8 +57,7 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
   }, []);
 
   const dados = useMemo(() => {
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const ym = selectedMonth;
 
     // Soma de registros contabilizados (ajustado ?? informado) por OS no mês atual.
     const sumByOs = new Map<string, { comp: number; lig: number; lastDate: string }>();

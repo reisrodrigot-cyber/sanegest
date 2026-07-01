@@ -97,15 +97,48 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
         map.set(nome, cur);
       });
     return Array.from(map.values()).sort((a, b) => b.totalMetros - a.totalMetros);
-  }, [ordens, apelidoMap, registros]);
+  }, [ordens, apelidoMap, registros, selectedMonth]);
 
+  const monthLabel = useMemo(() => {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    const d = new Date(y, m - 1, 1);
+    const s = d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '');
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }, [selectedMonth]);
 
-
-  if (dados.length === 0) return null;
+  const shiftMonth = (delta: number) => {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
 
   return (
     <div className="bg-card rounded-xl p-6 border border-border shadow-sm mb-6">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Produção por Encarregado</h2>
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <h2 className="text-lg font-semibold text-foreground">Produção por Encarregado</h2>
+        <div className="inline-flex items-center gap-0.5 rounded-md border border-border/60 bg-background/40 text-xs text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => shiftMonth(-1)}
+            className="px-1.5 py-1 hover:text-foreground hover:bg-muted/50 rounded-l-md transition-colors"
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft size={12} />
+          </button>
+          <span className="px-1.5 py-1 tabular-nums select-none min-w-[68px] text-center">{monthLabel}</span>
+          <button
+            type="button"
+            onClick={() => shiftMonth(1)}
+            className="px-1.5 py-1 hover:text-foreground hover:bg-muted/50 rounded-r-md transition-colors"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight size={12} />
+          </button>
+        </div>
+      </div>
+      {dados.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-6 text-center">Sem dados</p>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

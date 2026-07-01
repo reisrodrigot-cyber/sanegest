@@ -184,6 +184,7 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

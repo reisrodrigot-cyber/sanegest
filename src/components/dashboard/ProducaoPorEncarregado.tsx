@@ -31,6 +31,10 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [apelidoMap, setApelidoMap] = useState<Record<string, string>>({});
   const [registros, setRegistros] = useState<RegistroRow[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   useEffect(() => {
     (async () => {

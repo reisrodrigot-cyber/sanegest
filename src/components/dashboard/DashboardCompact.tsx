@@ -23,6 +23,7 @@ import {
   Layers,
   Loader2,
   Radio,
+  Cable,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
@@ -181,19 +182,23 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     mql.addEventListener?.('change', apply);
     return () => mql.removeEventListener?.('change', apply);
   }, []);
-  const [registrosBrutos, setRegistrosBrutos] = useState<DailyRow[]>([]);
+  const [registrosBrutos, setRegistrosBrutos] = useState<any[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
+  const [ligacoesRows, setLigacoesRows] = useState<{ os_id: string; comprimento: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
+  const [subBaciaTab, setSubBaciaTab] = useState<'rede' | 'ligacoes' | 'resumo'>('rede');
 
   useEffect(() => {
     Promise.all([
       supabase.from('registros_producao').select('user_id, data_registro, comprimento_dia, os_id, comprimento_ajustado, ligacoes_dia, ligacoes_ajustadas, status').eq('excluido', false).eq('status', 'ativo'),
       supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
-    ]).then(([r, o]) => {
-      setRegistrosBrutos((r.data ?? []) as DailyRow[]);
+      supabase.from('ligacoes').select('os_id, comprimento'),
+    ]).then(([r, o, l]) => {
+      setRegistrosBrutos((r.data ?? []) as any[]);
       setOsRows((o.data ?? []) as OSRow[]);
+      setLigacoesRows((l.data ?? []) as any[]);
       setLoading(false);
     });
   }, []);
@@ -380,17 +385,51 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [ordens],
   );
 
-  // Avanço por Bacia (todas as NS, independente de status/liberação)
+  // Ligações por OS (comprimento único por os_id, sem duplicar por data)
+  const ligacoesPorOs = useMemo(() => {
+    const map = new Map<string, { comprimento: number }>();
+    ligacoesRows.forEach((l) => {
+      const c = map.get(l.os_id) ?? { comprimento: 0 };
+      c.comprimento += Number(l.comprimento) || 0;
+      map.set(l.os_id, c);
+    });
+    return map;
+  }, [ligacoesRows]);
+
+  // Quantidade de ligações realizadas por OS — soma dos lançamentos diários
+  const qtdLigacoesPorOs = useMemo(() => {
+    const map = new Map<string, number>();
+    registros.forEach((r: any) => {
+      const q = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
+      if (!q) return;
+      map.set(r.os_id, (map.get(r.os_id) ?? 0) + q);
+    });
+    return map;
+  }, [registros]);
+
+  // Totais de ligações (para KPI)
+  const totaisLigacoes = useMemo(() => {
+    let qtd = 0;
+    let comprimento = 0;
+    qtdLigacoesPorOs.forEach((v) => { qtd += v; });
+    ligacoesPorOs.forEach((v) => { comprimento += v.comprimento; });
+    return { qtd, comprimento };
+  }, [qtdLigacoesPorOs, ligacoesPorOs]);
+
+  // Avanço por Sub-bacia (todas as NS, independente de status/liberação)
   const porTrecho = useMemo(() => {
-    const map = new Map<string, { executado: number; total: number }>();
+    const map = new Map<string, { executado: number; total: number; ligQtd: number; ligComp: number }>();
     ordens.forEach((o) => {
-      const prev = o.comprimento_previsto ?? 0;
-      if (prev <= 0) return;
       const bacia = o.bacia || 'Sem bacia';
+      const prev = o.comprimento_previsto ?? 0;
       const exec = Math.min(o.comprimento_real ?? 0, prev);
-      const c = map.get(bacia) ?? { executado: 0, total: 0 };
-      c.executado += exec;
-      c.total += prev;
+      const c = map.get(bacia) ?? { executado: 0, total: 0, ligQtd: 0, ligComp: 0 };
+      if (prev > 0) {
+        c.executado += exec;
+        c.total += prev;
+      }
+      c.ligQtd += qtdLigacoesPorOs.get(o.id) ?? 0;
+      c.ligComp += ligacoesPorOs.get(o.id)?.comprimento ?? 0;
       map.set(bacia, c);
     });
     return Array.from(map.entries())
@@ -400,9 +439,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         pendente: Math.round(Math.max(v.total - v.executado, 0)),
         total: Math.round(v.total),
         pct: v.total > 0 ? Math.round((v.executado / v.total) * 100) : 0,
+        ligQtd: v.ligQtd,
+        ligComp: Math.round(v.ligComp * 100) / 100,
       }))
       .sort((a, b) => String(a.trecho).localeCompare(String(b.trecho), 'pt-BR', { numeric: true, sensitivity: 'base' }));
-  }, [ordens]);
+  }, [ordens, qtdLigacoesPorOs, ligacoesPorOs]);
 
   const accent = {
     blue: '#185FA5',
@@ -443,7 +484,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   return (
     <div className="dc-root flex flex-col gap-3">
       {/* Row 1 — KPIs */}
-      <div className="dc-kpis grid grid-cols-5 gap-3">
+      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico"
@@ -478,6 +519,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           value={kpis.produtividadeGeral}
           sub="média por encarregado"
           accent={accent.red}
+        />
+        <KpiCard
+          icon={<Cable size={16} />}
+          label="Ligações"
+          value={`${totaisLigacoes.qtd.toLocaleString('pt-BR')} un`}
+          sub={`${totaisLigacoes.comprimento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m executados`}
+          accent={accent.purple}
         />
       </div>
 
@@ -628,107 +676,185 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
       {/* Row 3 — Bacia (50%) + NS em Execução (20%) + Activity Feed (30%) */}
       <div className="dc-row3 grid grid-cols-10 gap-3 items-stretch">
-        {/* Avanço por Bacia — 50% */}
+        {/* Avanço por Sub-bacia — 50% */}
         {(() => {
           const filtered = porTrecho.filter(b => {
-            if (baciaMode === 'com_execucao' && !(b.executado > 0)) return false;
+            const temExec = b.executado > 0 || b.ligQtd > 0 || b.ligComp > 0;
+            if (baciaMode === 'com_execucao' && !temExec) return false;
             if (baciaFilter && !String(b.trecho).toLowerCase().includes(baciaFilter.toLowerCase())) return false;
             return true;
           });
-          const innerHeight = Math.max(160, filtered.length * 22 + 30);
+          // Aba Rede só considera sub-bacias com previsto > 0
+          const filteredRede = filtered.filter((b) => b.total > 0);
+          // Aba Ligações só sub-bacias com alguma ligação executada
+          const filteredLig = filtered
+            .filter((b) => b.ligQtd > 0 || b.ligComp > 0)
+            .sort((a, b) => b.ligQtd - a.ligQtd);
+          const innerHeight = Math.max(160, filteredRede.length * 22 + 30);
           const mobileBaciaHeight = Math.max(200, Math.min(360, innerHeight));
+          const ligBarHeight = Math.max(160, filteredLig.length * 22 + 30);
+          const mobileLigHeight = Math.max(200, Math.min(360, ligBarHeight));
+          const tabBtn = (active: boolean) =>
+            `h-7 px-2 text-[11px] rounded border ${active ? 'bg-[#4dd9ac] text-[#0d1b2a] border-[#4dd9ac]' : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'}`;
           return (
             <div className="dc-bacia col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-[420px]" style={darkCardStyle}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-                <h3 className="text-sm font-semibold text-white">Avanço por Bacia</h3>
+                <h3 className="text-sm font-semibold text-white">Avanço por Sub-bacia</h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setSubBaciaTab('rede')} className={tabBtn(subBaciaTab === 'rede')}>Rede</button>
+                  <button onClick={() => setSubBaciaTab('ligacoes')} className={tabBtn(subBaciaTab === 'ligacoes')}>Ligações</button>
+                  <button onClick={() => setSubBaciaTab('resumo')} className={tabBtn(subBaciaTab === 'resumo')}>Resumo</button>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setBaciaMode('com_execucao')}
-                    className={`h-7 px-2 text-[11px] rounded border ${baciaMode === 'com_execucao' ? 'bg-[#4dd9ac] text-[#0d1b2a] border-[#4dd9ac]' : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'}`}
+                    className={tabBtn(baciaMode === 'com_execucao')}
                   >
                     Com execução
                   </button>
                   <button
                     onClick={() => setBaciaMode('todas')}
-                    className={`h-7 px-2 text-[11px] rounded border ${baciaMode === 'todas' ? 'bg-[#4dd9ac] text-[#0d1b2a] border-[#4dd9ac]' : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'}`}
+                    className={tabBtn(baciaMode === 'todas')}
                   >
                     Todas
                   </button>
                 </div>
-                <div className="flex items-center gap-3 text-[11px] text-white/80">
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: RED_PEND }} />
-                    Pendente
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_EXEC }} />
-                    Executado
-                  </span>
-                </div>
               </div>
-              {filtered.length === 0 ? (
-                <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
-              ) : (
-                <div className="overflow-y-auto flex-1 min-h-0">
-                  <ChartFrame className="dc-chart-box" mobileHeight={mobileBaciaHeight} desktopHeight={innerHeight}>
-                    {(chartWidth, chartHeight) => (
-                      <BarChart
-                        width={chartWidth}
-                        height={chartHeight}
-                        data={filtered}
-                        layout="vertical"
-                        margin={{ top: 4, right: 56, bottom: 4, left: 8 }}
-                        barCategoryGap={4}
-                        barSize={14}
-                      >
-                        <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" horizontal={false} />
-                        <XAxis type="number" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
-                        <YAxis
-                          type="category"
-                          dataKey="trecho"
-                          tick={{ fontSize: 11, fill: DARK_AXIS }}
-                          stroke={DARK_GRID}
-                          width={120}
-                        />
-                        <Tooltip
-                          contentStyle={darkTooltipStyle}
-                          labelStyle={{ color: '#fff' }}
-                          formatter={(v: number, n: string) => [`${v.toLocaleString('pt-BR')} m`, n === 'executado' ? 'Executado' : 'Pendente']}
-                        />
-                        <Bar dataKey="executado" stackId="a" fill={GREEN_EXEC} name="executado" barSize={14}>
-                          <LabelList
-                            dataKey="executado"
-                            position="center"
-                            formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
-                            fill="#fff"
-                            fontSize={10}
-                          />
-                        </Bar>
-                        <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente" barSize={14}>
-                          <LabelList
-                            dataKey="pendente"
-                            position="center"
-                            formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')}
-                            fill="#fff"
-                            fontSize={10}
-                          />
-                          <LabelList
-                            dataKey="pct"
-                            position="right"
-                            formatter={(v: number) => `${v}%`}
-                            fill="#4dd9ac"
-                            fontSize={11}
-                            offset={8}
-                          />
-                        </Bar>
-                      </BarChart>
-                    )}
-                  </ChartFrame>
-                </div>
+
+              {subBaciaTab === 'rede' && (
+                <>
+                  <div className="flex items-center gap-3 text-[11px] text-white/80 mb-1">
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_EXEC }} />
+                      Executado
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: RED_PEND }} />
+                      Pendente
+                    </span>
+                  </div>
+                  {filteredRede.length === 0 ? (
+                    <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
+                  ) : (
+                    <div className="overflow-y-auto flex-1 min-h-0">
+                      <ChartFrame className="dc-chart-box" mobileHeight={mobileBaciaHeight} desktopHeight={innerHeight}>
+                        {(chartWidth, chartHeight) => (
+                          <BarChart
+                            width={chartWidth}
+                            height={chartHeight}
+                            data={filteredRede}
+                            layout="vertical"
+                            margin={{ top: 4, right: 56, bottom: 4, left: 8 }}
+                            barCategoryGap={4}
+                            barSize={14}
+                          >
+                            <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" horizontal={false} />
+                            <XAxis type="number" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
+                            <YAxis type="category" dataKey="trecho" tick={{ fontSize: 11, fill: DARK_AXIS }} stroke={DARK_GRID} width={120} />
+                            <Tooltip
+                              contentStyle={darkTooltipStyle}
+                              labelStyle={{ color: '#fff' }}
+                              formatter={(v: number, n: string) => [`${v.toLocaleString('pt-BR')} m`, n === 'executado' ? 'Executado' : 'Pendente']}
+                            />
+                            <Bar dataKey="executado" stackId="a" fill={GREEN_EXEC} name="executado" barSize={14}>
+                              <LabelList dataKey="executado" position="center" formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')} fill="#fff" fontSize={10} />
+                            </Bar>
+                            <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente" barSize={14}>
+                              <LabelList dataKey="pendente" position="center" formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')} fill="#fff" fontSize={10} />
+                              <LabelList dataKey="pct" position="right" formatter={(v: number) => `${v}%`} fill="#4dd9ac" fontSize={11} offset={8} />
+                            </Bar>
+                          </BarChart>
+                        )}
+                      </ChartFrame>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {subBaciaTab === 'ligacoes' && (
+                <>
+                  <p className="text-[11px] text-white/60 mb-1">
+                    Somente produção executada. Ligações não têm previsto confiável.
+                  </p>
+                  {filteredLig.length === 0 ? (
+                    <p className="text-xs text-white/60 text-center py-6">Nenhuma ligação executada.</p>
+                  ) : (
+                    <div className="overflow-y-auto flex-1 min-h-0">
+                      <table className="w-full text-xs text-white/90">
+                        <thead className="sticky top-0" style={{ backgroundColor: DARK_BG }}>
+                          <tr className="text-left text-white/60 border-b border-white/10">
+                            <th className="py-1 pr-2 font-medium">Sub-bacia</th>
+                            <th className="py-1 px-2 font-medium text-right">Ligações (un)</th>
+                            <th className="py-1 pl-2 font-medium text-right">Comprimento (m)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredLig.map((b) => (
+                            <tr key={b.trecho} className="border-b border-white/5">
+                              <td className="py-1 pr-2">{b.trecho}</td>
+                              <td className="py-1 px-2 text-right tabular-nums font-semibold" style={{ color: TEAL }}>
+                                {b.ligQtd.toLocaleString('pt-BR')}
+                              </td>
+                              <td className="py-1 pl-2 text-right tabular-nums">
+                                {b.ligComp.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {subBaciaTab === 'resumo' && (
+                <>
+                  <p className="text-[11px] text-white/60 mb-1">
+                    Total em metros = rede + comprimento das ligações. Não é avanço físico total (ligações não têm previsto confiável).
+                  </p>
+                  {filtered.length === 0 ? (
+                    <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
+                  ) : (
+                    <div className="overflow-y-auto flex-1 min-h-0">
+                      <table className="w-full text-xs text-white/90">
+                        <thead className="sticky top-0" style={{ backgroundColor: DARK_BG }}>
+                          <tr className="text-left text-white/60 border-b border-white/10">
+                            <th className="py-1 pr-2 font-medium">Sub-bacia</th>
+                            <th className="py-1 px-2 font-medium text-right">Rede exec. (m)</th>
+                            <th className="py-1 px-2 font-medium text-right">Avanço rede</th>
+                            <th className="py-1 px-2 font-medium text-right">Lig. (un)</th>
+                            <th className="py-1 px-2 font-medium text-right">Lig. (m)</th>
+                            <th className="py-1 pl-2 font-medium text-right">Total (m)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((b) => (
+                            <tr key={b.trecho} className="border-b border-white/5">
+                              <td className="py-1 pr-2">{b.trecho}</td>
+                              <td className="py-1 px-2 text-right tabular-nums">{b.executado.toLocaleString('pt-BR')}</td>
+                              <td className="py-1 px-2 text-right tabular-nums" style={{ color: b.total > 0 ? TEAL : 'rgba(255,255,255,0.4)' }}>
+                                {b.total > 0 ? `${b.pct}%` : '—'}
+                              </td>
+                              <td className="py-1 px-2 text-right tabular-nums">{b.ligQtd.toLocaleString('pt-BR')}</td>
+                              <td className="py-1 px-2 text-right tabular-nums">
+                                {b.ligComp.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="py-1 pl-2 text-right tabular-nums font-semibold">
+                                {(b.executado + b.ligComp).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           );
         })()}
+
+
 
         {/* NS em Execução — 20% */}
         <div className="dc-ns col-span-2 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-[420px]">

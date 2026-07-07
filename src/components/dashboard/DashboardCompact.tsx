@@ -182,19 +182,23 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     mql.addEventListener?.('change', apply);
     return () => mql.removeEventListener?.('change', apply);
   }, []);
-  const [registrosBrutos, setRegistrosBrutos] = useState<DailyRow[]>([]);
+  const [registrosBrutos, setRegistrosBrutos] = useState<any[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
+  const [ligacoesRows, setLigacoesRows] = useState<{ os_id: string; comprimento: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
+  const [subBaciaTab, setSubBaciaTab] = useState<'rede' | 'ligacoes' | 'resumo'>('rede');
 
   useEffect(() => {
     Promise.all([
       supabase.from('registros_producao').select('user_id, data_registro, comprimento_dia, os_id, comprimento_ajustado, ligacoes_dia, ligacoes_ajustadas, status').eq('excluido', false).eq('status', 'ativo'),
       supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
-    ]).then(([r, o]) => {
-      setRegistrosBrutos((r.data ?? []) as DailyRow[]);
+      supabase.from('ligacoes').select('os_id, comprimento'),
+    ]).then(([r, o, l]) => {
+      setRegistrosBrutos((r.data ?? []) as any[]);
       setOsRows((o.data ?? []) as OSRow[]);
+      setLigacoesRows((l.data ?? []) as any[]);
       setLoading(false);
     });
   }, []);

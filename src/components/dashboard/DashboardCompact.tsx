@@ -385,17 +385,51 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [ordens],
   );
 
-  // Avanço por Bacia (todas as NS, independente de status/liberação)
+  // Ligações por OS (comprimento único por os_id, sem duplicar por data)
+  const ligacoesPorOs = useMemo(() => {
+    const map = new Map<string, { comprimento: number }>();
+    ligacoesRows.forEach((l) => {
+      const c = map.get(l.os_id) ?? { comprimento: 0 };
+      c.comprimento += Number(l.comprimento) || 0;
+      map.set(l.os_id, c);
+    });
+    return map;
+  }, [ligacoesRows]);
+
+  // Quantidade de ligações realizadas por OS — soma dos lançamentos diários
+  const qtdLigacoesPorOs = useMemo(() => {
+    const map = new Map<string, number>();
+    registros.forEach((r: any) => {
+      const q = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
+      if (!q) return;
+      map.set(r.os_id, (map.get(r.os_id) ?? 0) + q);
+    });
+    return map;
+  }, [registros]);
+
+  // Totais de ligações (para KPI)
+  const totaisLigacoes = useMemo(() => {
+    let qtd = 0;
+    let comprimento = 0;
+    qtdLigacoesPorOs.forEach((v) => { qtd += v; });
+    ligacoesPorOs.forEach((v) => { comprimento += v.comprimento; });
+    return { qtd, comprimento };
+  }, [qtdLigacoesPorOs, ligacoesPorOs]);
+
+  // Avanço por Sub-bacia (todas as NS, independente de status/liberação)
   const porTrecho = useMemo(() => {
-    const map = new Map<string, { executado: number; total: number }>();
+    const map = new Map<string, { executado: number; total: number; ligQtd: number; ligComp: number }>();
     ordens.forEach((o) => {
-      const prev = o.comprimento_previsto ?? 0;
-      if (prev <= 0) return;
       const bacia = o.bacia || 'Sem bacia';
+      const prev = o.comprimento_previsto ?? 0;
       const exec = Math.min(o.comprimento_real ?? 0, prev);
-      const c = map.get(bacia) ?? { executado: 0, total: 0 };
-      c.executado += exec;
-      c.total += prev;
+      const c = map.get(bacia) ?? { executado: 0, total: 0, ligQtd: 0, ligComp: 0 };
+      if (prev > 0) {
+        c.executado += exec;
+        c.total += prev;
+      }
+      c.ligQtd += qtdLigacoesPorOs.get(o.id) ?? 0;
+      c.ligComp += ligacoesPorOs.get(o.id)?.comprimento ?? 0;
       map.set(bacia, c);
     });
     return Array.from(map.entries())
@@ -405,9 +439,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         pendente: Math.round(Math.max(v.total - v.executado, 0)),
         total: Math.round(v.total),
         pct: v.total > 0 ? Math.round((v.executado / v.total) * 100) : 0,
+        ligQtd: v.ligQtd,
+        ligComp: Math.round(v.ligComp * 100) / 100,
       }))
       .sort((a, b) => String(a.trecho).localeCompare(String(b.trecho), 'pt-BR', { numeric: true, sensitivity: 'base' }));
-  }, [ordens]);
+  }, [ordens, qtdLigacoesPorOs, ligacoesPorOs]);
 
   const accent = {
     blue: '#185FA5',

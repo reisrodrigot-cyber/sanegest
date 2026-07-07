@@ -23,6 +23,7 @@ import {
   Layers,
   Loader2,
   Radio,
+  Cable,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';

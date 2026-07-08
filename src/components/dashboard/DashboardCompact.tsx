@@ -393,18 +393,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [ordens],
   );
 
-  // Ligações por OS (comprimento único por os_id, sem duplicar por data)
-  const ligacoesPorOs = useMemo(() => {
-    const map = new Map<string, { comprimento: number }>();
-    ligacoesRows.forEach((l) => {
-      const c = map.get(l.os_id) ?? { comprimento: 0 };
-      c.comprimento += Number(l.comprimento) || 0;
-      map.set(l.os_id, c);
-    });
-    return map;
-  }, [ligacoesRows]);
-
   // Quantidade de ligações realizadas por OS — soma dos lançamentos diários
+  // (usa ligacoes_ajustadas quando existir; senão ligacoes_dia; ignora excluídos/cancelados via filtro do fetch)
   const qtdLigacoesPorOs = useMemo(() => {
     const map = new Map<string, number>();
     registros.forEach((r: any) => {
@@ -415,14 +405,43 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return map;
   }, [registros]);
 
-  // Totais de ligações (para KPI)
+  // Ligações planejadas por OS (contagem e soma de comprimento) — vindo da tabela ligacoes,
+  // uma linha por ligação física; não há duplicidade por data.
+  const ligacoesPlanejadasPorOs = useMemo(() => {
+    const map = new Map<string, { count: number; comprimento: number }>();
+    ligacoesRows.forEach((l) => {
+      const c = map.get(l.os_id) ?? { count: 0, comprimento: 0 };
+      c.count += 1;
+      c.comprimento += Number(l.comprimento) || 0;
+      map.set(l.os_id, c);
+    });
+    return map;
+  }, [ligacoesRows]);
+
+  // Comprimento EXECUTADO de ligações por OS = comprimento planejado capado pela
+  // proporção executadas/planejadas. Evita contar comprimento de ligações ainda
+  // não executadas quando a OS foi lançada com menos ligações do que o previsto
+  // pela topografia.
+  const ligCompExecutadoPorOs = useMemo(() => {
+    const map = new Map<string, number>();
+    ligacoesPlanejadasPorOs.forEach((v, osId) => {
+      if (v.count <= 0 || v.comprimento <= 0) return;
+      const exec = qtdLigacoesPorOs.get(osId) ?? 0;
+      if (exec <= 0) return;
+      const ratio = Math.min(1, exec / v.count);
+      map.set(osId, v.comprimento * ratio);
+    });
+    return map;
+  }, [ligacoesPlanejadasPorOs, qtdLigacoesPorOs]);
+
+  // Totais de ligações (para KPI) — usa o comprimento executado deduplicado
   const totaisLigacoes = useMemo(() => {
     let qtd = 0;
     let comprimento = 0;
     qtdLigacoesPorOs.forEach((v) => { qtd += v; });
-    ligacoesPorOs.forEach((v) => { comprimento += v.comprimento; });
+    ligCompExecutadoPorOs.forEach((v) => { comprimento += v; });
     return { qtd, comprimento };
-  }, [qtdLigacoesPorOs, ligacoesPorOs]);
+  }, [qtdLigacoesPorOs, ligCompExecutadoPorOs]);
 
   // Avanço por Sub-bacia (todas as NS, independente de status/liberação)
   const porTrecho = useMemo(() => {
@@ -437,7 +456,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         c.total += prev;
       }
       c.ligQtd += qtdLigacoesPorOs.get(o.id) ?? 0;
-      c.ligComp += ligacoesPorOs.get(o.id)?.comprimento ?? 0;
+      c.ligComp += ligCompExecutadoPorOs.get(o.id) ?? 0;
       map.set(bacia, c);
     });
     return Array.from(map.entries())
@@ -451,7 +470,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         ligComp: Math.round(v.ligComp * 100) / 100,
       }))
       .sort((a, b) => String(a.trecho).localeCompare(String(b.trecho), 'pt-BR', { numeric: true, sensitivity: 'base' }));
-  }, [ordens, qtdLigacoesPorOs, ligacoesPorOs]);
+  }, [ordens, qtdLigacoesPorOs, ligCompExecutadoPorOs]);
 
   const accent = {
     blue: '#185FA5',

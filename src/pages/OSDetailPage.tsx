@@ -239,11 +239,11 @@ const OSDetailPage = () => {
       const userIds = roles.map(r => r.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name, email')
+        .select('user_id, display_name, email, apelido')
         .in('user_id', userIds);
       return (profiles ?? []).map(p => ({
         user_id: p.user_id,
-        name: p.display_name || p.email || 'Sem nome',
+        name: p.apelido || p.display_name || p.email || 'Sem nome',
       }));
     },
   });

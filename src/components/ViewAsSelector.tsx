@@ -17,6 +17,7 @@ interface RoleUser {
   user_id: string;
   display_name: string | null;
   email: string | null;
+  apelido: string | null;
 }
 
 export const ViewAsSelector = () => {
@@ -45,7 +46,7 @@ export const ViewAsSelector = () => {
       }
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name, email')
+        .select('user_id, display_name, email, apelido')
         .in('user_id', ids);
 
       const sorted = (profiles ?? []).sort((a, b) =>
@@ -107,7 +108,7 @@ export const ViewAsSelector = () => {
                   setViewAsUser(null);
                 } else {
                   const u = roleUsers.find((x) => x.user_id === v);
-                  if (u) setViewAsUser({ id: u.user_id, nome: u.display_name || u.email || 'Usuário' });
+                  if (u) setViewAsUser({ id: u.user_id, nome: u.apelido || u.display_name || u.email || 'Usuário' });
                 }
               }}
             >
@@ -120,7 +121,7 @@ export const ViewAsSelector = () => {
                 </SelectItem>
                 {roleUsers.map((u) => (
                   <SelectItem key={u.user_id} value={u.user_id}>
-                    {u.display_name || u.email}
+                    {u.apelido || u.display_name || u.email}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -34,11 +34,11 @@ export const MediaPorEncarregado = () => {
       if (ids.length > 0) {
         const { data: profs } = await supabase
           .from('profiles')
-          .select('user_id, display_name, email')
+          .select('user_id, display_name, email, apelido')
           .in('user_id', ids);
         const map: Record<string, string> = {};
         (profs ?? []).forEach((p) => {
-          map[p.user_id] = p.display_name || p.email || p.user_id.slice(0, 8);
+          map[p.user_id] = p.apelido || p.display_name || p.email || p.user_id.slice(0, 8);
         });
         setUsers(map);
       }

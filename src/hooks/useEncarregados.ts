@@ -21,10 +21,10 @@ export function useEncarregados() {
       if (ids.length === 0) { setData([]); setLoading(false); return; }
       const { data: profs } = await supabase
         .from('profiles')
-        .select('user_id, display_name, email')
+        .select('user_id, display_name, email, apelido')
         .in('user_id', ids);
       setData(((profs || []) as any[])
-        .map(p => ({ user_id: p.user_id, display_name: p.display_name || p.email, email: p.email }))
+        .map(p => ({ user_id: p.user_id, display_name: p.apelido || p.display_name || p.email, email: p.email }))
         .sort((a, b) => a.display_name.localeCompare(b.display_name)));
       setLoading(false);
     })();

@@ -118,10 +118,10 @@ export const OSHistoricoSection = ({ osId }: Props) => {
       if (ids.size > 0) {
         const { data: profs } = await supabase
           .from('profiles')
-          .select('user_id, display_name, email')
+          .select('user_id, display_name, email, apelido')
           .in('user_id', Array.from(ids));
         (profs ?? []).forEach((pr) => {
-          map[pr.user_id] = pr.display_name || pr.email || pr.user_id.slice(0, 8);
+          map[pr.user_id] = pr.apelido || pr.display_name || pr.email || pr.user_id.slice(0, 8);
         });
       }
 

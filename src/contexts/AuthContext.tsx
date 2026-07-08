@@ -57,7 +57,7 @@ async function fetchUserRole(userId: string): Promise<UserRole | null> {
 async function fetchProfile(userId: string): Promise<{ display_name: string | null; email: string | null } | null> {
   const { data } = await supabase
     .from('profiles')
-    .select('display_name, email')
+    .select('display_name, email, apelido')
     .eq('user_id', userId)
     .maybeSingle();
   return data;
@@ -73,7 +73,7 @@ async function buildAuthUser(supaUser: User): Promise<AuthUser | null> {
 
   return {
     id: supaUser.id,
-    nome: profile?.display_name || supaUser.email?.split('@')[0] || 'Usuário',
+    nome: (profile as any)?.apelido || profile?.display_name || supaUser.email?.split('@')[0] || 'Usuário',
     email: supaUser.email || '',
     role,
   };

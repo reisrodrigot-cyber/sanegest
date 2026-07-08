@@ -222,23 +222,29 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   }, []);
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterdayStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
+  const compAtual = (r: any) =>
+    Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+  const ligAtual = (r: any) =>
+    Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
   const kpis = useMemo(() => {
     const totalPrevisto = ordens.reduce((s, o) => s + (o.comprimento_previsto ?? 0), 0);
     const totalExecutado = ordens.reduce((s, o) => s + (o.comprimento_real ?? 0), 0);
     const pct = totalPrevisto > 0 ? Math.round((totalExecutado / totalPrevisto) * 100) : 0;
 
-    const producaoHoje = registros
-      .filter((r) => r.data_registro === todayStr)
-      .reduce((s, r) => s + Number(r.comprimento_dia || 0), 0);
+    const regsOntem = registros.filter((r) => r.data_registro === yesterdayStr);
+    const producaoOntem = regsOntem.reduce((s, r) => s + compAtual(r), 0);
+    const ligacoesOntem = regsOntem.reduce((s, r) => s + ligAtual(r), 0);
 
-    const totalReg = registros.reduce((s, r) => s + Number(r.comprimento_dia || 0), 0);
+    const totalReg = registros.reduce((s, r) => s + compAtual(r), 0);
     const diasUnicos = new Set(registros.map((r) => r.data_registro)).size;
     const mediaDiaria = diasUnicos > 0 ? totalReg / diasUnicos : 0;
-
-    const nsExec = ordens.filter(
-      (o) => o.liberado && (o.status === 'VERMELHO' || o.status === 'LARANJA' || o.status === 'AMARELO'),
-    ).length;
 
     // ativos últimos 30 dias
     const since = new Date();
@@ -249,7 +255,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const usuariosDias = new Map<string, { total: number; days: Set<string> }>();
     registros.forEach((r) => {
       const c = usuariosDias.get(r.user_id) ?? { total: 0, days: new Set<string>() };
-      c.total += Number(r.comprimento_dia || 0);
+      c.total += compAtual(r);
       c.days.add(r.data_registro);
       usuariosDias.set(r.user_id, c);
     });
@@ -259,13 +265,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return {
       avancoLabel: `${Math.round(totalExecutado).toLocaleString('pt-BR')} / ${Math.round(totalPrevisto).toLocaleString('pt-BR')} m`,
       avancoPct: `${pct}%`,
-      producaoHoje: `${Math.round(producaoHoje * 10) / 10} m`,
+      producaoOntem: `${(Math.round(producaoOntem * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`,
+      producaoOntemSub: ligacoesOntem > 0
+        ? `${ligacoesOntem} ${ligacoesOntem === 1 ? 'ligação' : 'ligações'}`
+        : 'sem ligações',
       mediaDiaria: `${Math.round(mediaDiaria * 10) / 10} m/dia`,
-      nsExec: String(nsExec),
       ativos: String(ativos),
       produtividadeGeral: `${Math.round(produtividadeGeral * 10) / 10} m/dia`,
     };
-  }, [ordens, registros, todayStr]);
+  }, [ordens, registros, yesterdayStr]);
 
   // Produção diária (30 dias)
   const dailyData = useMemo(() => {
@@ -484,7 +492,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   return (
     <div className="dc-root flex flex-col gap-3">
       {/* Row 1 — KPIs */}
-      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico"
@@ -494,9 +502,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         />
         <KpiCard
           icon={<CalendarDays size={16} />}
-          label="Produção Hoje"
-          value={kpis.producaoHoje}
-          sub="metros executados"
+          label="Produção Ontem"
+          value={kpis.producaoOntem}
+          sub={kpis.producaoOntemSub}
           accent={accent.green}
         />
         <KpiCard
@@ -505,13 +513,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           value={kpis.mediaDiaria}
           sub="todos os encarregados"
           accent={accent.blue}
-        />
-        <KpiCard
-          icon={<ListChecks size={16} />}
-          label="NS em Execução"
-          value={kpis.nsExec}
-          sub={divergenciasCount > 0 ? `${divergenciasCount} divergência(s)` : 'sem divergências'}
-          accent={accent.amber}
         />
         <KpiCard
           icon={<Gauge size={16} />}
@@ -925,9 +926,9 @@ const useRealEvents = () => {
     (async () => {
       const [prod, topo, mat, status] = await Promise.all([
         supabase.from('registros_producao')
-          .select('id, data_registro, comprimento_dia, ligacoes_dia, user_id, os_id, created_at')
+          .select('id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, user_id, os_id, created_at, updated_at, status')
           .eq('excluido', false)
-          .order('created_at', { ascending: false }).limit(30),
+          .order('updated_at', { ascending: false }).limit(40),
         supabase.from('topografia_asbuilt')
           .select('id, nome_estaca, registrado_por, os_id, created_at')
           .order('created_at', { ascending: false }).limit(30),
@@ -958,13 +959,30 @@ const useRealEvents = () => {
 
       const all: FeedEvent[] = [];
       (prod.data || []).forEach((r: any) => {
+        const compAtual = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+        const ligAtual = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
         const parts: string[] = [];
-        if (r.comprimento_dia) parts.push(`${Number(r.comprimento_dia).toLocaleString('pt-BR')}m`);
-        if (r.ligacoes_dia) parts.push(`${r.ligacoes_dia} ligações`);
+        if (compAtual) parts.push(`${compAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m de rede`);
+        if (ligAtual) parts.push(`${ligAtual} ${ligAtual === 1 ? 'ligação' : 'ligações'}`);
+        const trecho = oMap[r.os_id]?.trecho;
+        const dataBR = r.data_registro
+          ? r.data_registro.split('-').reverse().join('/')
+          : '';
+        const createdMs = r.created_at ? new Date(r.created_at).getTime() : 0;
+        const updatedMs = r.updated_at ? new Date(r.updated_at).getTime() : createdMs;
+        const isEdit = updatedMs - createdMs > 60_000 || r.status === 'cancelado';
+        if (isEdit) {
+          const statusLabel = r.status === 'cancelado' ? 'cancelada' : 'contabilizada na produção';
+          all.push({
+            id: `pe-${r.id}`, type: 'producao', ts: new Date(updatedMs),
+            who: uMap[r.user_id] || 'Usuário',
+            description: `editou produção${trecho ? ` — ${trecho}` : ''}${dataBR ? ` — ${dataBR}` : ''} — ${parts.join(' e ') || '0m'} — ${statusLabel}`,
+          });
+        }
         all.push({
           id: `p-${r.id}`, type: 'producao', ts: new Date(r.created_at),
           who: uMap[r.user_id] || 'Usuário',
-          description: `registrou ${parts.join(' e ') || 'produção'}${oMap[r.os_id] ? ` em ${oMap[r.os_id].trecho}` : ''}`,
+          description: `registrou ${parts.join(' e ') || 'produção'}${trecho ? ` em ${trecho}` : ''}`,
         });
       });
       (topo.data || []).forEach((r: any) => {

@@ -120,7 +120,7 @@ export const ViewAsSelector = () => {
                 </SelectItem>
                 {roleUsers.map((u) => (
                   <SelectItem key={u.user_id} value={u.user_id}>
-                    {u.display_name || u.email}
+                    {u.apelido || u.display_name || u.email}
                   </SelectItem>
                 ))}
               </SelectContent>

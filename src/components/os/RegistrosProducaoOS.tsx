@@ -89,7 +89,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
       if (userIds.length) {
         const { data: profs } = await supabase
           .from('profiles')
-          .select('user_id, display_name, email')
+          .select('user_id, display_name, email, apelido')
           .in('user_id', userIds);
         const m: Record<string, string> = {};
         (profs ?? []).forEach((p: any) => {

@@ -34,7 +34,7 @@ export const MediaPorEncarregado = () => {
       if (ids.length > 0) {
         const { data: profs } = await supabase
           .from('profiles')
-          .select('user_id, display_name, email')
+          .select('user_id, display_name, email, apelido')
           .in('user_id', ids);
         const map: Record<string, string> = {};
         (profs ?? []).forEach((p) => {

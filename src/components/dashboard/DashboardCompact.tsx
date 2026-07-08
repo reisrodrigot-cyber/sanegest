@@ -313,7 +313,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // Produção por encarregado — APENAS mês corrente (a partir de registros_producao)
   const [encNames, setEncNames] = useState<Record<string, string>>({});
   useEffect(() => {
-    supabase.from('profiles').select('user_id, display_name, email').then(({ data }) => {
+    supabase.from('profiles').select('user_id, display_name, email, apelido').then(({ data }) => {
       const m: Record<string, string> = {};
       (data ?? []).forEach((p: any) => { m[p.user_id] = p.display_name || p.email || '—'; });
       setEncNames(m);
@@ -949,7 +949,7 @@ const useRealEvents = () => {
       (status.data || []).forEach((r: any) => { r.user_id && userIds.add(r.user_id); r.os_id && osIds.add(r.os_id); });
 
       const [profs, oss] = await Promise.all([
-        userIds.size ? supabase.from('profiles').select('user_id, display_name, email').in('user_id', Array.from(userIds)) : Promise.resolve({ data: [] as any[] }),
+        userIds.size ? supabase.from('profiles').select('user_id, display_name, email, apelido').in('user_id', Array.from(userIds)) : Promise.resolve({ data: [] as any[] }),
         osIds.size ? supabase.from('ordens_servico').select('id, trecho, liberado_para').in('id', Array.from(osIds)) : Promise.resolve({ data: [] as any[] }),
       ]);
       const uMap: Record<string, string> = {};

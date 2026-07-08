@@ -45,7 +45,7 @@ export const ViewAsSelector = () => {
       }
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name, email')
+        .select('user_id, display_name, email, apelido')
         .in('user_id', ids);
 
       const sorted = (profiles ?? []).sort((a, b) =>

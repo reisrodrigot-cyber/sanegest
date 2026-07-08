@@ -959,13 +959,30 @@ const useRealEvents = () => {
 
       const all: FeedEvent[] = [];
       (prod.data || []).forEach((r: any) => {
+        const compAtual = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+        const ligAtual = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
         const parts: string[] = [];
-        if (r.comprimento_dia) parts.push(`${Number(r.comprimento_dia).toLocaleString('pt-BR')}m`);
-        if (r.ligacoes_dia) parts.push(`${r.ligacoes_dia} ligações`);
+        if (compAtual) parts.push(`${compAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m de rede`);
+        if (ligAtual) parts.push(`${ligAtual} ${ligAtual === 1 ? 'ligação' : 'ligações'}`);
+        const trecho = oMap[r.os_id]?.trecho;
+        const dataBR = r.data_registro
+          ? r.data_registro.split('-').reverse().join('/')
+          : '';
+        const createdMs = r.created_at ? new Date(r.created_at).getTime() : 0;
+        const updatedMs = r.updated_at ? new Date(r.updated_at).getTime() : createdMs;
+        const isEdit = updatedMs - createdMs > 60_000 || r.status === 'cancelado';
+        if (isEdit) {
+          const statusLabel = r.status === 'cancelado' ? 'cancelada' : 'contabilizada na produção';
+          all.push({
+            id: `pe-${r.id}`, type: 'producao', ts: new Date(updatedMs),
+            who: uMap[r.user_id] || 'Usuário',
+            description: `editou produção${trecho ? ` — ${trecho}` : ''}${dataBR ? ` — ${dataBR}` : ''} — ${parts.join(' e ') || '0m'} — ${statusLabel}`,
+          });
+        }
         all.push({
           id: `p-${r.id}`, type: 'producao', ts: new Date(r.created_at),
           who: uMap[r.user_id] || 'Usuário',
-          description: `registrou ${parts.join(' e ') || 'produção'}${oMap[r.os_id] ? ` em ${oMap[r.os_id].trecho}` : ''}`,
+          description: `registrou ${parts.join(' e ') || 'produção'}${trecho ? ` em ${trecho}` : ''}`,
         });
       });
       (topo.data || []).forEach((r: any) => {

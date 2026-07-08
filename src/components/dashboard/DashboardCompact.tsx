@@ -926,9 +926,9 @@ const useRealEvents = () => {
     (async () => {
       const [prod, topo, mat, status] = await Promise.all([
         supabase.from('registros_producao')
-          .select('id, data_registro, comprimento_dia, ligacoes_dia, user_id, os_id, created_at')
+          .select('id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, user_id, os_id, created_at, updated_at, status')
           .eq('excluido', false)
-          .order('created_at', { ascending: false }).limit(30),
+          .order('updated_at', { ascending: false }).limit(40),
         supabase.from('topografia_asbuilt')
           .select('id, nome_estaca, registrado_por, os_id, created_at')
           .order('created_at', { ascending: false }).limit(30),

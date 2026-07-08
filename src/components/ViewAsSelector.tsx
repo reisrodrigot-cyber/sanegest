@@ -107,7 +107,7 @@ export const ViewAsSelector = () => {
                   setViewAsUser(null);
                 } else {
                   const u = roleUsers.find((x) => x.user_id === v);
-                  if (u) setViewAsUser({ id: u.user_id, nome: u.display_name || u.email || 'Usuário' });
+                  if (u) setViewAsUser({ id: u.user_id, nome: u.apelido || u.display_name || u.email || 'Usuário' });
                 }
               }}
             >

@@ -93,7 +93,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
           .in('user_id', userIds);
         const m: Record<string, string> = {};
         (profs ?? []).forEach((p: any) => {
-          m[p.user_id] = p.display_name || p.email || '—';
+          m[p.user_id] = p.apelido || p.display_name || p.email || '—';
         });
         setNomes(m);
       }

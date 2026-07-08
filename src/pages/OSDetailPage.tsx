@@ -243,7 +243,7 @@ const OSDetailPage = () => {
         .in('user_id', userIds);
       return (profiles ?? []).map(p => ({
         user_id: p.user_id,
-        name: p.display_name || p.email || 'Sem nome',
+        name: p.apelido || p.display_name || p.email || 'Sem nome',
       }));
     },
   });

@@ -315,7 +315,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   useEffect(() => {
     supabase.from('profiles').select('user_id, display_name, email, apelido').then(({ data }) => {
       const m: Record<string, string> = {};
-      (data ?? []).forEach((p: any) => { m[p.user_id] = p.display_name || p.email || '—'; });
+      (data ?? []).forEach((p: any) => { m[p.user_id] = p.apelido || p.display_name || p.email || '—'; });
       setEncNames(m);
     });
   }, []);
@@ -953,7 +953,7 @@ const useRealEvents = () => {
         osIds.size ? supabase.from('ordens_servico').select('id, trecho, liberado_para').in('id', Array.from(osIds)) : Promise.resolve({ data: [] as any[] }),
       ]);
       const uMap: Record<string, string> = {};
-      (profs.data || []).forEach((p: any) => { uMap[p.user_id] = p.display_name || p.email || ''; });
+      (profs.data || []).forEach((p: any) => { uMap[p.user_id] = p.apelido || p.display_name || p.email || ''; });
       const oMap: Record<string, { trecho: string; liberado_para: string | null }> = {};
       (oss.data || []).forEach((o: any) => { oMap[o.id] = { trecho: o.trecho, liberado_para: o.liberado_para }; });
 

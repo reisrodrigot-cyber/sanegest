@@ -273,7 +273,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       const ids = (roleRows ?? []).map((r: any) => r.user_id);
       if (ids.length) {
         const { data: profs } = await supabase
-          .from('profiles').select('display_name, email').in('user_id', ids);
+          .from('profiles').select('display_name, email, apelido').in('user_id', ids);
         setEncOpts((profs ?? []).map((p: any) => p.apelido || p.display_name || p.email).filter(Boolean));
       }
       const { data: oss } = await supabase

@@ -222,23 +222,29 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   }, []);
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterdayStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
+  const compAtual = (r: any) =>
+    Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+  const ligAtual = (r: any) =>
+    Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
   const kpis = useMemo(() => {
     const totalPrevisto = ordens.reduce((s, o) => s + (o.comprimento_previsto ?? 0), 0);
     const totalExecutado = ordens.reduce((s, o) => s + (o.comprimento_real ?? 0), 0);
     const pct = totalPrevisto > 0 ? Math.round((totalExecutado / totalPrevisto) * 100) : 0;
 
-    const producaoHoje = registros
-      .filter((r) => r.data_registro === todayStr)
-      .reduce((s, r) => s + Number(r.comprimento_dia || 0), 0);
+    const regsOntem = registros.filter((r) => r.data_registro === yesterdayStr);
+    const producaoOntem = regsOntem.reduce((s, r) => s + compAtual(r), 0);
+    const ligacoesOntem = regsOntem.reduce((s, r) => s + ligAtual(r), 0);
 
-    const totalReg = registros.reduce((s, r) => s + Number(r.comprimento_dia || 0), 0);
+    const totalReg = registros.reduce((s, r) => s + compAtual(r), 0);
     const diasUnicos = new Set(registros.map((r) => r.data_registro)).size;
     const mediaDiaria = diasUnicos > 0 ? totalReg / diasUnicos : 0;
-
-    const nsExec = ordens.filter(
-      (o) => o.liberado && (o.status === 'VERMELHO' || o.status === 'LARANJA' || o.status === 'AMARELO'),
-    ).length;
 
     // ativos últimos 30 dias
     const since = new Date();
@@ -249,7 +255,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const usuariosDias = new Map<string, { total: number; days: Set<string> }>();
     registros.forEach((r) => {
       const c = usuariosDias.get(r.user_id) ?? { total: 0, days: new Set<string>() };
-      c.total += Number(r.comprimento_dia || 0);
+      c.total += compAtual(r);
       c.days.add(r.data_registro);
       usuariosDias.set(r.user_id, c);
     });
@@ -259,13 +265,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return {
       avancoLabel: `${Math.round(totalExecutado).toLocaleString('pt-BR')} / ${Math.round(totalPrevisto).toLocaleString('pt-BR')} m`,
       avancoPct: `${pct}%`,
-      producaoHoje: `${Math.round(producaoHoje * 10) / 10} m`,
+      producaoOntem: `${(Math.round(producaoOntem * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`,
+      producaoOntemSub: ligacoesOntem > 0
+        ? `${ligacoesOntem} ${ligacoesOntem === 1 ? 'ligação' : 'ligações'}`
+        : 'sem ligações',
       mediaDiaria: `${Math.round(mediaDiaria * 10) / 10} m/dia`,
-      nsExec: String(nsExec),
       ativos: String(ativos),
       produtividadeGeral: `${Math.round(produtividadeGeral * 10) / 10} m/dia`,
     };
-  }, [ordens, registros, todayStr]);
+  }, [ordens, registros, yesterdayStr]);
 
   // Produção diária (30 dias)
   const dailyData = useMemo(() => {

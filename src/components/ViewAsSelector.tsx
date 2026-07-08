@@ -17,6 +17,7 @@ interface RoleUser {
   user_id: string;
   display_name: string | null;
   email: string | null;
+  apelido: string | null;
 }
 
 export const ViewAsSelector = () => {

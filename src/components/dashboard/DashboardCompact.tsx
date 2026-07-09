@@ -211,17 +211,38 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [encNames, setEncNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    // ordens_servico pode ter mais de 1000 linhas — pagina para não perder OS
+    // (a API do PostgREST corta em 1000 por padrão, o que fazia sumir a faixa
+    // de profundidade dos trechos que caíam fora da primeira página).
+    const fetchAllOrdens = async (): Promise<OSRow[]> => {
+      const all: OSRow[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data } = await supabase
+          .from('ordens_servico')
+          .select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado')
+          .order('id', { ascending: true })
+          .range(from, from + pageSize - 1);
+        const rows = (data ?? []) as OSRow[];
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
+    };
     Promise.all([
       supabase.from('registros_producao').select('id, user_id, data_registro, comprimento_dia, os_id, comprimento_ajustado, ligacoes_dia, ligacoes_ajustadas, status').eq('excluido', false).eq('status', 'ativo'),
-      supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
+      fetchAllOrdens(),
       supabase.from('ligacoes').select('os_id, comprimento, registro_producao_id'),
     ]).then(([r, o, l]) => {
       setRegistrosBrutos((r.data ?? []) as any[]);
-      setOsRows((o.data ?? []) as OSRow[]);
+      setOsRows(o);
       setLigacoesRows((l.data ?? []) as any[]);
       setLoading(false);
     });
   }, []);
+
 
   useEffect(() => {
     supabase.from('profiles').select('user_id, display_name, email, apelido').then(({ data }) => {

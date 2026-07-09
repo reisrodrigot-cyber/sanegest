@@ -634,44 +634,61 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const totalPeriodo = porEncarregado.reduce((s, e) => s + e.total, 0);
   const somaMediasPeriodo = porEncarregado.reduce((s, e) => s + e.media, 0);
 
+  // Dropdown discreto de período (usado apenas nos cards afetados)
+  const PeriodoDropdown = () => (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setPeriodoMenuOpen((v) => !v)}
+        className="inline-flex items-center gap-1 h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground border border-transparent hover:border-border rounded transition-colors"
+        title="Alterar período de análise"
+      >
+        <span>Período: {PERIODO_LABELS[periodoTipo]}</span>
+        <span className="opacity-60">▾</span>
+      </button>
+      {periodoMenuOpen && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setPeriodoMenuOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-40 bg-card border border-border rounded-md shadow-lg p-1 min-w-[180px]">
+            {(Object.keys(PERIODO_LABELS) as PeriodoTipo[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { setPeriodoTipo(t); if (t !== 'personalizado') setPeriodoMenuOpen(false); }}
+                className={`w-full text-left text-[11px] px-2 py-1 rounded hover:bg-muted transition-colors ${
+                  periodoTipo === t ? 'text-foreground font-semibold bg-muted/60' : 'text-foreground/80'
+                }`}
+              >
+                {PERIODO_LABELS[t]}
+              </button>
+            ))}
+            {periodoTipo === 'personalizado' && (
+              <div className="flex flex-col gap-1 mt-1 pt-1 border-t border-border px-1">
+                <input
+                  type="date"
+                  value={periodoInicio}
+                  onChange={(e) => setPeriodoInicio(e.target.value)}
+                  className="h-6 px-1.5 text-[10px] rounded border border-border bg-background text-foreground"
+                />
+                <input
+                  type="date"
+                  value={periodoFim}
+                  onChange={(e) => setPeriodoFim(e.target.value)}
+                  className="h-6 px-1.5 text-[10px] rounded border border-border bg-background text-foreground"
+                />
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const periodoRangeLabel = `${fmtDateBR(periodo.inicio)} a ${fmtDateBR(periodo.fim)}`;
+
   return (
     <div className="dc-root flex flex-col gap-3">
-      {/* Filtro de período */}
-      <div className="flex flex-wrap items-center gap-2 bg-card rounded-lg border border-border shadow-sm px-3 py-2">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mr-1">Período:</span>
-        {(Object.keys(PERIODO_LABELS) as PeriodoTipo[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setPeriodoTipo(t)}
-            className={`h-7 px-2 text-[11px] rounded border transition-colors ${
-              periodoTipo === t
-                ? 'bg-[#185FA5] text-white border-[#185FA5]'
-                : 'bg-background text-foreground/80 border-border hover:bg-muted/50'
-            }`}
-          >
-            {PERIODO_LABELS[t]}
-          </button>
-        ))}
-        {periodoTipo === 'personalizado' && (
-          <div className="flex items-center gap-1.5 ml-1">
-            <input
-              type="date"
-              value={periodoInicio}
-              onChange={(e) => setPeriodoInicio(e.target.value)}
-              className="h-7 px-2 text-[11px] rounded border border-border bg-background text-foreground"
-            />
-            <span className="text-[11px] text-muted-foreground">até</span>
-            <input
-              type="date"
-              value={periodoFim}
-              onChange={(e) => setPeriodoFim(e.target.value)}
-              className="h-7 px-2 text-[11px] rounded border border-border bg-background text-foreground"
-            />
-          </div>
-        )}
-        <span className="text-[11px] text-muted-foreground ml-auto">{periodo.label}</span>
-      </div>
+
 
       {/* Row 1 — KPIs */}
       <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">

@@ -361,31 +361,43 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   }, [ordens]);
 
   // Produtividade por Profundidade (conceito APO):
-  //   produtividade_faixa = metros de REDE executados na faixa
-  //                       / dias trabalhados proporcionais na faixa
-  //   Onde "dias trabalhados" = pares únicos (encarregado × data) com produção
-  //   de rede > 0 naquela faixa. Ligações não entram: `comprimento_dia` já é
-  //   apenas rede; a extensão de ligações vive na tabela `ligacoes`.
+  //   produtividade_faixa = metros_rede_da_faixa / dias_proporcionais_da_faixa
+  //   Para cada par (encarregado, data), 1 dia é rateado entre as faixas em
+  //   que ele produziu rede naquele dia, proporcionalmente aos metros de cada
+  //   faixa. Ex.: 30m em <=1,25 e 70m em 1,25-2,00 no mesmo dia → 0,30 dia e
+  //   0,70 dia respectivamente. Ligações não entram.
   const profStats = useMemo(() => {
     const osProf = new Map<string, number | null>();
     osRows.forEach((o) => osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null));
-    const data = FAIXAS.map(() => ({ total: 0, diasTrab: new Set<string>() }));
+    // Agrupa metros por (encarregado, data, faixa)
+    const porPar = new Map<string, number[]>(); // key -> array por faixa
     registros.forEach((r) => {
       const metros = Number(r.comprimento_dia) || 0;
-      if (metros <= 0) return; // faixa só conta dias com produção de rede
+      if (metros <= 0) return;
       const idx = faixaIndex(osProf.get(r.os_id) ?? null);
       if (idx < 0) return;
-      data[idx].total += metros;
-      // dia trabalhado proporcional = (encarregado, data)
-      const chave = `${r.user_id ?? 'sem-user'}|${r.data_registro}`;
-      data[idx].diasTrab.add(chave);
+      const key = `${r.user_id ?? 'sem-user'}|${r.data_registro}`;
+      let arr = porPar.get(key);
+      if (!arr) { arr = FAIXAS.map(() => 0); porPar.set(key, arr); }
+      arr[idx] += metros;
     });
-    const medias = data.map((d) => (d.diasTrab.size > 0 ? d.total / d.diasTrab.size : 0));
+    const totais = FAIXAS.map(() => 0);
+    const diasProp = FAIXAS.map(() => 0);
+    porPar.forEach((arr) => {
+      const totalDia = arr.reduce((s, v) => s + v, 0);
+      if (totalDia <= 0) return;
+      arr.forEach((m, i) => {
+        if (m <= 0) return;
+        totais[i] += m;
+        diasProp[i] += m / totalDia;
+      });
+    });
+    const medias = totais.map((t, i) => (diasProp[i] > 0 ? t / diasProp[i] : 0));
     const max = Math.max(1, ...medias);
     return FAIXAS.map((f, i) => ({
       label: f.label,
       media: Math.round(medias[i] * 10) / 10,
-      total: Math.round(data[i].total),
+      total: Math.round(totais[i]),
       pctBar: (medias[i] / max) * 100,
     }));
   }, [registros, osRows]);

@@ -66,6 +66,10 @@ export function RegistrosProducaoOS({ osId }: Props) {
   const [ajLig, setAjLig] = useState('');
   const [ajMotivo, setAjMotivo] = useState('');
   const [savingAj, setSavingAj] = useState(false);
+  // Ligações do registro em ajuste
+  interface LigRow { id: string | null; comprimento: string; comprimentoOriginal: number | null; }
+  const [ligRows, setLigRows] = useState<LigRow[]>([]);
+  const [loadingLig, setLoadingLig] = useState(false);
 
   // Cancelar
   const [cancelando, setCancelando] = useState<RegistroRow | null>(null);
@@ -119,19 +123,65 @@ export function RegistrosProducaoOS({ osId }: Props) {
     .sort((a, b) => (b.pv_final_assentado_em ?? '').localeCompare(a.pv_final_assentado_em ?? ''));
   const trechoConcluido = concluidosPv[0] ?? null;
 
-  const abrirAjuste = (r: RegistroRow) => {
+  const abrirAjuste = async (r: RegistroRow) => {
     setAjustando(r);
     setAjComp(String(r.comprimento_ajustado ?? r.comprimento_dia ?? ''));
-    setAjLig(String(r.ligacoes_ajustadas ?? r.ligacoes_dia ?? ''));
+    const ligCount = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia ?? 0) || 0;
+    setAjLig(String(ligCount));
     setAjMotivo(r.motivo_ajuste ?? '');
+    setLigRows([]);
+    if (ligCount > 0) {
+      setLoadingLig(true);
+      const { data } = await supabase
+        .from('ligacoes')
+        .select('id, comprimento, created_at')
+        .eq('registro_producao_id', r.id)
+        .order('created_at', { ascending: true });
+      const rows: LigRow[] = (data ?? []).map((l: any) => ({
+        id: l.id,
+        comprimento: l.comprimento != null ? String(l.comprimento).replace('.', ',') : '',
+        comprimentoOriginal: l.comprimento != null ? Number(l.comprimento) : null,
+      }));
+      // ajusta ao count declarado
+      while (rows.length < ligCount) rows.push({ id: null, comprimento: '', comprimentoOriginal: null });
+      setLigRows(rows.slice(0, ligCount));
+      setLoadingLig(false);
+    }
   };
+
+  // Sincroniza quantidade de campos com o ajLig sem apagar valores existentes
+  useEffect(() => {
+    if (!ajustando) return;
+    const n = Math.max(0, Math.floor(Number(ajLig) || 0));
+    setLigRows((prev) => {
+      if (prev.length === n) return prev;
+      if (n < prev.length) return prev.slice(0, n);
+      const add: LigRow[] = [];
+      for (let i = prev.length; i < n; i++) add.push({ id: null, comprimento: '', comprimentoOriginal: null });
+      return [...prev, ...add];
+    });
+  }, [ajLig, ajustando]);
 
   const salvarAjuste = async () => {
     if (!ajustando || !user) return;
-    const comp = Number(String(ajComp).replace(',', '.'));
     const lig = Math.max(0, Math.floor(Number(ajLig) || 0));
-    if (isNaN(comp) || comp < 0) { toast.error('Comprimento inválido'); return; }
     if (!ajMotivo.trim()) { toast.error('Informe o motivo do ajuste'); return; }
+
+    // Comprimentos das ligações (se houver)
+    let ligComprimentos: number[] = [];
+    if (lig > 0) {
+      for (let i = 0; i < lig; i++) {
+        const raw = (ligRows[i]?.comprimento ?? '').toString().replace(',', '.').trim();
+        const v = raw === '' ? 0 : Number(raw);
+        if (isNaN(v) || v < 0) { toast.error(`Comprimento inválido na Ligação ${i + 1}`); return; }
+        ligComprimentos.push(v);
+      }
+    }
+
+    // Comprimento final da REDE (não das ligações)
+    const compRede = Number(String(ajComp).replace(',', '.'));
+    if (isNaN(compRede) || compRede < 0) { toast.error('Comprimento inválido'); return; }
+
     setSavingAj(true);
     const valor_anterior = {
       comprimento_ajustado: ajustando.comprimento_ajustado,
@@ -139,7 +189,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
       motivo_ajuste: ajustando.motivo_ajuste,
     };
     const valor_novo: any = {
-      comprimento_ajustado: comp,
+      comprimento_ajustado: compRede,
       ligacoes_ajustadas: lig,
       motivo_ajuste: ajMotivo.trim(),
       ajustado_por: user.id,
@@ -154,15 +204,47 @@ export function RegistrosProducaoOS({ osId }: Props) {
       toast.error('Erro ao ajustar: ' + error.message);
       return;
     }
+
+    // Sincroniza ligações
+    const anterioresLig = ligRows.map((r) => ({ id: r.id, comprimentoOriginal: r.comprimentoOriginal }));
+    for (let i = 0; i < lig; i++) {
+      const row = ligRows[i];
+      const novoComp = ligComprimentos[i];
+      if (row?.id) {
+        const { error: e } = await supabase
+          .from('ligacoes')
+          .update({ comprimento: novoComp })
+          .eq('id', row.id);
+        if (e) { setSavingAj(false); toast.error('Erro ao atualizar ligação ' + (i + 1) + ': ' + e.message); return; }
+      } else {
+        const { error: e } = await supabase
+          .from('ligacoes')
+          .insert({
+            os_id: ajustando.os_id,
+            registro_producao_id: ajustando.id,
+            encarregado_id: ajustando.user_id,
+            comprimento: novoComp,
+          });
+        if (e) { setSavingAj(false); toast.error('Erro ao criar ligação ' + (i + 1) + ': ' + e.message); return; }
+      }
+    }
+    // Remove excedentes se reduziu quantidade
+    const excedentes = ligRows.slice(lig).map((r) => r.id).filter(Boolean) as string[];
+    if (excedentes.length > 0) {
+      const { error: eDel } = await supabase.from('ligacoes').delete().in('id', excedentes);
+      if (eDel) { setSavingAj(false); toast.error('Erro ao remover ligações excedentes: ' + eDel.message); return; }
+    }
+
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: ajustando.id,
       usuario_id: user.id,
       acao: 'ajuste',
-      valor_anterior,
-      valor_novo,
+      valor_anterior: { ...valor_anterior, ligacoes: anterioresLig },
+      valor_novo: { ...valor_novo, ligacoes_comprimentos: ligComprimentos },
     });
     setSavingAj(false);
     setAjustando(null);
+    setLigRows([]);
     setReload((k) => k + 1);
     toast.success('Registro ajustado');
   };
@@ -380,7 +462,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
               O valor informado pelo encarregado é preservado. O valor ajustado passa a ser usado para contabilizar a produção da N.S.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
             <div>
               <Label htmlFor="aj-comp">Comprimento final (m)</Label>
               <Input id="aj-comp" inputMode="decimal" value={ajComp} onChange={(e) => setAjComp(e.target.value)} className="h-11" />
@@ -395,6 +477,47 @@ export function RegistrosProducaoOS({ osId }: Props) {
                 <p className="text-[11px] text-muted-foreground mt-1">Informado pelo encarregado: {ajustando.ligacoes_dia ?? 0}</p>
               )}
             </div>
+            {ligRows.length > 0 && (
+              <div className="rounded-lg border border-border p-3 bg-muted/20">
+                <p className="text-xs font-semibold text-foreground uppercase mb-2">Comprimentos das ligações</p>
+                {loadingLig ? (
+                  <div className="flex justify-center py-3"><Loader2 className="animate-spin text-muted-foreground" size={16} /></div>
+                ) : (
+                  <div className="space-y-2">
+                    {ligRows.map((row, i) => (
+                      <div key={i}>
+                        <Label htmlFor={`aj-lig-c-${i}`} className="text-xs">Ligação {i + 1} - Comprimento final (m)</Label>
+                        <Input
+                          id={`aj-lig-c-${i}`}
+                          inputMode="decimal"
+                          value={row.comprimento}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setLigRows((prev) => prev.map((p, idx) => idx === i ? { ...p, comprimento: v } : p));
+                          }}
+                          className="h-10"
+                          placeholder="0,00"
+                        />
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {row.comprimentoOriginal != null
+                            ? `Informado pelo encarregado: ${fmtN(row.comprimentoOriginal)} m`
+                            : 'Nova ligação — informe o comprimento'}
+                        </p>
+                      </div>
+                    ))}
+                    <div className="pt-1 border-t border-border/60 text-xs text-muted-foreground flex justify-between">
+                      <span>Total ligações</span>
+                      <span className="font-semibold text-foreground">
+                        {fmtN(ligRows.reduce((s, r) => {
+                          const v = Number(String(r.comprimento).replace(',', '.'));
+                          return s + (isNaN(v) ? 0 : v);
+                        }, 0))} m
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <Label htmlFor="aj-motivo">Motivo do ajuste *</Label>
               <Textarea id="aj-motivo" rows={3} value={ajMotivo} onChange={(e) => setAjMotivo(e.target.value)} />

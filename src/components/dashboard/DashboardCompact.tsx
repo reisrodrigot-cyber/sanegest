@@ -434,43 +434,50 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return map;
   }, [registros]);
 
-  // Ligações planejadas por OS (contagem e soma de comprimento) — vindo da tabela ligacoes,
-  // uma linha por ligação física; não há duplicidade por data.
-  const ligacoesPlanejadasPorOs = useMemo(() => {
+  // Ligações executadas — fonte de verdade é a tabela `ligacoes`, filtradas por
+  // vinculação a um registro de produção ATIVO (não excluído, não cancelado).
+  // A extensão é a soma direta de `ligacoes.comprimento` (valor final vigente;
+  // `comprimento_original` é auditoria e nunca entra em produção executada).
+  const activeRegistroIds = useMemo(() => {
+    const s = new Set<string>();
+    (registrosBrutos as any[]).forEach((r) => { if (r?.id) s.add(String(r.id)); });
+    return s;
+  }, [registrosBrutos]);
+
+  const ligacoesExecutadasPorOs = useMemo(() => {
     const map = new Map<string, { count: number; comprimento: number }>();
     ligacoesRows.forEach((l) => {
+      if (!l.registro_producao_id) return;
+      if (!activeRegistroIds.has(String(l.registro_producao_id))) return;
       const c = map.get(l.os_id) ?? { count: 0, comprimento: 0 };
       c.count += 1;
       c.comprimento += Number(l.comprimento) || 0;
       map.set(l.os_id, c);
     });
     return map;
-  }, [ligacoesRows]);
+  }, [ligacoesRows, activeRegistroIds]);
 
-  // Comprimento EXECUTADO de ligações por OS = comprimento planejado capado pela
-  // proporção executadas/planejadas. Evita contar comprimento de ligações ainda
-  // não executadas quando a OS foi lançada com menos ligações do que o previsto
-  // pela topografia.
+  // Aliases para preservar o restante do dashboard (sub-bacias, tabelas) usando
+  // a MESMA fonte de verdade das ligações executadas.
+  const qtdLigacoesPorOs = useMemo(() => {
+    const m = new Map<string, number>();
+    ligacoesExecutadasPorOs.forEach((v, k) => m.set(k, v.count));
+    return m;
+  }, [ligacoesExecutadasPorOs]);
   const ligCompExecutadoPorOs = useMemo(() => {
-    const map = new Map<string, number>();
-    ligacoesPlanejadasPorOs.forEach((v, osId) => {
-      if (v.count <= 0 || v.comprimento <= 0) return;
-      const exec = qtdLigacoesPorOs.get(osId) ?? 0;
-      if (exec <= 0) return;
-      const ratio = Math.min(1, exec / v.count);
-      map.set(osId, v.comprimento * ratio);
-    });
-    return map;
-  }, [ligacoesPlanejadasPorOs, qtdLigacoesPorOs]);
+    const m = new Map<string, number>();
+    ligacoesExecutadasPorOs.forEach((v, k) => m.set(k, v.comprimento));
+    return m;
+  }, [ligacoesExecutadasPorOs]);
 
-  // Totais de ligações (para KPI) — usa o comprimento executado deduplicado
+  // Totais de ligações (para KPI) — soma direta de ligacoes.comprimento das
+  // ligações vinculadas a registros ativos.
   const totaisLigacoes = useMemo(() => {
     let qtd = 0;
     let comprimento = 0;
-    qtdLigacoesPorOs.forEach((v) => { qtd += v; });
-    ligCompExecutadoPorOs.forEach((v) => { comprimento += v; });
+    ligacoesExecutadasPorOs.forEach((v) => { qtd += v.count; comprimento += v.comprimento; });
     return { qtd, comprimento };
-  }, [qtdLigacoesPorOs, ligCompExecutadoPorOs]);
+  }, [ligacoesExecutadasPorOs]);
 
   // Avanço por Sub-bacia (todas as NS, independente de status/liberação)
   const porTrecho = useMemo(() => {

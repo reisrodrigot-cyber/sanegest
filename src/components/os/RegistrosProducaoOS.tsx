@@ -462,7 +462,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
               O valor informado pelo encarregado é preservado. O valor ajustado passa a ser usado para contabilizar a produção da N.S.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
             <div>
               <Label htmlFor="aj-comp">Comprimento final (m)</Label>
               <Input id="aj-comp" inputMode="decimal" value={ajComp} onChange={(e) => setAjComp(e.target.value)} className="h-11" />
@@ -477,6 +477,47 @@ export function RegistrosProducaoOS({ osId }: Props) {
                 <p className="text-[11px] text-muted-foreground mt-1">Informado pelo encarregado: {ajustando.ligacoes_dia ?? 0}</p>
               )}
             </div>
+            {ligRows.length > 0 && (
+              <div className="rounded-lg border border-border p-3 bg-muted/20">
+                <p className="text-xs font-semibold text-foreground uppercase mb-2">Comprimentos das ligações</p>
+                {loadingLig ? (
+                  <div className="flex justify-center py-3"><Loader2 className="animate-spin text-muted-foreground" size={16} /></div>
+                ) : (
+                  <div className="space-y-2">
+                    {ligRows.map((row, i) => (
+                      <div key={i}>
+                        <Label htmlFor={`aj-lig-c-${i}`} className="text-xs">Ligação {i + 1} - Comprimento final (m)</Label>
+                        <Input
+                          id={`aj-lig-c-${i}`}
+                          inputMode="decimal"
+                          value={row.comprimento}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setLigRows((prev) => prev.map((p, idx) => idx === i ? { ...p, comprimento: v } : p));
+                          }}
+                          className="h-10"
+                          placeholder="0,00"
+                        />
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {row.comprimentoOriginal != null
+                            ? `Informado pelo encarregado: ${fmtN(row.comprimentoOriginal)} m`
+                            : 'Nova ligação — informe o comprimento'}
+                        </p>
+                      </div>
+                    ))}
+                    <div className="pt-1 border-t border-border/60 text-xs text-muted-foreground flex justify-between">
+                      <span>Total ligações</span>
+                      <span className="font-semibold text-foreground">
+                        {fmtN(ligRows.reduce((s, r) => {
+                          const v = Number(String(r.comprimento).replace(',', '.'));
+                          return s + (isNaN(v) ? 0 : v);
+                        }, 0))} m
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <Label htmlFor="aj-motivo">Motivo do ajuste *</Label>
               <Textarea id="aj-motivo" rows={3} value={ajMotivo} onChange={(e) => setAjMotivo(e.target.value)} />

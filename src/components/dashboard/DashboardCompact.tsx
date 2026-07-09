@@ -520,16 +520,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // vinculação a um registro de produção ATIVO (não excluído, não cancelado).
   // A extensão é a soma direta de `ligacoes.comprimento` (valor final vigente;
   // `comprimento_original` é auditoria e nunca entra em produção executada).
+  // Ligações são acumulado geral da obra — NÃO seguem o filtro de período dos
+  // cards de análise. Consideramos todos os registros de produção ativos.
   const activeRegistroIds = useMemo(() => {
     const s = new Set<string>();
     (registrosBrutos as any[]).forEach((r) => {
       if (!r?.id) return;
-      const d = String(r.data_registro ?? '');
-      if (d < periodo.inicio || d > periodo.fim) return;
       s.add(String(r.id));
     });
     return s;
-  }, [registrosBrutos, periodo.inicio, periodo.fim]);
+  }, [registrosBrutos]);
 
   const ligacoesExecutadasPorOs = useMemo(() => {
     const map = new Map<string, { count: number; comprimento: number }>();

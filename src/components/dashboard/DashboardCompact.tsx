@@ -128,15 +128,6 @@ const faixaIndex = (prof: number | null) => {
   return 3;
 };
 
-type PeriodoTipo = 'todo' | 'hoje' | 'ontem' | 'semana' | 'mes_atual' | 'personalizado';
-const PERIODO_LABELS: Record<PeriodoTipo, string> = {
-  todo: 'Todo o período',
-  hoje: 'Hoje',
-  ontem: 'Ontem',
-  semana: 'Últimos 7 dias',
-  mes_atual: 'Mês atual',
-  personalizado: 'Personalizado',
-};
 const toISODate = (d: Date) => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');

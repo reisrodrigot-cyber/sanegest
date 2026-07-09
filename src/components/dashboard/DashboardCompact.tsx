@@ -735,14 +735,17 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         {/* Tables + Produtividade strip */}
         <div className="dc-tables col-span-3 flex flex-col gap-3">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <h3 className="text-sm font-semibold text-foreground mb-2">Produção por Encarregado (mês atual)</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-foreground">Produção por Encarregado</h3>
+              <span className="text-[10px] text-muted-foreground">{periodo.label}</span>
+            </div>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="text-left text-muted-foreground border-b border-border">
                     <th className="pb-1 font-medium">Encarregado</th>
-                    <th className="pb-1 font-medium text-right">NS</th>
-                    <th className="pb-1 font-medium text-right">Total (m)</th>
+                    <th className="pb-1 font-medium text-right">Produção (m)</th>
+                    <th className="pb-1 font-medium text-right">Média (m/dia)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -751,14 +754,35 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   ) : porEncarregado.map((e) => (
                     <tr key={e.nome} className="border-b border-border/40">
                       <td className="py-1 text-foreground">{e.nome}</td>
-                      <td className="py-1 text-right text-muted-foreground">{e.ns}</td>
-                      <td className="py-1 text-right font-semibold">{Math.round(e.total).toLocaleString('pt-BR')}</td>
+                      <td className="py-1 text-right font-semibold">
+                        {(Math.round(e.total * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      </td>
+                      <td className="py-1 text-right text-foreground">
+                        {(Math.round(e.media * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {porEncarregado.length > 0 && (
+              <div className="border-t border-border mt-2 pt-2 text-[11px] space-y-0.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total produção</span>
+                  <span className="font-semibold text-foreground">
+                    {(Math.round(totalPeriodo * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Produção diária média da obra</span>
+                  <span className="font-semibold text-foreground">
+                    {(Math.round(somaMediasPeriodo * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
+
           <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
             <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-2">
               <Layers size={14} className="text-muted-foreground" />

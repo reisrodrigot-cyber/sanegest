@@ -459,9 +459,14 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // `comprimento_original` é auditoria e nunca entra em produção executada).
   const activeRegistroIds = useMemo(() => {
     const s = new Set<string>();
-    (registrosBrutos as any[]).forEach((r) => { if (r?.id) s.add(String(r.id)); });
+    (registrosBrutos as any[]).forEach((r) => {
+      if (!r?.id) return;
+      const d = String(r.data_registro ?? '');
+      if (d < periodo.inicio || d > periodo.fim) return;
+      s.add(String(r.id));
+    });
     return s;
-  }, [registrosBrutos]);
+  }, [registrosBrutos, periodo.inicio, periodo.fim]);
 
   const ligacoesExecutadasPorOs = useMemo(() => {
     const map = new Map<string, { count: number; comprimento: number }>();

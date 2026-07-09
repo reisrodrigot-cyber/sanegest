@@ -128,15 +128,6 @@ const faixaIndex = (prof: number | null) => {
   return 3;
 };
 
-type PeriodoTipo = 'todo' | 'hoje' | 'ontem' | 'semana' | 'mes_atual' | 'personalizado';
-const PERIODO_LABELS: Record<PeriodoTipo, string> = {
-  todo: 'Todo o período',
-  hoje: 'Hoje',
-  ontem: 'Ontem',
-  semana: 'Últimos 7 dias',
-  mes_atual: 'Mês atual',
-  personalizado: 'Personalizado',
-};
 const toISODate = (d: Date) => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -206,10 +197,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
   const [subBaciaTab, setSubBaciaTab] = useState<'rede' | 'ligacoes' | 'resumo'>('rede');
-  const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('todo');
   const [periodoInicio, setPeriodoInicio] = useState<string>('');
   const [periodoFim, setPeriodoFim] = useState<string>('');
-  const [periodoMenuOpen, setPeriodoMenuOpen] = useState(false);
+
   const [encNames, setEncNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -295,37 +285,27 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return min;
   }, [registrosBrutos]);
 
+  // Preenche o filtro com [primeira data de produção .. hoje] assim que os
+  // registros carregam. O usuário pode ajustar depois; se limpar um dos
+  // campos, o cálculo faz fallback para o padrão.
+  useEffect(() => {
+    if (!firstProducaoDate) return;
+    const hojeIso = toISODate(new Date());
+    setPeriodoInicio((v) => v || firstProducaoDate);
+    setPeriodoFim((v) => v || hojeIso);
+  }, [firstProducaoDate]);
+
   // Período selecionado — afeta APENAS "Produção por Encarregado" e
   // "Produtividade por Profundidade". Demais cards permanecem com suas
-  // próprias regras (acumulado, ontem, últimos 30d, histórico mensal).
+  // próprias regras (acumulado, ontem, últimos 30d, histórico mensal, KPI
+  // superior "Produção diária média da obra").
   const periodo = useMemo(() => {
-    const hoje = new Date();
-    const hojeIso = toISODate(hoje);
-    if (periodoTipo === 'hoje') {
-      return { inicio: hojeIso, fim: hojeIso, label: `Hoje (${fmtDateBR(hojeIso)})` };
-    }
-    if (periodoTipo === 'ontem') {
-      const y = new Date(hoje); y.setDate(y.getDate() - 1);
-      const s = toISODate(y);
-      return { inicio: s, fim: s, label: `Ontem (${fmtDateBR(s)})` };
-    }
-    if (periodoTipo === 'semana') {
-      const i = new Date(hoje); i.setDate(i.getDate() - 6);
-      return { inicio: toISODate(i), fim: hojeIso, label: 'Últimos 7 dias' };
-    }
-    if (periodoTipo === 'mes_atual') {
-      const first = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-      const last = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-      return { inicio: toISODate(first), fim: toISODate(last), label: 'Mês atual' };
-    }
-    if (periodoTipo === 'personalizado' && periodoInicio && periodoFim) {
-      const [ini, fim] = periodoInicio <= periodoFim ? [periodoInicio, periodoFim] : [periodoFim, periodoInicio];
-      return { inicio: ini, fim, label: `${fmtDateBR(ini)} a ${fmtDateBR(fim)}` };
-    }
-    // 'todo' (padrão) — da primeira produção registrada até hoje.
-    const ini = firstProducaoDate ?? hojeIso;
-    return { inicio: ini, fim: hojeIso, label: 'Todo o período' };
-  }, [periodoTipo, periodoInicio, periodoFim, firstProducaoDate]);
+    const hojeIso = toISODate(new Date());
+    const iniRaw = periodoInicio || firstProducaoDate || hojeIso;
+    const fimRaw = periodoFim || hojeIso;
+    const [inicio, fim] = iniRaw <= fimRaw ? [iniRaw, fimRaw] : [fimRaw, iniRaw];
+    return { inicio, fim };
+  }, [periodoInicio, periodoFim, firstProducaoDate]);
 
   const registrosPeriodo = useMemo(
     () => registros.filter((r) => r.data_registro >= periodo.inicio && r.data_registro <= periodo.fim),
@@ -389,8 +369,21 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const producaoOntem = regsOntem.reduce((s, r) => s + compAtual(r), 0);
     const ligacoesOntem = regsOntem.reduce((s, r) => s + ligAtual(r), 0);
 
-    // Produção diária média da obra = soma das médias diárias dos encarregados no período.
-    const producaoDiariaMediaObra = porEncarregado.reduce((s, e) => s + e.media, 0);
+    // Produção diária média da obra — INDEPENDENTE do filtro de período.
+    // Soma das médias diárias de cada encarregado considerando TODO o
+    // histórico ativo. Só rede; ligações não entram.
+    const userAgg = new Map<string, { total: number; days: Set<string> }>();
+    registros.forEach((r) => {
+      const metros = compAtual(r);
+      if (metros <= 0) return;
+      const key = String(r.user_id ?? '—');
+      const c = userAgg.get(key) ?? { total: 0, days: new Set<string>() };
+      c.total += metros;
+      c.days.add(r.data_registro);
+      userAgg.set(key, c);
+    });
+    let producaoDiariaMediaObra = 0;
+    userAgg.forEach((v) => { if (v.days.size > 0) producaoDiariaMediaObra += v.total / v.days.size; });
 
     return {
       avancoLabel: `${Math.round(totalExecutado).toLocaleString('pt-BR')} / ${Math.round(totalPrevisto).toLocaleString('pt-BR')} m`,
@@ -401,7 +394,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         : 'sem ligações',
       producaoDiariaMediaObra: `${Math.round(producaoDiariaMediaObra * 10) / 10} m/dia`,
     };
-  }, [ordens, registros, yesterdayStr, porEncarregado]);
+  }, [ordens, registros, yesterdayStr]);
 
   // Produção diária (30 dias)
   const dailyData = useMemo(() => {
@@ -634,53 +627,28 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const totalPeriodo = porEncarregado.reduce((s, e) => s + e.total, 0);
   const somaMediasPeriodo = porEncarregado.reduce((s, e) => s + e.media, 0);
 
-  // Dropdown discreto de período (usado apenas nos cards afetados)
-  const PeriodoDropdown = () => (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setPeriodoMenuOpen((v) => !v)}
-        className="inline-flex items-center gap-1 h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground border border-transparent hover:border-border rounded transition-colors"
-        title="Alterar período de análise"
-      >
-        <span>Período: {PERIODO_LABELS[periodoTipo]}</span>
-        <span className="opacity-60">▾</span>
-      </button>
-      {periodoMenuOpen && (
-        <>
-          <div className="fixed inset-0 z-30" onClick={() => setPeriodoMenuOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-40 bg-card border border-border rounded-md shadow-lg p-1 min-w-[180px]">
-            {(Object.keys(PERIODO_LABELS) as PeriodoTipo[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => { setPeriodoTipo(t); if (t !== 'personalizado') setPeriodoMenuOpen(false); }}
-                className={`w-full text-left text-[11px] px-2 py-1 rounded hover:bg-muted transition-colors ${
-                  periodoTipo === t ? 'text-foreground font-semibold bg-muted/60' : 'text-foreground/80'
-                }`}
-              >
-                {PERIODO_LABELS[t]}
-              </button>
-            ))}
-            {periodoTipo === 'personalizado' && (
-              <div className="flex flex-col gap-1 mt-1 pt-1 border-t border-border px-1">
-                <input
-                  type="date"
-                  value={periodoInicio}
-                  onChange={(e) => setPeriodoInicio(e.target.value)}
-                  className="h-6 px-1.5 text-[10px] rounded border border-border bg-background text-foreground"
-                />
-                <input
-                  type="date"
-                  value={periodoFim}
-                  onChange={(e) => setPeriodoFim(e.target.value)}
-                  className="h-6 px-1.5 text-[10px] rounded border border-border bg-background text-foreground"
-                />
-              </div>
-            )}
-          </div>
-        </>
-      )}
+  // Filtro discreto de período — afeta apenas os cards "Produção por
+  // Encarregado" e "Produtividade por Profundidade". Apenas duas datas.
+  const PeriodoFiltro = () => (
+    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <span>Período:</span>
+      <input
+        type="date"
+        value={periodoInicio}
+        max={periodoFim || undefined}
+        onChange={(e) => setPeriodoInicio(e.target.value)}
+        className="h-6 px-1.5 text-[11px] rounded border border-border bg-background text-foreground"
+        aria-label="Data inicial"
+      />
+      <span>até</span>
+      <input
+        type="date"
+        value={periodoFim}
+        min={periodoInicio || undefined}
+        onChange={(e) => setPeriodoFim(e.target.value)}
+        className="h-6 px-1.5 text-[11px] rounded border border-border bg-background text-foreground"
+        aria-label="Data final"
+      />
     </div>
   );
 
@@ -710,7 +678,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           icon={<Activity size={16} />}
           label="Produção diária média da obra"
           value={kpis.producaoDiariaMediaObra}
-          sub={`${PERIODO_LABELS[periodoTipo]} • ${periodoRangeLabel}`}
+          sub="Média histórica por encarregado"
           accent={accent.blue}
         />
         <KpiCard
@@ -815,12 +783,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         {/* Tables + Produtividade strip */}
         <div className="dc-tables col-span-3 flex flex-col gap-3">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <PeriodoFiltro />
+            </div>
             <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="text-sm font-semibold text-foreground">Produção por Encarregado</h3>
-              <div className="flex flex-col items-end -mt-0.5">
-                <PeriodoDropdown />
-                <span className="text-[10px] text-muted-foreground leading-tight">{periodoRangeLabel}</span>
-              </div>
             </div>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
@@ -867,15 +834,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           </div>
 
           <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                 <Layers size={14} className="text-muted-foreground" />
                 Produtividade por Profundidade
               </div>
-              <div className="flex flex-col items-end -mt-0.5">
-                <PeriodoDropdown />
-                <span className="text-[10px] text-muted-foreground leading-tight">{periodoRangeLabel}</span>
-              </div>
+              <span className="text-[10px] text-muted-foreground leading-tight">{periodoRangeLabel}</span>
             </div>
             {loading ? (
               <Loader2 className="animate-spin text-muted-foreground mx-auto my-2" size={14} />

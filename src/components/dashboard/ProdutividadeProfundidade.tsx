@@ -7,6 +7,7 @@ interface RegistroRow {
   os_id: string;
   data_registro: string;
   comprimento_dia: number;
+  user_id?: string | null;
 }
 
 interface OSRow {

@@ -40,7 +40,7 @@ export const ProdutividadeProfundidade = () => {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('registros_producao').select('os_id, data_registro, comprimento_dia, comprimento_ajustado, status').eq('excluido', false).eq('status', 'ativo'),
+      supabase.from('registros_producao').select('user_id, os_id, data_registro, comprimento_dia, comprimento_ajustado, ligacoes_dia, ligacoes_ajustadas, status').eq('excluido', false).eq('status', 'ativo'),
       supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
     ]).then(([r, o]) => {
       setRegistros((r.data ?? []) as RegistroRow[]);
@@ -49,24 +49,29 @@ export const ProdutividadeProfundidade = () => {
     });
   }, []);
 
+  // Produtividade por Profundidade (conceito APO):
+  //   produtividade_faixa = metros de REDE executados na faixa
+  //                       / dias trabalhados proporcionais na faixa
+  //   dias trabalhados = pares únicos (encarregado × data) com rede > 0.
+  //   Ligações (quantidade e extensão) NÃO entram nesse cálculo.
   const stats = useMemo(() => {
     const osProf = new Map<string, number | null>();
     ordens.forEach((o) => osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null));
 
     const ajustados = aplicarRealValidadoEmRegistros(registros, ordens as OSRealInput[]);
 
-    // Por faixa: total metros + dias únicos
-    const faixaData = FAIXAS.map(() => ({ total: 0, days: new Set<string>() }));
+    const faixaData = FAIXAS.map(() => ({ total: 0, diasTrab: new Set<string>() }));
     ajustados.forEach((r) => {
-      const prof = osProf.get(r.os_id) ?? null;
-      const idx = faixaIndex(prof);
+      const metros = Number(r.comprimento_dia) || 0;
+      if (metros <= 0) return;
+      const idx = faixaIndex(osProf.get(r.os_id) ?? null);
       if (idx < 0) return;
-      faixaData[idx].total += Number(r.comprimento_dia) || 0;
-      faixaData[idx].days.add(r.data_registro);
+      faixaData[idx].total += metros;
+      faixaData[idx].diasTrab.add(`${(r as any).user_id ?? 'sem-user'}|${r.data_registro}`);
     });
     return FAIXAS.map((f, i) => ({
       label: f.label,
-      media: faixaData[i].days.size > 0 ? Math.round((faixaData[i].total / faixaData[i].days.size) * 10) / 10 : 0,
+      media: faixaData[i].diasTrab.size > 0 ? Math.round((faixaData[i].total / faixaData[i].diasTrab.size) * 10) / 10 : 0,
       total: Math.round(faixaData[i].total * 10) / 10,
     }));
   }, [registros, ordens]);

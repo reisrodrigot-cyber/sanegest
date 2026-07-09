@@ -205,6 +205,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
   const [subBaciaTab, setSubBaciaTab] = useState<'rede' | 'ligacoes' | 'resumo'>('rede');
+  const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('mes_atual');
+  const [periodoInicio, setPeriodoInicio] = useState<string>('');
+  const [periodoFim, setPeriodoFim] = useState<string>('');
+  const [encNames, setEncNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     Promise.all([
@@ -219,12 +223,50 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     });
   }, []);
 
+  useEffect(() => {
+    supabase.from('profiles').select('user_id, display_name, email, apelido').then(({ data }) => {
+      const m: Record<string, string> = {};
+      (data ?? []).forEach((p: any) => { m[p.user_id] = p.apelido || p.display_name || p.email || '—'; });
+      setEncNames(m);
+    });
+  }, []);
+
   // Aplica a regra do REAL validado da sala técnica: quando a OS está validada,
   // os registros brutos são escalonados para que o total bata com o valor oficial.
   // Isto evita que duplicidades de campo apareçam em qualquer dashboard/relatório.
   const registros = useMemo(
     () => aplicarRealValidadoEmRegistros(registrosBrutos, osRows as OSRealInput[]),
     [registrosBrutos, osRows],
+  );
+
+  // Período selecionado (filtro global do dashboard).
+  const periodo = useMemo(() => {
+    const hoje = new Date();
+    if (periodoTipo === 'hoje') {
+      const s = toISODate(hoje);
+      return { inicio: s, fim: s, label: `Hoje (${fmtDateBR(s)})` };
+    }
+    if (periodoTipo === 'ontem') {
+      const y = new Date(hoje); y.setDate(y.getDate() - 1);
+      const s = toISODate(y);
+      return { inicio: s, fim: s, label: `Ontem (${fmtDateBR(s)})` };
+    }
+    if (periodoTipo === 'semana') {
+      const i = new Date(hoje); i.setDate(i.getDate() - 6);
+      return { inicio: toISODate(i), fim: toISODate(hoje), label: 'Últimos 7 dias' };
+    }
+    if (periodoTipo === 'personalizado' && periodoInicio && periodoFim) {
+      const [ini, fim] = periodoInicio <= periodoFim ? [periodoInicio, periodoFim] : [periodoFim, periodoInicio];
+      return { inicio: ini, fim, label: `${fmtDateBR(ini)} a ${fmtDateBR(fim)}` };
+    }
+    const first = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const last = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+    return { inicio: toISODate(first), fim: toISODate(last), label: 'Mês atual' };
+  }, [periodoTipo, periodoInicio, periodoFim]);
+
+  const registrosPeriodo = useMemo(
+    () => registros.filter((r) => r.data_registro >= periodo.inicio && r.data_registro <= periodo.fim),
+    [registros, periodo.inicio, periodo.fim],
   );
 
 

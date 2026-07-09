@@ -140,16 +140,23 @@ export function RegistrosProducaoOS({ osId }: Props) {
       setLoadingLig(true);
       const { data } = await supabase
         .from('ligacoes')
-        .select('id, comprimento, created_at')
+        .select('id, comprimento, comprimento_original, created_at')
         .eq('registro_producao_id', r.id)
         .order('created_at', { ascending: true });
-      const rows: LigRow[] = (data ?? []).map((l: any) => ({
-        id: l.id,
-        comprimento: l.comprimento != null ? String(l.comprimento).replace('.', ',') : '',
-        comprimentoOriginal: l.comprimento != null ? Number(l.comprimento) : null,
-      }));
-      // ajusta ao count declarado
-      while (rows.length < ligCount) rows.push({ id: null, comprimento: '', comprimentoOriginal: null });
+      const rows: LigRow[] = (data ?? []).map((l: any) => {
+        const atual = l.comprimento != null ? Number(l.comprimento) : null;
+        const orig = l.comprimento_original != null ? Number(l.comprimento_original) : null;
+        // Se ainda não houve ajuste (comprimento_original = null), o "original" é o próprio comprimento atual
+        const originalEfetivo = orig != null ? orig : atual;
+        return {
+          id: l.id,
+          comprimento: atual != null ? String(atual).replace('.', ',') : '',
+          comprimentoOriginal: originalEfetivo,
+          comprimentoAtual: atual,
+          jaAjustada: orig != null,
+        };
+      });
+      while (rows.length < ligCount) rows.push({ id: null, comprimento: '', comprimentoOriginal: null, comprimentoAtual: null, jaAjustada: false });
       setLigRows(rows.slice(0, ligCount));
       setLoadingLig(false);
     }
@@ -163,7 +170,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
       if (prev.length === n) return prev;
       if (n < prev.length) return prev.slice(0, n);
       const add: LigRow[] = [];
-      for (let i = prev.length; i < n; i++) add.push({ id: null, comprimento: '', comprimentoOriginal: null });
+      for (let i = prev.length; i < n; i++) add.push({ id: null, comprimento: '', comprimentoOriginal: null, comprimentoAtual: null, jaAjustada: false });
       return [...prev, ...add];
     });
   }, [ajLig, ajustando]);

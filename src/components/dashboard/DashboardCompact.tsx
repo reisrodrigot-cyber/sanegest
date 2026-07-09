@@ -242,9 +242,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const producaoOntem = regsOntem.reduce((s, r) => s + compAtual(r), 0);
     const ligacoesOntem = regsOntem.reduce((s, r) => s + ligAtual(r), 0);
 
-    const totalReg = registros.reduce((s, r) => s + compAtual(r), 0);
-    const diasUnicos = new Set(registros.map((r) => r.data_registro)).size;
-    const mediaDiaria = diasUnicos > 0 ? totalReg / diasUnicos : 0;
+    // Janela: mês atual (para coerência com produção mensal / por encarregado do mês)
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const regsMes = registros.filter((r) => r.data_registro.startsWith(ym) && compAtual(r) > 0);
+
+    // Produção diária média da obra = Σ rede no mês / dias únicos com rede no mês
+    const totalRedeMes = regsMes.reduce((s, r) => s + compAtual(r), 0);
+    const diasUnicosMes = new Set(regsMes.map((r) => r.data_registro)).size;
+    const producaoDiariaMediaObra = diasUnicosMes > 0 ? totalRedeMes / diasUnicosMes : 0;
 
     // ativos últimos 30 dias
     const since = new Date();
@@ -252,15 +258,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const sinceStr = since.toISOString().slice(0, 10);
     const ativos = new Set(registros.filter((r) => r.data_registro >= sinceStr).map((r) => r.user_id)).size;
 
+    // Média por encarregado/dia — mês atual, somente rede
     const usuariosDias = new Map<string, { total: number; days: Set<string> }>();
-    registros.forEach((r) => {
+    regsMes.forEach((r) => {
       const c = usuariosDias.get(r.user_id) ?? { total: 0, days: new Set<string>() };
       c.total += compAtual(r);
       c.days.add(r.data_registro);
       usuariosDias.set(r.user_id, c);
     });
     const medias = Array.from(usuariosDias.values()).map((v) => (v.days.size > 0 ? v.total / v.days.size : 0));
-    const produtividadeGeral = medias.length > 0 ? medias.reduce((a, b) => a + b, 0) / medias.length : 0;
+    const mediaPorEncarregadoDia = medias.length > 0 ? medias.reduce((a, b) => a + b, 0) / medias.length : 0;
 
     return {
       avancoLabel: `${Math.round(totalExecutado).toLocaleString('pt-BR')} / ${Math.round(totalPrevisto).toLocaleString('pt-BR')} m`,
@@ -269,9 +276,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       producaoOntemSub: ligacoesOntem > 0
         ? `${ligacoesOntem} ${ligacoesOntem === 1 ? 'ligação' : 'ligações'}`
         : 'sem ligações',
-      mediaDiaria: `${Math.round(mediaDiaria * 10) / 10} m/dia`,
+      producaoDiariaMediaObra: `${Math.round(producaoDiariaMediaObra * 10) / 10} m/dia`,
       ativos: String(ativos),
-      produtividadeGeral: `${Math.round(produtividadeGeral * 10) / 10} m/dia`,
+      mediaPorEncarregadoDia: `${Math.round(mediaPorEncarregadoDia * 10) / 10} m/dia`,
     };
   }, [ordens, registros, yesterdayStr]);
 

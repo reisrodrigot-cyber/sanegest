@@ -781,8 +781,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         </div>
 
         {/* Tables + Produtividade strip */}
-        <div className="dc-tables col-span-3 flex flex-col gap-3">
-          <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="dc-tables col-span-3 flex flex-col gap-2">
+          <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-[1.6] min-h-0 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between gap-2 mb-1">
               <PeriodoFiltro />
             </div>
@@ -833,8 +833,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             )}
           </div>
 
-          <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <div className="flex flex-col gap-1 mb-2">
+          <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-2 flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex flex-col gap-0.5 mb-1">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                 <Layers size={14} className="text-muted-foreground" />
                 Produtividade por Profundidade
@@ -842,13 +842,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               <span className="text-[10px] text-muted-foreground leading-tight self-end">{periodoRangeLabel}</span>
             </div>
             {loading ? (
-              <Loader2 className="animate-spin text-muted-foreground mx-auto my-2" size={14} />
+              <Loader2 className="animate-spin text-muted-foreground mx-auto my-1" size={14} />
             ) : (
-              <div className="space-y-1.5 overflow-y-auto flex-1">
+              <div className="space-y-1 overflow-y-auto flex-1">
                 {profStats.map((s) => (
                   <div key={s.label} className="flex items-center gap-2">
                     <span className="text-[11px] text-foreground w-[110px] truncate">{s.label}</span>
-                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{ width: `${s.pctBar}%`, backgroundColor: accent.blue }}

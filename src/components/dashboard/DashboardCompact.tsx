@@ -128,8 +128,9 @@ const faixaIndex = (prof: number | null) => {
   return 3;
 };
 
-type PeriodoTipo = 'hoje' | 'ontem' | 'semana' | 'mes_atual' | 'personalizado';
+type PeriodoTipo = 'todo' | 'hoje' | 'ontem' | 'semana' | 'mes_atual' | 'personalizado';
 const PERIODO_LABELS: Record<PeriodoTipo, string> = {
+  todo: 'Todo o período',
   hoje: 'Hoje',
   ontem: 'Ontem',
   semana: 'Últimos 7 dias',
@@ -205,9 +206,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
   const [subBaciaTab, setSubBaciaTab] = useState<'rede' | 'ligacoes' | 'resumo'>('rede');
-  const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('mes_atual');
+  const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('todo');
   const [periodoInicio, setPeriodoInicio] = useState<string>('');
   const [periodoFim, setPeriodoFim] = useState<string>('');
+  const [periodoMenuOpen, setPeriodoMenuOpen] = useState(false);
   const [encNames, setEncNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -282,12 +284,25 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [registrosBrutos, osRows],
   );
 
-  // Período selecionado (filtro global do dashboard).
+  // Primeira data com produção registrada (para o período "Todo o período").
+  const firstProducaoDate = useMemo(() => {
+    let min: string | null = null;
+    (registrosBrutos as any[]).forEach((r) => {
+      const d = String(r?.data_registro ?? '');
+      if (!d) return;
+      if (min === null || d < min) min = d;
+    });
+    return min;
+  }, [registrosBrutos]);
+
+  // Período selecionado — afeta APENAS "Produção por Encarregado" e
+  // "Produtividade por Profundidade". Demais cards permanecem com suas
+  // próprias regras (acumulado, ontem, últimos 30d, histórico mensal).
   const periodo = useMemo(() => {
     const hoje = new Date();
+    const hojeIso = toISODate(hoje);
     if (periodoTipo === 'hoje') {
-      const s = toISODate(hoje);
-      return { inicio: s, fim: s, label: `Hoje (${fmtDateBR(s)})` };
+      return { inicio: hojeIso, fim: hojeIso, label: `Hoje (${fmtDateBR(hojeIso)})` };
     }
     if (periodoTipo === 'ontem') {
       const y = new Date(hoje); y.setDate(y.getDate() - 1);
@@ -296,16 +311,21 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     }
     if (periodoTipo === 'semana') {
       const i = new Date(hoje); i.setDate(i.getDate() - 6);
-      return { inicio: toISODate(i), fim: toISODate(hoje), label: 'Últimos 7 dias' };
+      return { inicio: toISODate(i), fim: hojeIso, label: 'Últimos 7 dias' };
+    }
+    if (periodoTipo === 'mes_atual') {
+      const first = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      const last = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+      return { inicio: toISODate(first), fim: toISODate(last), label: 'Mês atual' };
     }
     if (periodoTipo === 'personalizado' && periodoInicio && periodoFim) {
       const [ini, fim] = periodoInicio <= periodoFim ? [periodoInicio, periodoFim] : [periodoFim, periodoInicio];
       return { inicio: ini, fim, label: `${fmtDateBR(ini)} a ${fmtDateBR(fim)}` };
     }
-    const first = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const last = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-    return { inicio: toISODate(first), fim: toISODate(last), label: 'Mês atual' };
-  }, [periodoTipo, periodoInicio, periodoFim]);
+    // 'todo' (padrão) — da primeira produção registrada até hoje.
+    const ini = firstProducaoDate ?? hojeIso;
+    return { inicio: ini, fim: hojeIso, label: 'Todo o período' };
+  }, [periodoTipo, periodoInicio, periodoFim, firstProducaoDate]);
 
   const registrosPeriodo = useMemo(
     () => registros.filter((r) => r.data_registro >= periodo.inicio && r.data_registro <= periodo.fim),
@@ -500,16 +520,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // vinculação a um registro de produção ATIVO (não excluído, não cancelado).
   // A extensão é a soma direta de `ligacoes.comprimento` (valor final vigente;
   // `comprimento_original` é auditoria e nunca entra em produção executada).
+  // Ligações são acumulado geral da obra — NÃO seguem o filtro de período dos
+  // cards de análise. Consideramos todos os registros de produção ativos.
   const activeRegistroIds = useMemo(() => {
     const s = new Set<string>();
     (registrosBrutos as any[]).forEach((r) => {
       if (!r?.id) return;
-      const d = String(r.data_registro ?? '');
-      if (d < periodo.inicio || d > periodo.fim) return;
       s.add(String(r.id));
     });
     return s;
-  }, [registrosBrutos, periodo.inicio, periodo.fim]);
+  }, [registrosBrutos]);
 
   const ligacoesExecutadasPorOs = useMemo(() => {
     const map = new Map<string, { count: number; comprimento: number }>();
@@ -614,44 +634,61 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const totalPeriodo = porEncarregado.reduce((s, e) => s + e.total, 0);
   const somaMediasPeriodo = porEncarregado.reduce((s, e) => s + e.media, 0);
 
+  // Dropdown discreto de período (usado apenas nos cards afetados)
+  const PeriodoDropdown = () => (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setPeriodoMenuOpen((v) => !v)}
+        className="inline-flex items-center gap-1 h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground border border-transparent hover:border-border rounded transition-colors"
+        title="Alterar período de análise"
+      >
+        <span>Período: {PERIODO_LABELS[periodoTipo]}</span>
+        <span className="opacity-60">▾</span>
+      </button>
+      {periodoMenuOpen && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setPeriodoMenuOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-40 bg-card border border-border rounded-md shadow-lg p-1 min-w-[180px]">
+            {(Object.keys(PERIODO_LABELS) as PeriodoTipo[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { setPeriodoTipo(t); if (t !== 'personalizado') setPeriodoMenuOpen(false); }}
+                className={`w-full text-left text-[11px] px-2 py-1 rounded hover:bg-muted transition-colors ${
+                  periodoTipo === t ? 'text-foreground font-semibold bg-muted/60' : 'text-foreground/80'
+                }`}
+              >
+                {PERIODO_LABELS[t]}
+              </button>
+            ))}
+            {periodoTipo === 'personalizado' && (
+              <div className="flex flex-col gap-1 mt-1 pt-1 border-t border-border px-1">
+                <input
+                  type="date"
+                  value={periodoInicio}
+                  onChange={(e) => setPeriodoInicio(e.target.value)}
+                  className="h-6 px-1.5 text-[10px] rounded border border-border bg-background text-foreground"
+                />
+                <input
+                  type="date"
+                  value={periodoFim}
+                  onChange={(e) => setPeriodoFim(e.target.value)}
+                  className="h-6 px-1.5 text-[10px] rounded border border-border bg-background text-foreground"
+                />
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const periodoRangeLabel = `${fmtDateBR(periodo.inicio)} a ${fmtDateBR(periodo.fim)}`;
+
   return (
     <div className="dc-root flex flex-col gap-3">
-      {/* Filtro de período */}
-      <div className="flex flex-wrap items-center gap-2 bg-card rounded-lg border border-border shadow-sm px-3 py-2">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mr-1">Período:</span>
-        {(Object.keys(PERIODO_LABELS) as PeriodoTipo[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setPeriodoTipo(t)}
-            className={`h-7 px-2 text-[11px] rounded border transition-colors ${
-              periodoTipo === t
-                ? 'bg-[#185FA5] text-white border-[#185FA5]'
-                : 'bg-background text-foreground/80 border-border hover:bg-muted/50'
-            }`}
-          >
-            {PERIODO_LABELS[t]}
-          </button>
-        ))}
-        {periodoTipo === 'personalizado' && (
-          <div className="flex items-center gap-1.5 ml-1">
-            <input
-              type="date"
-              value={periodoInicio}
-              onChange={(e) => setPeriodoInicio(e.target.value)}
-              className="h-7 px-2 text-[11px] rounded border border-border bg-background text-foreground"
-            />
-            <span className="text-[11px] text-muted-foreground">até</span>
-            <input
-              type="date"
-              value={periodoFim}
-              onChange={(e) => setPeriodoFim(e.target.value)}
-              className="h-7 px-2 text-[11px] rounded border border-border bg-background text-foreground"
-            />
-          </div>
-        )}
-        <span className="text-[11px] text-muted-foreground ml-auto">{periodo.label}</span>
-      </div>
+
 
       {/* Row 1 — KPIs */}
       <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -673,7 +710,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           icon={<Activity size={16} />}
           label="Produção diária média da obra"
           value={kpis.producaoDiariaMediaObra}
-          sub={`${periodo.label} • rede`}
+          sub={`${PERIODO_LABELS[periodoTipo]} • ${periodoRangeLabel}`}
           accent={accent.blue}
         />
         <KpiCard
@@ -778,9 +815,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         {/* Tables + Produtividade strip */}
         <div className="dc-tables col-span-3 flex flex-col gap-3">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="text-sm font-semibold text-foreground">Produção por Encarregado</h3>
-              <span className="text-[10px] text-muted-foreground">{periodo.label}</span>
+              <div className="flex flex-col items-end -mt-0.5">
+                <PeriodoDropdown />
+                <span className="text-[10px] text-muted-foreground leading-tight">{periodoRangeLabel}</span>
+              </div>
             </div>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
@@ -827,9 +867,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           </div>
 
           <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-2">
-              <Layers size={14} className="text-muted-foreground" />
-              Produtividade por Profundidade
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <Layers size={14} className="text-muted-foreground" />
+                Produtividade por Profundidade
+              </div>
+              <div className="flex flex-col items-end -mt-0.5">
+                <PeriodoDropdown />
+                <span className="text-[10px] text-muted-foreground leading-tight">{periodoRangeLabel}</span>
+              </div>
             </div>
             {loading ? (
               <Loader2 className="animate-spin text-muted-foreground mx-auto my-2" size={14} />

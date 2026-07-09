@@ -318,13 +318,34 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
     }
   };
 
+  // Paginação defensiva: o PostgREST corta em 1000 linhas por padrão.
+  // Como topografia_asbuilt e ligacoes crescem a cada dia de produção,
+  // buscamos em blocos até esgotar.
+  const fetchAllPaged = async <T,>(
+    build: (from: number, to: number) => any,
+  ): Promise<T[]> => {
+    const all: T[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+      const { data, error } = await build(from, from + pageSize - 1);
+      if (error) break;
+      const rows = (data ?? []) as T[];
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+    return all;
+  };
+
   const fetchAsBuilt = async () => {
-    const { data: ab } = await supabase
+    const ab = await fetchAllPaged<any>((from, to) => supabase
       .from('topografia_asbuilt')
       .select('id, os_id, latitude, longitude, nome_estaca, created_at, encarregado, profundidade, ns_relacionada')
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .range(from, to));
 
     if (!ab || ab.length === 0) {
       setRedePoints([]);
@@ -358,12 +379,13 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
   };
 
   const fetchLigacoes = async () => {
-    const { data: lg } = await supabase
+    const lg = await fetchAllPaged<any>((from, to) => supabase
       .from('ligacoes')
       .select('id, os_id, latitude, longitude, referencia, created_at')
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .range(from, to));
 
     if (!lg || lg.length === 0) {
       setLigacoesPoints([]);
@@ -389,6 +411,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
     }
     setLigacoesPoints(result);
   };
+
 
   // Inicial + realtime
   useEffect(() => {

@@ -184,7 +184,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   }, []);
   const [registrosBrutos, setRegistrosBrutos] = useState<any[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
-  const [ligacoesRows, setLigacoesRows] = useState<{ os_id: string; comprimento: number | null }[]>([]);
+  const [ligacoesRows, setLigacoesRows] = useState<{ os_id: string; comprimento: number | null; registro_producao_id: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
@@ -192,9 +192,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('registros_producao').select('user_id, data_registro, comprimento_dia, os_id, comprimento_ajustado, ligacoes_dia, ligacoes_ajustadas, status').eq('excluido', false).eq('status', 'ativo'),
+      supabase.from('registros_producao').select('id, user_id, data_registro, comprimento_dia, os_id, comprimento_ajustado, ligacoes_dia, ligacoes_ajustadas, status').eq('excluido', false).eq('status', 'ativo'),
       supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
-      supabase.from('ligacoes').select('os_id, comprimento'),
+      supabase.from('ligacoes').select('os_id, comprimento, registro_producao_id'),
     ]).then(([r, o, l]) => {
       setRegistrosBrutos((r.data ?? []) as any[]);
       setOsRows((o.data ?? []) as OSRow[]);

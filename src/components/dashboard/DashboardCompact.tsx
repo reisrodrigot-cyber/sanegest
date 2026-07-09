@@ -19,7 +19,7 @@ import {
   CalendarDays,
   TrendingUp,
   ListChecks,
-  Gauge,
+  
   Layers,
   Loader2,
   Radio,
@@ -128,6 +128,22 @@ const faixaIndex = (prof: number | null) => {
   return 3;
 };
 
+type PeriodoTipo = 'hoje' | 'ontem' | 'semana' | 'mes_atual' | 'personalizado';
+const PERIODO_LABELS: Record<PeriodoTipo, string> = {
+  hoje: 'Hoje',
+  ontem: 'Ontem',
+  semana: 'Últimos 7 dias',
+  mes_atual: 'Mês atual',
+  personalizado: 'Personalizado',
+};
+const toISODate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const fmtDateBR = (iso: string) => iso.split('-').reverse().join('/');
+
 interface KpiCardProps {
   icon: React.ReactNode;
   label: string;
@@ -189,6 +205,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
   const [subBaciaTab, setSubBaciaTab] = useState<'rede' | 'ligacoes' | 'resumo'>('rede');
+  const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('mes_atual');
+  const [periodoInicio, setPeriodoInicio] = useState<string>('');
+  const [periodoFim, setPeriodoFim] = useState<string>('');
+  const [encNames, setEncNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     Promise.all([
@@ -203,12 +223,50 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     });
   }, []);
 
+  useEffect(() => {
+    supabase.from('profiles').select('user_id, display_name, email, apelido').then(({ data }) => {
+      const m: Record<string, string> = {};
+      (data ?? []).forEach((p: any) => { m[p.user_id] = p.apelido || p.display_name || p.email || '—'; });
+      setEncNames(m);
+    });
+  }, []);
+
   // Aplica a regra do REAL validado da sala técnica: quando a OS está validada,
   // os registros brutos são escalonados para que o total bata com o valor oficial.
   // Isto evita que duplicidades de campo apareçam em qualquer dashboard/relatório.
   const registros = useMemo(
     () => aplicarRealValidadoEmRegistros(registrosBrutos, osRows as OSRealInput[]),
     [registrosBrutos, osRows],
+  );
+
+  // Período selecionado (filtro global do dashboard).
+  const periodo = useMemo(() => {
+    const hoje = new Date();
+    if (periodoTipo === 'hoje') {
+      const s = toISODate(hoje);
+      return { inicio: s, fim: s, label: `Hoje (${fmtDateBR(s)})` };
+    }
+    if (periodoTipo === 'ontem') {
+      const y = new Date(hoje); y.setDate(y.getDate() - 1);
+      const s = toISODate(y);
+      return { inicio: s, fim: s, label: `Ontem (${fmtDateBR(s)})` };
+    }
+    if (periodoTipo === 'semana') {
+      const i = new Date(hoje); i.setDate(i.getDate() - 6);
+      return { inicio: toISODate(i), fim: toISODate(hoje), label: 'Últimos 7 dias' };
+    }
+    if (periodoTipo === 'personalizado' && periodoInicio && periodoFim) {
+      const [ini, fim] = periodoInicio <= periodoFim ? [periodoInicio, periodoFim] : [periodoFim, periodoInicio];
+      return { inicio: ini, fim, label: `${fmtDateBR(ini)} a ${fmtDateBR(fim)}` };
+    }
+    const first = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const last = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+    return { inicio: toISODate(first), fim: toISODate(last), label: 'Mês atual' };
+  }, [periodoTipo, periodoInicio, periodoFim]);
+
+  const registrosPeriodo = useMemo(
+    () => registros.filter((r) => r.data_registro >= periodo.inicio && r.data_registro <= periodo.fim),
+    [registros, periodo.inicio, periodo.fim],
   );
 
 
@@ -233,41 +291,43 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const ligAtual = (r: any) =>
     Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
+  // Produção por encarregado no período — total, dias e média/dia (somente rede)
+  const porEncarregado = useMemo(() => {
+    const map = new Map<string, { nome: string; ns: Set<string>; total: number; days: Set<string> }>();
+    registrosPeriodo.forEach((r) => {
+      const metros = compAtual(r);
+      if (metros <= 0) return;
+      const nome = encNames[r.user_id] || '—';
+      const c = map.get(r.user_id) ?? { nome, ns: new Set<string>(), total: 0, days: new Set<string>() };
+      c.nome = nome;
+      c.ns.add(r.os_id);
+      c.total += metros;
+      c.days.add(r.data_registro);
+      map.set(r.user_id, c);
+    });
+    return Array.from(map.values())
+      .map((v) => ({
+        nome: v.nome,
+        ns: v.ns.size,
+        total: v.total,
+        dias: v.days.size,
+        media: v.days.size > 0 ? v.total / v.days.size : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [registrosPeriodo, encNames]);
+
   const kpis = useMemo(() => {
     const totalPrevisto = ordens.reduce((s, o) => s + (o.comprimento_previsto ?? 0), 0);
     const totalExecutado = ordens.reduce((s, o) => s + (o.comprimento_real ?? 0), 0);
     const pct = totalPrevisto > 0 ? Math.round((totalExecutado / totalPrevisto) * 100) : 0;
 
+    // Produção ontem — sempre fixo em ontem (não segue o filtro de período).
     const regsOntem = registros.filter((r) => r.data_registro === yesterdayStr);
     const producaoOntem = regsOntem.reduce((s, r) => s + compAtual(r), 0);
     const ligacoesOntem = regsOntem.reduce((s, r) => s + ligAtual(r), 0);
 
-    // Janela: mês atual (para coerência com produção mensal / por encarregado do mês)
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const regsMes = registros.filter((r) => r.data_registro.startsWith(ym) && compAtual(r) > 0);
-
-    // Produção diária média da obra = Σ rede no mês / dias únicos com rede no mês
-    const totalRedeMes = regsMes.reduce((s, r) => s + compAtual(r), 0);
-    const diasUnicosMes = new Set(regsMes.map((r) => r.data_registro)).size;
-    const producaoDiariaMediaObra = diasUnicosMes > 0 ? totalRedeMes / diasUnicosMes : 0;
-
-    // ativos últimos 30 dias
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
-    const sinceStr = since.toISOString().slice(0, 10);
-    const ativos = new Set(registros.filter((r) => r.data_registro >= sinceStr).map((r) => r.user_id)).size;
-
-    // Média por encarregado/dia — mês atual, somente rede
-    const usuariosDias = new Map<string, { total: number; days: Set<string> }>();
-    regsMes.forEach((r) => {
-      const c = usuariosDias.get(r.user_id) ?? { total: 0, days: new Set<string>() };
-      c.total += compAtual(r);
-      c.days.add(r.data_registro);
-      usuariosDias.set(r.user_id, c);
-    });
-    const medias = Array.from(usuariosDias.values()).map((v) => (v.days.size > 0 ? v.total / v.days.size : 0));
-    const mediaPorEncarregadoDia = medias.length > 0 ? medias.reduce((a, b) => a + b, 0) / medias.length : 0;
+    // Produção diária média da obra = soma das médias diárias dos encarregados no período.
+    const producaoDiariaMediaObra = porEncarregado.reduce((s, e) => s + e.media, 0);
 
     return {
       avancoLabel: `${Math.round(totalExecutado).toLocaleString('pt-BR')} / ${Math.round(totalPrevisto).toLocaleString('pt-BR')} m`,
@@ -277,10 +337,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         ? `${ligacoesOntem} ${ligacoesOntem === 1 ? 'ligação' : 'ligações'}`
         : 'sem ligações',
       producaoDiariaMediaObra: `${Math.round(producaoDiariaMediaObra * 10) / 10} m/dia`,
-      ativos: String(ativos),
-      mediaPorEncarregadoDia: `${Math.round(mediaPorEncarregadoDia * 10) / 10} m/dia`,
     };
-  }, [ordens, registros, yesterdayStr]);
+  }, [ordens, registros, yesterdayStr, porEncarregado]);
 
   // Produção diária (30 dias)
   const dailyData = useMemo(() => {
@@ -317,34 +375,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return buckets.map((b) => ({ ...b, metros: Math.round(b.metros) }));
   }, [registros]);
 
-  // Produção por encarregado — APENAS mês corrente (a partir de registros_producao)
-  const [encNames, setEncNames] = useState<Record<string, string>>({});
-  useEffect(() => {
-    supabase.from('profiles').select('user_id, display_name, email, apelido').then(({ data }) => {
-      const m: Record<string, string> = {};
-      (data ?? []).forEach((p: any) => { m[p.user_id] = p.apelido || p.display_name || p.email || '—'; });
-      setEncNames(m);
-    });
-  }, []);
-  const porEncarregado = useMemo(() => {
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const map = new Map<string, { nome: string; ns: Set<string>; total: number }>();
-    registros
-      .filter((r) => r.data_registro.startsWith(ym))
-      .forEach((r) => {
-        const nome = encNames[r.user_id] || '—';
-        const c = map.get(r.user_id) ?? { nome, ns: new Set<string>(), total: 0 };
-        c.nome = nome;
-        c.ns.add(r.os_id);
-        c.total += Number(r.comprimento_dia) || 0;
-        map.set(r.user_id, c);
-      });
-    return Array.from(map.values())
-      .map((v) => ({ nome: v.nome, ns: v.ns.size, total: v.total }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 6);
-  }, [registros, encNames]);
 
   // Avanço por bacia
   const porBacia = useMemo(() => {
@@ -378,7 +408,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     osRows.forEach((o) => osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null));
     // Agrupa metros por (encarregado, data, faixa)
     const porPar = new Map<string, number[]>(); // key -> array por faixa
-    registros.forEach((r) => {
+    registrosPeriodo.forEach((r) => {
       const metros = Number(r.comprimento_dia) || 0;
       if (metros <= 0) return;
       const idx = faixaIndex(osProf.get(r.os_id) ?? null);
@@ -407,7 +437,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       total: Math.round(totais[i]),
       pctBar: (medias[i] / max) * 100,
     }));
-  }, [registros, osRows]);
+  }, [registrosPeriodo, osRows]);
 
   // NS em execução
   const nsEmExec = useMemo(
@@ -429,9 +459,14 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // `comprimento_original` é auditoria e nunca entra em produção executada).
   const activeRegistroIds = useMemo(() => {
     const s = new Set<string>();
-    (registrosBrutos as any[]).forEach((r) => { if (r?.id) s.add(String(r.id)); });
+    (registrosBrutos as any[]).forEach((r) => {
+      if (!r?.id) return;
+      const d = String(r.data_registro ?? '');
+      if (d < periodo.inicio || d > periodo.fim) return;
+      s.add(String(r.id));
+    });
     return s;
-  }, [registrosBrutos]);
+  }, [registrosBrutos, periodo.inicio, periodo.fim]);
 
   const ligacoesExecutadasPorOs = useMemo(() => {
     const map = new Map<string, { count: number; comprimento: number }>();
@@ -533,10 +568,50 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return `${Math.round(m)}m`;
   };
 
+  const totalPeriodo = porEncarregado.reduce((s, e) => s + e.total, 0);
+  const somaMediasPeriodo = porEncarregado.reduce((s, e) => s + e.media, 0);
+
   return (
     <div className="dc-root flex flex-col gap-3">
+      {/* Filtro de período */}
+      <div className="flex flex-wrap items-center gap-2 bg-card rounded-lg border border-border shadow-sm px-3 py-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mr-1">Período:</span>
+        {(Object.keys(PERIODO_LABELS) as PeriodoTipo[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setPeriodoTipo(t)}
+            className={`h-7 px-2 text-[11px] rounded border transition-colors ${
+              periodoTipo === t
+                ? 'bg-[#185FA5] text-white border-[#185FA5]'
+                : 'bg-background text-foreground/80 border-border hover:bg-muted/50'
+            }`}
+          >
+            {PERIODO_LABELS[t]}
+          </button>
+        ))}
+        {periodoTipo === 'personalizado' && (
+          <div className="flex items-center gap-1.5 ml-1">
+            <input
+              type="date"
+              value={periodoInicio}
+              onChange={(e) => setPeriodoInicio(e.target.value)}
+              className="h-7 px-2 text-[11px] rounded border border-border bg-background text-foreground"
+            />
+            <span className="text-[11px] text-muted-foreground">até</span>
+            <input
+              type="date"
+              value={periodoFim}
+              onChange={(e) => setPeriodoFim(e.target.value)}
+              className="h-7 px-2 text-[11px] rounded border border-border bg-background text-foreground"
+            />
+          </div>
+        )}
+        <span className="text-[11px] text-muted-foreground ml-auto">{periodo.label}</span>
+      </div>
+
       {/* Row 1 — KPIs */}
-      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico"
@@ -555,15 +630,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           icon={<Activity size={16} />}
           label="Produção diária média da obra"
           value={kpis.producaoDiariaMediaObra}
-          sub="mês atual • rede"
+          sub={`${periodo.label} • rede`}
           accent={accent.blue}
-        />
-        <KpiCard
-          icon={<Gauge size={16} />}
-          label="Média por encarregado/dia"
-          value={kpis.mediaPorEncarregadoDia}
-          sub="mês atual • rede"
-          accent={accent.red}
         />
         <KpiCard
           icon={<Cable size={16} />}
@@ -573,6 +641,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           accent={accent.purple}
         />
       </div>
+
 
       {/* Row 2 — Map + Charts + Tables */}
       <div className="dc-row2 grid grid-cols-10 gap-3">
@@ -666,14 +735,17 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         {/* Tables + Produtividade strip */}
         <div className="dc-tables col-span-3 flex flex-col gap-3">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <h3 className="text-sm font-semibold text-foreground mb-2">Produção por Encarregado (mês atual)</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-foreground">Produção por Encarregado</h3>
+              <span className="text-[10px] text-muted-foreground">{periodo.label}</span>
+            </div>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="text-left text-muted-foreground border-b border-border">
                     <th className="pb-1 font-medium">Encarregado</th>
-                    <th className="pb-1 font-medium text-right">NS</th>
-                    <th className="pb-1 font-medium text-right">Total (m)</th>
+                    <th className="pb-1 font-medium text-right">Produção (m)</th>
+                    <th className="pb-1 font-medium text-right">Média (m/dia)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -682,14 +754,35 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   ) : porEncarregado.map((e) => (
                     <tr key={e.nome} className="border-b border-border/40">
                       <td className="py-1 text-foreground">{e.nome}</td>
-                      <td className="py-1 text-right text-muted-foreground">{e.ns}</td>
-                      <td className="py-1 text-right font-semibold">{Math.round(e.total).toLocaleString('pt-BR')}</td>
+                      <td className="py-1 text-right font-semibold">
+                        {(Math.round(e.total * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      </td>
+                      <td className="py-1 text-right text-foreground">
+                        {(Math.round(e.media * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {porEncarregado.length > 0 && (
+              <div className="border-t border-border mt-2 pt-2 text-[11px] space-y-0.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total produção</span>
+                  <span className="font-semibold text-foreground">
+                    {(Math.round(totalPeriodo * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Produção diária média da obra</span>
+                  <span className="font-semibold text-foreground">
+                    {(Math.round(somaMediasPeriodo * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
+
           <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
             <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-2">
               <Layers size={14} className="text-muted-foreground" />

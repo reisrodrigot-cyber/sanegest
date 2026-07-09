@@ -710,7 +710,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           icon={<Activity size={16} />}
           label="Produção diária média da obra"
           value={kpis.producaoDiariaMediaObra}
-          sub={`${periodo.label} • rede`}
+          sub={`${PERIODO_LABELS[periodoTipo]} • ${periodoRangeLabel}`}
           accent={accent.blue}
         />
         <KpiCard

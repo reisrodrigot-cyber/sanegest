@@ -867,9 +867,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           </div>
 
           <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-2">
-              <Layers size={14} className="text-muted-foreground" />
-              Produtividade por Profundidade
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <Layers size={14} className="text-muted-foreground" />
+                Produtividade por Profundidade
+              </div>
+              <div className="flex flex-col items-end -mt-0.5">
+                <PeriodoDropdown />
+                <span className="text-[10px] text-muted-foreground leading-tight">{periodoRangeLabel}</span>
+              </div>
             </div>
             {loading ? (
               <Loader2 className="animate-spin text-muted-foreground mx-auto my-2" size={14} />

@@ -360,23 +360,33 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       .slice(0, 6);
   }, [ordens]);
 
-  // Profundidade
+  // Produtividade por Profundidade (conceito APO):
+  //   produtividade_faixa = metros de REDE executados na faixa
+  //                       / dias trabalhados proporcionais na faixa
+  //   Onde "dias trabalhados" = pares únicos (encarregado × data) com produção
+  //   de rede > 0 naquela faixa. Ligações não entram: `comprimento_dia` já é
+  //   apenas rede; a extensão de ligações vive na tabela `ligacoes`.
   const profStats = useMemo(() => {
     const osProf = new Map<string, number | null>();
     osRows.forEach((o) => osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null));
-    const data = FAIXAS.map(() => ({ total: 0, days: new Set<string>() }));
+    const data = FAIXAS.map(() => ({ total: 0, diasTrab: new Set<string>() }));
     registros.forEach((r) => {
+      const metros = Number(r.comprimento_dia) || 0;
+      if (metros <= 0) return; // faixa só conta dias com produção de rede
       const idx = faixaIndex(osProf.get(r.os_id) ?? null);
       if (idx < 0) return;
-      data[idx].total += Number(r.comprimento_dia) || 0;
-      data[idx].days.add(r.data_registro);
+      data[idx].total += metros;
+      // dia trabalhado proporcional = (encarregado, data)
+      const chave = `${r.user_id ?? 'sem-user'}|${r.data_registro}`;
+      data[idx].diasTrab.add(chave);
     });
-    const max = Math.max(1, ...data.map((d) => (d.days.size > 0 ? d.total / d.days.size : 0)));
+    const medias = data.map((d) => (d.diasTrab.size > 0 ? d.total / d.diasTrab.size : 0));
+    const max = Math.max(1, ...medias);
     return FAIXAS.map((f, i) => ({
       label: f.label,
-      media: data[i].days.size > 0 ? Math.round((data[i].total / data[i].days.size) * 10) / 10 : 0,
+      media: Math.round(medias[i] * 10) / 10,
       total: Math.round(data[i].total),
-      pctBar: data[i].days.size > 0 ? ((data[i].total / data[i].days.size) / max) * 100 : 0,
+      pctBar: (medias[i] / max) * 100,
     }));
   }, [registros, osRows]);
 

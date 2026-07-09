@@ -66,6 +66,10 @@ export function RegistrosProducaoOS({ osId }: Props) {
   const [ajLig, setAjLig] = useState('');
   const [ajMotivo, setAjMotivo] = useState('');
   const [savingAj, setSavingAj] = useState(false);
+  // Ligações do registro em ajuste
+  interface LigRow { id: string | null; comprimento: string; comprimentoOriginal: number | null; }
+  const [ligRows, setLigRows] = useState<LigRow[]>([]);
+  const [loadingLig, setLoadingLig] = useState(false);
 
   // Cancelar
   const [cancelando, setCancelando] = useState<RegistroRow | null>(null);

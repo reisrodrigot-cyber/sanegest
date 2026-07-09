@@ -19,7 +19,7 @@ import {
   CalendarDays,
   TrendingUp,
   ListChecks,
-  Gauge,
+  
   Layers,
   Loader2,
   Radio,

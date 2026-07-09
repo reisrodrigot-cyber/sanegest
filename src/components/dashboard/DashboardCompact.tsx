@@ -369,8 +369,21 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const producaoOntem = regsOntem.reduce((s, r) => s + compAtual(r), 0);
     const ligacoesOntem = regsOntem.reduce((s, r) => s + ligAtual(r), 0);
 
-    // Produção diária média da obra = soma das médias diárias dos encarregados no período.
-    const producaoDiariaMediaObra = porEncarregado.reduce((s, e) => s + e.media, 0);
+    // Produção diária média da obra — INDEPENDENTE do filtro de período.
+    // Soma das médias diárias de cada encarregado considerando TODO o
+    // histórico ativo. Só rede; ligações não entram.
+    const userAgg = new Map<string, { total: number; days: Set<string> }>();
+    registros.forEach((r) => {
+      const metros = compAtual(r);
+      if (metros <= 0) return;
+      const key = String(r.user_id ?? '—');
+      const c = userAgg.get(key) ?? { total: 0, days: new Set<string>() };
+      c.total += metros;
+      c.days.add(r.data_registro);
+      userAgg.set(key, c);
+    });
+    let producaoDiariaMediaObra = 0;
+    userAgg.forEach((v) => { if (v.days.size > 0) producaoDiariaMediaObra += v.total / v.days.size; });
 
     return {
       avancoLabel: `${Math.round(totalExecutado).toLocaleString('pt-BR')} / ${Math.round(totalPrevisto).toLocaleString('pt-BR')} m`,
@@ -381,7 +394,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         : 'sem ligações',
       producaoDiariaMediaObra: `${Math.round(producaoDiariaMediaObra * 10) / 10} m/dia`,
     };
-  }, [ordens, registros, yesterdayStr, porEncarregado]);
+  }, [ordens, registros, yesterdayStr]);
 
   // Produção diária (30 dias)
   const dailyData = useMemo(() => {

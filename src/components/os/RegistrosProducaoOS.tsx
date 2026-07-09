@@ -67,7 +67,13 @@ export function RegistrosProducaoOS({ osId }: Props) {
   const [ajMotivo, setAjMotivo] = useState('');
   const [savingAj, setSavingAj] = useState(false);
   // Ligações do registro em ajuste
-  interface LigRow { id: string | null; comprimento: string; comprimentoOriginal: number | null; }
+  interface LigRow {
+    id: string | null;
+    comprimento: string;              // valor atual/em edição (string p/ input)
+    comprimentoOriginal: number | null; // valor informado pelo encarregado (preservado)
+    comprimentoAtual: number | null;    // valor efetivo salvo (ajustado ou original)
+    jaAjustada: boolean;                // true se comprimento_original já existir no banco
+  }
   const [ligRows, setLigRows] = useState<LigRow[]>([]);
   const [loadingLig, setLoadingLig] = useState(false);
 
@@ -134,16 +140,23 @@ export function RegistrosProducaoOS({ osId }: Props) {
       setLoadingLig(true);
       const { data } = await supabase
         .from('ligacoes')
-        .select('id, comprimento, created_at')
+        .select('id, comprimento, comprimento_original, created_at')
         .eq('registro_producao_id', r.id)
         .order('created_at', { ascending: true });
-      const rows: LigRow[] = (data ?? []).map((l: any) => ({
-        id: l.id,
-        comprimento: l.comprimento != null ? String(l.comprimento).replace('.', ',') : '',
-        comprimentoOriginal: l.comprimento != null ? Number(l.comprimento) : null,
-      }));
-      // ajusta ao count declarado
-      while (rows.length < ligCount) rows.push({ id: null, comprimento: '', comprimentoOriginal: null });
+      const rows: LigRow[] = (data ?? []).map((l: any) => {
+        const atual = l.comprimento != null ? Number(l.comprimento) : null;
+        const orig = l.comprimento_original != null ? Number(l.comprimento_original) : null;
+        // Se ainda não houve ajuste (comprimento_original = null), o "original" é o próprio comprimento atual
+        const originalEfetivo = orig != null ? orig : atual;
+        return {
+          id: l.id,
+          comprimento: atual != null ? String(atual).replace('.', ',') : '',
+          comprimentoOriginal: originalEfetivo,
+          comprimentoAtual: atual,
+          jaAjustada: orig != null,
+        };
+      });
+      while (rows.length < ligCount) rows.push({ id: null, comprimento: '', comprimentoOriginal: null, comprimentoAtual: null, jaAjustada: false });
       setLigRows(rows.slice(0, ligCount));
       setLoadingLig(false);
     }
@@ -157,7 +170,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
       if (prev.length === n) return prev;
       if (n < prev.length) return prev.slice(0, n);
       const add: LigRow[] = [];
-      for (let i = prev.length; i < n; i++) add.push({ id: null, comprimento: '', comprimentoOriginal: null });
+      for (let i = prev.length; i < n; i++) add.push({ id: null, comprimento: '', comprimentoOriginal: null, comprimentoAtual: null, jaAjustada: false });
       return [...prev, ...add];
     });
   }, [ajLig, ajustando]);
@@ -206,14 +219,30 @@ export function RegistrosProducaoOS({ osId }: Props) {
     }
 
     // Sincroniza ligações
-    const anterioresLig = ligRows.map((r) => ({ id: r.id, comprimentoOriginal: r.comprimentoOriginal }));
+    const anterioresLig = ligRows.map((r) => ({
+      id: r.id,
+      comprimentoAtual: r.comprimentoAtual,
+      comprimentoOriginal: r.comprimentoOriginal,
+      jaAjustada: r.jaAjustada,
+    }));
     for (let i = 0; i < lig; i++) {
       const row = ligRows[i];
       const novoComp = ligComprimentos[i];
       if (row?.id) {
+        // Só marca como ajustada se o valor mudou de fato
+        const valorMudou = row.comprimentoAtual == null || Math.abs((row.comprimentoAtual ?? 0) - novoComp) > 1e-9;
+        const patch: any = { comprimento: novoComp };
+        if (valorMudou) {
+          // Preserva original apenas na primeira vez
+          if (!row.jaAjustada && row.comprimentoAtual != null) {
+            patch.comprimento_original = row.comprimentoAtual;
+          }
+          patch.ajustado_por = user.id;
+          patch.ajustado_em = new Date().toISOString();
+        }
         const { error: e } = await supabase
           .from('ligacoes')
-          .update({ comprimento: novoComp })
+          .update(patch)
           .eq('id', row.id);
         if (e) { setSavingAj(false); toast.error('Erro ao atualizar ligação ' + (i + 1) + ': ' + e.message); return; }
       } else {
@@ -224,6 +253,8 @@ export function RegistrosProducaoOS({ osId }: Props) {
             registro_producao_id: ajustando.id,
             encarregado_id: ajustando.user_id,
             comprimento: novoComp,
+            ajustado_por: user.id,
+            ajustado_em: new Date().toISOString(),
           });
         if (e) { setSavingAj(false); toast.error('Erro ao criar ligação ' + (i + 1) + ': ' + e.message); return; }
       }

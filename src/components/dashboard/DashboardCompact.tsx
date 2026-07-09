@@ -206,9 +206,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
   const [subBaciaTab, setSubBaciaTab] = useState<'rede' | 'ligacoes' | 'resumo'>('rede');
-  const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('mes_atual');
+  const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('todo');
   const [periodoInicio, setPeriodoInicio] = useState<string>('');
   const [periodoFim, setPeriodoFim] = useState<string>('');
+  const [periodoMenuOpen, setPeriodoMenuOpen] = useState(false);
   const [encNames, setEncNames] = useState<Record<string, string>>({});
 
   useEffect(() => {

@@ -67,7 +67,13 @@ export function RegistrosProducaoOS({ osId }: Props) {
   const [ajMotivo, setAjMotivo] = useState('');
   const [savingAj, setSavingAj] = useState(false);
   // Ligações do registro em ajuste
-  interface LigRow { id: string | null; comprimento: string; comprimentoOriginal: number | null; }
+  interface LigRow {
+    id: string | null;
+    comprimento: string;              // valor atual/em edição (string p/ input)
+    comprimentoOriginal: number | null; // valor informado pelo encarregado (preservado)
+    comprimentoAtual: number | null;    // valor efetivo salvo (ajustado ou original)
+    jaAjustada: boolean;                // true se comprimento_original já existir no banco
+  }
   const [ligRows, setLigRows] = useState<LigRow[]>([]);
   const [loadingLig, setLoadingLig] = useState(false);
 

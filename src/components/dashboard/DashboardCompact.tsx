@@ -284,12 +284,25 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [registrosBrutos, osRows],
   );
 
-  // Período selecionado (filtro global do dashboard).
+  // Primeira data com produção registrada (para o período "Todo o período").
+  const firstProducaoDate = useMemo(() => {
+    let min: string | null = null;
+    (registrosBrutos as any[]).forEach((r) => {
+      const d = String(r?.data_registro ?? '');
+      if (!d) return;
+      if (min === null || d < min) min = d;
+    });
+    return min;
+  }, [registrosBrutos]);
+
+  // Período selecionado — afeta APENAS "Produção por Encarregado" e
+  // "Produtividade por Profundidade". Demais cards permanecem com suas
+  // próprias regras (acumulado, ontem, últimos 30d, histórico mensal).
   const periodo = useMemo(() => {
     const hoje = new Date();
+    const hojeIso = toISODate(hoje);
     if (periodoTipo === 'hoje') {
-      const s = toISODate(hoje);
-      return { inicio: s, fim: s, label: `Hoje (${fmtDateBR(s)})` };
+      return { inicio: hojeIso, fim: hojeIso, label: `Hoje (${fmtDateBR(hojeIso)})` };
     }
     if (periodoTipo === 'ontem') {
       const y = new Date(hoje); y.setDate(y.getDate() - 1);
@@ -298,16 +311,21 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     }
     if (periodoTipo === 'semana') {
       const i = new Date(hoje); i.setDate(i.getDate() - 6);
-      return { inicio: toISODate(i), fim: toISODate(hoje), label: 'Últimos 7 dias' };
+      return { inicio: toISODate(i), fim: hojeIso, label: 'Últimos 7 dias' };
+    }
+    if (periodoTipo === 'mes_atual') {
+      const first = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      const last = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+      return { inicio: toISODate(first), fim: toISODate(last), label: 'Mês atual' };
     }
     if (periodoTipo === 'personalizado' && periodoInicio && periodoFim) {
       const [ini, fim] = periodoInicio <= periodoFim ? [periodoInicio, periodoFim] : [periodoFim, periodoInicio];
       return { inicio: ini, fim, label: `${fmtDateBR(ini)} a ${fmtDateBR(fim)}` };
     }
-    const first = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const last = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-    return { inicio: toISODate(first), fim: toISODate(last), label: 'Mês atual' };
-  }, [periodoTipo, periodoInicio, periodoFim]);
+    // 'todo' (padrão) — da primeira produção registrada até hoje.
+    const ini = firstProducaoDate ?? hojeIso;
+    return { inicio: ini, fim: hojeIso, label: 'Todo o período' };
+  }, [periodoTipo, periodoInicio, periodoFim, firstProducaoDate]);
 
   const registrosPeriodo = useMemo(
     () => registros.filter((r) => r.data_registro >= periodo.inicio && r.data_registro <= periodo.fim),

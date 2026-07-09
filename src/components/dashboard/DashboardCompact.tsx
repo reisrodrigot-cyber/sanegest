@@ -437,7 +437,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       total: Math.round(totais[i]),
       pctBar: (medias[i] / max) * 100,
     }));
-  }, [registros, osRows]);
+  }, [registrosPeriodo, osRows]);
 
   // NS em execução
   const nsEmExec = useMemo(

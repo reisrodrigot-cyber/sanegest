@@ -568,10 +568,50 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return `${Math.round(m)}m`;
   };
 
+  const totalPeriodo = porEncarregado.reduce((s, e) => s + e.total, 0);
+  const somaMediasPeriodo = porEncarregado.reduce((s, e) => s + e.media, 0);
+
   return (
     <div className="dc-root flex flex-col gap-3">
+      {/* Filtro de período */}
+      <div className="flex flex-wrap items-center gap-2 bg-card rounded-lg border border-border shadow-sm px-3 py-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mr-1">Período:</span>
+        {(Object.keys(PERIODO_LABELS) as PeriodoTipo[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setPeriodoTipo(t)}
+            className={`h-7 px-2 text-[11px] rounded border transition-colors ${
+              periodoTipo === t
+                ? 'bg-[#185FA5] text-white border-[#185FA5]'
+                : 'bg-background text-foreground/80 border-border hover:bg-muted/50'
+            }`}
+          >
+            {PERIODO_LABELS[t]}
+          </button>
+        ))}
+        {periodoTipo === 'personalizado' && (
+          <div className="flex items-center gap-1.5 ml-1">
+            <input
+              type="date"
+              value={periodoInicio}
+              onChange={(e) => setPeriodoInicio(e.target.value)}
+              className="h-7 px-2 text-[11px] rounded border border-border bg-background text-foreground"
+            />
+            <span className="text-[11px] text-muted-foreground">até</span>
+            <input
+              type="date"
+              value={periodoFim}
+              onChange={(e) => setPeriodoFim(e.target.value)}
+              className="h-7 px-2 text-[11px] rounded border border-border bg-background text-foreground"
+            />
+          </div>
+        )}
+        <span className="text-[11px] text-muted-foreground ml-auto">{periodo.label}</span>
+      </div>
+
       {/* Row 1 — KPIs */}
-      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico"
@@ -590,15 +630,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           icon={<Activity size={16} />}
           label="Produção diária média da obra"
           value={kpis.producaoDiariaMediaObra}
-          sub="mês atual • rede"
+          sub={`${periodo.label} • rede`}
           accent={accent.blue}
-        />
-        <KpiCard
-          icon={<Gauge size={16} />}
-          label="Média por encarregado/dia"
-          value={kpis.mediaPorEncarregadoDia}
-          sub="mês atual • rede"
-          accent={accent.red}
         />
         <KpiCard
           icon={<Cable size={16} />}
@@ -608,6 +641,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           accent={accent.purple}
         />
       </div>
+
 
       {/* Row 2 — Map + Charts + Tables */}
       <div className="dc-row2 grid grid-cols-10 gap-3">

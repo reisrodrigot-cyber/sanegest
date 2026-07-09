@@ -291,41 +291,43 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const ligAtual = (r: any) =>
     Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
+  // Produção por encarregado no período — total, dias e média/dia (somente rede)
+  const porEncarregado = useMemo(() => {
+    const map = new Map<string, { nome: string; ns: Set<string>; total: number; days: Set<string> }>();
+    registrosPeriodo.forEach((r) => {
+      const metros = compAtual(r);
+      if (metros <= 0) return;
+      const nome = encNames[r.user_id] || '—';
+      const c = map.get(r.user_id) ?? { nome, ns: new Set<string>(), total: 0, days: new Set<string>() };
+      c.nome = nome;
+      c.ns.add(r.os_id);
+      c.total += metros;
+      c.days.add(r.data_registro);
+      map.set(r.user_id, c);
+    });
+    return Array.from(map.values())
+      .map((v) => ({
+        nome: v.nome,
+        ns: v.ns.size,
+        total: v.total,
+        dias: v.days.size,
+        media: v.days.size > 0 ? v.total / v.days.size : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [registrosPeriodo, encNames]);
+
   const kpis = useMemo(() => {
     const totalPrevisto = ordens.reduce((s, o) => s + (o.comprimento_previsto ?? 0), 0);
     const totalExecutado = ordens.reduce((s, o) => s + (o.comprimento_real ?? 0), 0);
     const pct = totalPrevisto > 0 ? Math.round((totalExecutado / totalPrevisto) * 100) : 0;
 
+    // Produção ontem — sempre fixo em ontem (não segue o filtro de período).
     const regsOntem = registros.filter((r) => r.data_registro === yesterdayStr);
     const producaoOntem = regsOntem.reduce((s, r) => s + compAtual(r), 0);
     const ligacoesOntem = regsOntem.reduce((s, r) => s + ligAtual(r), 0);
 
-    // Janela: mês atual (para coerência com produção mensal / por encarregado do mês)
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const regsMes = registros.filter((r) => r.data_registro.startsWith(ym) && compAtual(r) > 0);
-
-    // Produção diária média da obra = Σ rede no mês / dias únicos com rede no mês
-    const totalRedeMes = regsMes.reduce((s, r) => s + compAtual(r), 0);
-    const diasUnicosMes = new Set(regsMes.map((r) => r.data_registro)).size;
-    const producaoDiariaMediaObra = diasUnicosMes > 0 ? totalRedeMes / diasUnicosMes : 0;
-
-    // ativos últimos 30 dias
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
-    const sinceStr = since.toISOString().slice(0, 10);
-    const ativos = new Set(registros.filter((r) => r.data_registro >= sinceStr).map((r) => r.user_id)).size;
-
-    // Média por encarregado/dia — mês atual, somente rede
-    const usuariosDias = new Map<string, { total: number; days: Set<string> }>();
-    regsMes.forEach((r) => {
-      const c = usuariosDias.get(r.user_id) ?? { total: 0, days: new Set<string>() };
-      c.total += compAtual(r);
-      c.days.add(r.data_registro);
-      usuariosDias.set(r.user_id, c);
-    });
-    const medias = Array.from(usuariosDias.values()).map((v) => (v.days.size > 0 ? v.total / v.days.size : 0));
-    const mediaPorEncarregadoDia = medias.length > 0 ? medias.reduce((a, b) => a + b, 0) / medias.length : 0;
+    // Produção diária média da obra = soma das médias diárias dos encarregados no período.
+    const producaoDiariaMediaObra = porEncarregado.reduce((s, e) => s + e.media, 0);
 
     return {
       avancoLabel: `${Math.round(totalExecutado).toLocaleString('pt-BR')} / ${Math.round(totalPrevisto).toLocaleString('pt-BR')} m`,
@@ -335,10 +337,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         ? `${ligacoesOntem} ${ligacoesOntem === 1 ? 'ligação' : 'ligações'}`
         : 'sem ligações',
       producaoDiariaMediaObra: `${Math.round(producaoDiariaMediaObra * 10) / 10} m/dia`,
-      ativos: String(ativos),
-      mediaPorEncarregadoDia: `${Math.round(mediaPorEncarregadoDia * 10) / 10} m/dia`,
     };
-  }, [ordens, registros, yesterdayStr]);
+  }, [ordens, registros, yesterdayStr, porEncarregado]);
 
   // Produção diária (30 dias)
   const dailyData = useMemo(() => {
@@ -375,34 +375,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return buckets.map((b) => ({ ...b, metros: Math.round(b.metros) }));
   }, [registros]);
 
-  // Produção por encarregado — APENAS mês corrente (a partir de registros_producao)
-  const [encNames, setEncNames] = useState<Record<string, string>>({});
-  useEffect(() => {
-    supabase.from('profiles').select('user_id, display_name, email, apelido').then(({ data }) => {
-      const m: Record<string, string> = {};
-      (data ?? []).forEach((p: any) => { m[p.user_id] = p.apelido || p.display_name || p.email || '—'; });
-      setEncNames(m);
-    });
-  }, []);
-  const porEncarregado = useMemo(() => {
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const map = new Map<string, { nome: string; ns: Set<string>; total: number }>();
-    registros
-      .filter((r) => r.data_registro.startsWith(ym))
-      .forEach((r) => {
-        const nome = encNames[r.user_id] || '—';
-        const c = map.get(r.user_id) ?? { nome, ns: new Set<string>(), total: 0 };
-        c.nome = nome;
-        c.ns.add(r.os_id);
-        c.total += Number(r.comprimento_dia) || 0;
-        map.set(r.user_id, c);
-      });
-    return Array.from(map.values())
-      .map((v) => ({ nome: v.nome, ns: v.ns.size, total: v.total }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 6);
-  }, [registros, encNames]);
 
   // Avanço por bacia
   const porBacia = useMemo(() => {

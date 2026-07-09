@@ -408,7 +408,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     osRows.forEach((o) => osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null));
     // Agrupa metros por (encarregado, data, faixa)
     const porPar = new Map<string, number[]>(); // key -> array por faixa
-    registros.forEach((r) => {
+    registrosPeriodo.forEach((r) => {
       const metros = Number(r.comprimento_dia) || 0;
       if (metros <= 0) return;
       const idx = faixaIndex(osProf.get(r.os_id) ?? null);

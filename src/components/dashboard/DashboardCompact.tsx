@@ -128,6 +128,22 @@ const faixaIndex = (prof: number | null) => {
   return 3;
 };
 
+type PeriodoTipo = 'hoje' | 'ontem' | 'semana' | 'mes_atual' | 'personalizado';
+const PERIODO_LABELS: Record<PeriodoTipo, string> = {
+  hoje: 'Hoje',
+  ontem: 'Ontem',
+  semana: 'Últimos 7 dias',
+  mes_atual: 'Mês atual',
+  personalizado: 'Personalizado',
+};
+const toISODate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const fmtDateBR = (iso: string) => iso.split('-').reverse().join('/');
+
 interface KpiCardProps {
   icon: React.ReactNode;
   label: string;

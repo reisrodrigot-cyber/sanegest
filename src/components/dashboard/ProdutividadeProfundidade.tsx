@@ -50,29 +50,41 @@ export const ProdutividadeProfundidade = () => {
   }, []);
 
   // Produtividade por Profundidade (conceito APO):
-  //   produtividade_faixa = metros de REDE executados na faixa
-  //                       / dias trabalhados proporcionais na faixa
-  //   dias trabalhados = pares únicos (encarregado × data) com rede > 0.
-  //   Ligações (quantidade e extensão) NÃO entram nesse cálculo.
+  //   produtividade_faixa = metros_rede_da_faixa / dias_proporcionais_da_faixa
+  //   Para cada par (encarregado, data), 1 dia é rateado entre as faixas em
+  //   que ele produziu rede, proporcionalmente aos metros de cada faixa.
   const stats = useMemo(() => {
     const osProf = new Map<string, number | null>();
     ordens.forEach((o) => osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null));
 
     const ajustados = aplicarRealValidadoEmRegistros(registros, ordens as OSRealInput[]);
 
-    const faixaData = FAIXAS.map(() => ({ total: 0, diasTrab: new Set<string>() }));
+    const porPar = new Map<string, number[]>();
     ajustados.forEach((r) => {
       const metros = Number(r.comprimento_dia) || 0;
       if (metros <= 0) return;
       const idx = faixaIndex(osProf.get(r.os_id) ?? null);
       if (idx < 0) return;
-      faixaData[idx].total += metros;
-      faixaData[idx].diasTrab.add(`${(r as any).user_id ?? 'sem-user'}|${r.data_registro}`);
+      const key = `${(r as any).user_id ?? 'sem-user'}|${r.data_registro}`;
+      let arr = porPar.get(key);
+      if (!arr) { arr = FAIXAS.map(() => 0); porPar.set(key, arr); }
+      arr[idx] += metros;
+    });
+    const totais = FAIXAS.map(() => 0);
+    const diasProp = FAIXAS.map(() => 0);
+    porPar.forEach((arr) => {
+      const totalDia = arr.reduce((s, v) => s + v, 0);
+      if (totalDia <= 0) return;
+      arr.forEach((m, i) => {
+        if (m <= 0) return;
+        totais[i] += m;
+        diasProp[i] += m / totalDia;
+      });
     });
     return FAIXAS.map((f, i) => ({
       label: f.label,
-      media: faixaData[i].diasTrab.size > 0 ? Math.round((faixaData[i].total / faixaData[i].diasTrab.size) * 10) / 10 : 0,
-      total: Math.round(faixaData[i].total * 10) / 10,
+      media: diasProp[i] > 0 ? Math.round((totais[i] / diasProp[i]) * 10) / 10 : 0,
+      total: Math.round(totais[i] * 10) / 10,
     }));
   }, [registros, ordens]);
 

@@ -211,37 +211,59 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [encNames, setEncNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // ordens_servico pode ter mais de 1000 linhas — pagina para não perder OS
-    // (a API do PostgREST corta em 1000 por padrão, o que fazia sumir a faixa
-    // de profundidade dos trechos que caíam fora da primeira página).
-    const fetchAllOrdens = async (): Promise<OSRow[]> => {
-      const all: OSRow[] = [];
+    // Todos os fetches abaixo usam paginação em blocos de 1000, porque a API
+    // do PostgREST corta a resposta em 1000 linhas por padrão. Sem isso, ordens
+    // de serviço, registros de produção ou ligações que caíssem fora da
+    // primeira página sumiriam silenciosamente dos KPIs e cards.
+    const fetchAllPaged = async <T,>(
+      build: (from: number, to: number) => any,
+    ): Promise<T[]> => {
+      const all: T[] = [];
       const pageSize = 1000;
       let from = 0;
       while (true) {
-        const { data } = await supabase
-          .from('ordens_servico')
-          .select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado')
-          .order('id', { ascending: true })
-          .range(from, from + pageSize - 1);
-        const rows = (data ?? []) as OSRow[];
+        const { data, error } = await build(from, from + pageSize - 1);
+        if (error) break;
+        const rows = (data ?? []) as T[];
         all.push(...rows);
         if (rows.length < pageSize) break;
         from += pageSize;
       }
       return all;
     };
-    Promise.all([
-      supabase.from('registros_producao').select('id, user_id, data_registro, comprimento_dia, os_id, comprimento_ajustado, ligacoes_dia, ligacoes_ajustadas, status').eq('excluido', false).eq('status', 'ativo'),
-      fetchAllOrdens(),
-      supabase.from('ligacoes').select('os_id, comprimento, registro_producao_id'),
-    ]).then(([r, o, l]) => {
-      setRegistrosBrutos((r.data ?? []) as any[]);
-      setOsRows(o);
-      setLigacoesRows((l.data ?? []) as any[]);
-      setLoading(false);
-    });
+
+    const fetchAllOrdens = () => fetchAllPaged<OSRow>((from, to) =>
+      supabase
+        .from('ordens_servico')
+        .select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado')
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
+    const fetchAllRegistros = () => fetchAllPaged<any>((from, to) =>
+      supabase
+        .from('registros_producao')
+        .select('id, user_id, data_registro, comprimento_dia, os_id, comprimento_ajustado, ligacoes_dia, ligacoes_ajustadas, status')
+        .eq('excluido', false).eq('status', 'ativo')
+        .order('data_registro', { ascending: true })
+        .range(from, to),
+    );
+    const fetchAllLigacoes = () => fetchAllPaged<{ os_id: string; comprimento: number | null; registro_producao_id: string | null }>((from, to) =>
+      supabase
+        .from('ligacoes')
+        .select('os_id, comprimento, registro_producao_id')
+        .order('created_at', { ascending: true })
+        .range(from, to),
+    );
+
+    Promise.all([fetchAllRegistros(), fetchAllOrdens(), fetchAllLigacoes()])
+      .then(([r, o, l]) => {
+        setRegistrosBrutos(r);
+        setOsRows(o);
+        setLigacoesRows(l);
+        setLoading(false);
+      });
   }, []);
+
 
 
   useEffect(() => {

@@ -115,14 +115,14 @@ const ChartFrame = ({
 };
 
 const FAIXAS = [
-  { label: 'Até 1,15m', max: 1.15 },
-  { label: '1,15m a 2,00m', max: 2.0 },
+  { label: 'Até 1,25m', max: 1.25 },
+  { label: '1,25m a 2,00m', max: 2.0 },
   { label: '2,00m a 3,00m', max: 3.0 },
   { label: 'Acima de 3,00m', max: Infinity },
 ];
 const faixaIndex = (prof: number | null) => {
   if (prof == null) return -1;
-  if (prof <= 1.15) return 0;
+  if (prof <= 1.25) return 0;
   if (prof <= 2.0) return 1;
   if (prof <= 3.0) return 2;
   return 3;

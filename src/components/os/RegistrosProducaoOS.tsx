@@ -219,14 +219,30 @@ export function RegistrosProducaoOS({ osId }: Props) {
     }
 
     // Sincroniza ligações
-    const anterioresLig = ligRows.map((r) => ({ id: r.id, comprimentoOriginal: r.comprimentoOriginal }));
+    const anterioresLig = ligRows.map((r) => ({
+      id: r.id,
+      comprimentoAtual: r.comprimentoAtual,
+      comprimentoOriginal: r.comprimentoOriginal,
+      jaAjustada: r.jaAjustada,
+    }));
     for (let i = 0; i < lig; i++) {
       const row = ligRows[i];
       const novoComp = ligComprimentos[i];
       if (row?.id) {
+        // Só marca como ajustada se o valor mudou de fato
+        const valorMudou = row.comprimentoAtual == null || Math.abs((row.comprimentoAtual ?? 0) - novoComp) > 1e-9;
+        const patch: any = { comprimento: novoComp };
+        if (valorMudou) {
+          // Preserva original apenas na primeira vez
+          if (!row.jaAjustada && row.comprimentoAtual != null) {
+            patch.comprimento_original = row.comprimentoAtual;
+          }
+          patch.ajustado_por = user.id;
+          patch.ajustado_em = new Date().toISOString();
+        }
         const { error: e } = await supabase
           .from('ligacoes')
-          .update({ comprimento: novoComp })
+          .update(patch)
           .eq('id', row.id);
         if (e) { setSavingAj(false); toast.error('Erro ao atualizar ligação ' + (i + 1) + ': ' + e.message); return; }
       } else {
@@ -237,6 +253,8 @@ export function RegistrosProducaoOS({ osId }: Props) {
             registro_producao_id: ajustando.id,
             encarregado_id: ajustando.user_id,
             comprimento: novoComp,
+            ajustado_por: user.id,
+            ajustado_em: new Date().toISOString(),
           });
         if (e) { setSavingAj(false); toast.error('Erro ao criar ligação ' + (i + 1) + ': ' + e.message); return; }
       }

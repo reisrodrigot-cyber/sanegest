@@ -208,7 +208,10 @@ export type Database = {
       }
       ligacoes: {
         Row: {
+          ajustado_em: string | null
+          ajustado_por: string | null
           comprimento: number | null
+          comprimento_original: number | null
           created_at: string
           data_topografia: string | null
           encarregado_id: string
@@ -222,7 +225,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ajustado_em?: string | null
+          ajustado_por?: string | null
           comprimento?: number | null
+          comprimento_original?: number | null
           created_at?: string
           data_topografia?: string | null
           encarregado_id: string
@@ -236,7 +242,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ajustado_em?: string | null
+          ajustado_por?: string | null
           comprimento?: number | null
+          comprimento_original?: number | null
           created_at?: string
           data_topografia?: string | null
           encarregado_id?: string

@@ -422,17 +422,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     [ordens],
   );
 
-  // Quantidade de ligações realizadas por OS — soma dos lançamentos diários
-  // (usa ligacoes_ajustadas quando existir; senão ligacoes_dia; ignora excluídos/cancelados via filtro do fetch)
-  const qtdLigacoesPorOs = useMemo(() => {
-    const map = new Map<string, number>();
-    registros.forEach((r: any) => {
-      const q = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
-      if (!q) return;
-      map.set(r.os_id, (map.get(r.os_id) ?? 0) + q);
-    });
-    return map;
-  }, [registros]);
 
   // Ligações executadas — fonte de verdade é a tabela `ligacoes`, filtradas por
   // vinculação a um registro de produção ATIVO (não excluído, não cancelado).

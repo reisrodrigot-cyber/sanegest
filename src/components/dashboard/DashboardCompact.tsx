@@ -783,12 +783,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         {/* Tables + Produtividade strip */}
         <div className="dc-tables col-span-3 flex flex-col gap-3">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <PeriodoFiltro />
+            </div>
             <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="text-sm font-semibold text-foreground">Produção por Encarregado</h3>
-              <div className="flex flex-col items-end -mt-0.5">
-                <PeriodoDropdown />
-                <span className="text-[10px] text-muted-foreground leading-tight">{periodoRangeLabel}</span>
-              </div>
             </div>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">

@@ -764,7 +764,7 @@ const ProducaoPage = () => {
                   onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
                   className="w-full sm:w-auto min-h-[44px] px-4 py-2 rounded-md text-sm font-medium bg-[hsl(var(--status-green))] text-white shadow-sm hover:bg-[hsl(135_64%_40%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--status-green))] focus-visible:ring-offset-2 focus-visible:ring-offset-card transition-colors"
                 >
-                  {expandedId === os.id ? 'Fechar' : 'Registrar Dia'}
+                  {expandedId === os.id ? 'Fechar' : statusTab === 'concluido' ? 'Ver Produção' : 'Registrar Dia'}
                 </button>
               </div>
               {expandedId === os.id && <OSPanel os={os} />}

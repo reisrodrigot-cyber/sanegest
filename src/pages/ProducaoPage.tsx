@@ -636,7 +636,44 @@ const ProducaoPage = () => {
     }
   }, [loading]);
 
-  const minhasOS = ordens.filter((os) => {
+  // Carrega os ids das OS já marcadas como concluídas (PV final assentado) pelo usuário atual
+  useEffect(() => {
+    if (!effectiveUser?.id) {
+      setConcluidosIds(new Set());
+      setStatusLoading(false);
+      return;
+    }
+    const fetchConcluidos = async () => {
+      setStatusLoading(true);
+      let allIds = new Set<string>();
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('registros_producao')
+          .select('os_id')
+          .eq('user_id', effectiveUser.id)
+          .eq('excluido', false)
+          .eq('pv_final_assentado', true)
+          .range(from, from + pageSize - 1);
+        if (error) {
+          console.error('Error fetching concluidos:', error);
+          break;
+        }
+        (data || []).forEach((r) => allIds.add(r.os_id));
+        hasMore = (data?.length || 0) === pageSize;
+        from += pageSize;
+      }
+      setConcluidosIds(allIds);
+      setStatusLoading(false);
+    };
+    fetchConcluidos();
+  }, [effectiveUser?.id]);
+
+  const minhasOS = useMemo(() => {
+    return ordens.filter((os) => {
+
     if (!os.liberado) return false;
     if (effectiveUser?.role === 'admin') return true;
     return os.liberado_para === effectiveUser?.nome || os.executor === effectiveUser?.nome;

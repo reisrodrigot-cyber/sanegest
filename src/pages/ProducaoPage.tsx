@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { MeusRegistrosEnviados } from '@/components/encarregado/MeusRegistrosEnviados';
 
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { Loader2, Save, MapPin, Eye, Pencil, X, Check } from 'lucide-react';
@@ -620,6 +620,10 @@ const ProducaoPage = () => {
   const { effectiveUser } = useAuth();
   const { ordens, loading } = useOrdensServico();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [statusTab, setStatusTab] = useState<'em-execucao' | 'concluido'>('em-execucao');
+  const [concluidosIds, setConcluidosIds] = useState<Set<string>>(new Set());
+  const [statusLoading, setStatusLoading] = useState(true);
+
 
   // Scroll para "Meus registros enviados" quando vier do dashboard via #meus-registros
   useEffect(() => {
@@ -632,14 +636,67 @@ const ProducaoPage = () => {
     }
   }, [loading]);
 
-  const minhasOS = ordens.filter((os) => {
-    if (!os.liberado) return false;
-    if (effectiveUser?.role === 'admin') return true;
-    return os.liberado_para === effectiveUser?.nome || os.executor === effectiveUser?.nome;
-  });
+  // Carrega os ids das OS já marcadas como concluídas (PV final assentado) pelo usuário atual
+  useEffect(() => {
+    if (!effectiveUser?.id) {
+      setConcluidosIds(new Set());
+      setStatusLoading(false);
+      return;
+    }
+    const fetchConcluidos = async () => {
+      setStatusLoading(true);
+      let allIds = new Set<string>();
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('registros_producao')
+          .select('os_id')
+          .eq('user_id', effectiveUser.id)
+          .eq('excluido', false)
+          .eq('pv_final_assentado', true)
+          .range(from, from + pageSize - 1);
+        if (error) {
+          console.error('Error fetching concluidos:', error);
+          break;
+        }
+        (data || []).forEach((r) => allIds.add(r.os_id));
+        hasMore = (data?.length || 0) === pageSize;
+        from += pageSize;
+      }
+      setConcluidosIds(allIds);
+      setStatusLoading(false);
+    };
+    fetchConcluidos();
+  }, [effectiveUser?.id]);
 
+  const minhasOS = useMemo(() => {
+    return ordens.filter((os) => {
+      if (!os.liberado) return false;
+      if (effectiveUser?.role === 'admin') return true;
+      return os.liberado_para === effectiveUser?.nome || os.executor === effectiveUser?.nome;
+    });
+  }, [ordens, effectiveUser]);
 
-  if (loading) {
+  const displayedOS = useMemo(() => {
+    if (statusTab === 'concluido') {
+      return minhasOS.filter((os) => concluidosIds.has(os.id));
+    }
+    return minhasOS.filter((os) => !concluidosIds.has(os.id));
+  }, [minhasOS, concluidosIds, statusTab]);
+
+  const countEmExecucao = useMemo(
+    () => minhasOS.filter((os) => !concluidosIds.has(os.id)).length,
+    [minhasOS, concluidosIds],
+  );
+  const countConcluido = useMemo(
+    () => minhasOS.filter((os) => concluidosIds.has(os.id)).length,
+    [minhasOS, concluidosIds],
+  );
+
+  if (loading || statusLoading) {
+
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-20">
@@ -652,17 +709,49 @@ const ProducaoPage = () => {
   return (
     <AppLayout>
       <h1 className="text-2xl font-bold text-foreground mb-1">Registro de Produção</h1>
-      <p className="text-sm text-muted-foreground mb-6">
+      <p className="text-sm text-muted-foreground mb-3">
         Registre a produção do dia em cada NS atribuída a você
       </p>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => setStatusTab('em-execucao')}
+          className={`min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors border ${
+            statusTab === 'em-execucao'
+              ? 'bg-secondary text-secondary-foreground border-secondary'
+              : 'bg-card text-foreground border-border hover:bg-muted/60'
+          }`}
+        >
+          Em execução ({countEmExecucao})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusTab('concluido')}
+          className={`min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors border ${
+            statusTab === 'concluido'
+              ? 'bg-secondary text-secondary-foreground border-secondary'
+              : 'bg-card text-foreground border-border hover:bg-muted/60'
+          }`}
+        >
+          Concluído ({countConcluido})
+        </button>
+      </div>
 
       {minhasOS.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
           Nenhuma OS liberada para você no momento.
         </div>
+      ) : displayedOS.length === 0 ? (
+        <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
+          {statusTab === 'concluido'
+            ? 'Nenhuma OS concluída no momento.'
+            : 'Nenhuma OS em execução no momento.'}
+        </div>
       ) : (
         <div className="space-y-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          {minhasOS.map((os) => (
+          {displayedOS.map((os) => (
+
             <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4 max-w-full">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
                 <div className="min-w-0">
@@ -675,7 +764,7 @@ const ProducaoPage = () => {
                   onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
                   className="w-full sm:w-auto min-h-[44px] px-4 py-2 rounded-md text-sm font-medium bg-[hsl(var(--status-green))] text-white shadow-sm hover:bg-[hsl(135_64%_40%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--status-green))] focus-visible:ring-offset-2 focus-visible:ring-offset-card transition-colors"
                 >
-                  {expandedId === os.id ? 'Fechar' : 'Registrar Dia'}
+                  {expandedId === os.id ? 'Fechar' : statusTab === 'concluido' ? 'Ver Produção' : 'Registrar Dia'}
                 </button>
               </div>
               {expandedId === os.id && <OSPanel os={os} />}

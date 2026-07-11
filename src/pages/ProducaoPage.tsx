@@ -673,14 +673,30 @@ const ProducaoPage = () => {
 
   const minhasOS = useMemo(() => {
     return ordens.filter((os) => {
+      if (!os.liberado) return false;
+      if (effectiveUser?.role === 'admin') return true;
+      return os.liberado_para === effectiveUser?.nome || os.executor === effectiveUser?.nome;
+    });
+  }, [ordens, effectiveUser]);
 
-    if (!os.liberado) return false;
-    if (effectiveUser?.role === 'admin') return true;
-    return os.liberado_para === effectiveUser?.nome || os.executor === effectiveUser?.nome;
-  });
+  const displayedOS = useMemo(() => {
+    if (statusTab === 'concluido') {
+      return minhasOS.filter((os) => concluidosIds.has(os.id));
+    }
+    return minhasOS.filter((os) => !concluidosIds.has(os.id));
+  }, [minhasOS, concluidosIds, statusTab]);
 
+  const countEmExecucao = useMemo(
+    () => minhasOS.filter((os) => !concluidosIds.has(os.id)).length,
+    [minhasOS, concluidosIds],
+  );
+  const countConcluido = useMemo(
+    () => minhasOS.filter((os) => concluidosIds.has(os.id)).length,
+    [minhasOS, concluidosIds],
+  );
 
-  if (loading) {
+  if (loading || statusLoading) {
+
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-20">

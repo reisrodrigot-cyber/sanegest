@@ -709,17 +709,49 @@ const ProducaoPage = () => {
   return (
     <AppLayout>
       <h1 className="text-2xl font-bold text-foreground mb-1">Registro de Produção</h1>
-      <p className="text-sm text-muted-foreground mb-6">
+      <p className="text-sm text-muted-foreground mb-3">
         Registre a produção do dia em cada NS atribuída a você
       </p>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => setStatusTab('em-execucao')}
+          className={`min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors border ${
+            statusTab === 'em-execucao'
+              ? 'bg-secondary text-secondary-foreground border-secondary'
+              : 'bg-card text-foreground border-border hover:bg-muted/60'
+          }`}
+        >
+          Em execução ({countEmExecucao})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusTab('concluido')}
+          className={`min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors border ${
+            statusTab === 'concluido'
+              ? 'bg-secondary text-secondary-foreground border-secondary'
+              : 'bg-card text-foreground border-border hover:bg-muted/60'
+          }`}
+        >
+          Concluído ({countConcluido})
+        </button>
+      </div>
 
       {minhasOS.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
           Nenhuma OS liberada para você no momento.
         </div>
+      ) : displayedOS.length === 0 ? (
+        <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
+          {statusTab === 'concluido'
+            ? 'Nenhuma OS concluída no momento.'
+            : 'Nenhuma OS em execução no momento.'}
+        </div>
       ) : (
         <div className="space-y-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          {minhasOS.map((os) => (
+          {displayedOS.map((os) => (
+
             <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4 max-w-full">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
                 <div className="min-w-0">

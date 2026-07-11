@@ -620,6 +620,10 @@ const ProducaoPage = () => {
   const { effectiveUser } = useAuth();
   const { ordens, loading } = useOrdensServico();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [statusTab, setStatusTab] = useState<'em-execucao' | 'concluido'>('em-execucao');
+  const [concluidosIds, setConcluidosIds] = useState<Set<string>>(new Set());
+  const [statusLoading, setStatusLoading] = useState(true);
+
 
   // Scroll para "Meus registros enviados" quando vier do dashboard via #meus-registros
   useEffect(() => {

@@ -389,18 +389,20 @@ const OrdensPage = () => {
           <Loader2 className="animate-spin text-muted-foreground" size={24} />
         </div>
       ) : (
-        <Tabs defaultValue="liberadas" className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); setFaseFilter('TODAS'); }} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="liberadas">
-              Liberadas ({ordens.filter(os => os.liberado).length})
+              Liberadas ({liberadasBaseCount})
             </TabsTrigger>
             <TabsTrigger value="nao-liberadas">
               Não Liberadas ({ordens.filter(os => !os.liberado).length})
             </TabsTrigger>
+            <TabsTrigger value="executadas">
+              Executadas ({executadasBaseCount})
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="liberadas">
-            {/* Fase/status sub-filters */}
+          {(activeTab === 'liberadas' || activeTab === 'executadas') && (
             <div className="flex flex-wrap gap-2 mb-4">
               {([
                 { key: 'TODAS' as const, label: 'Todas as fases' },
@@ -423,11 +425,18 @@ const OrdensPage = () => {
                 </button>
               ))}
             </div>
+          )}
+
+          <TabsContent value="liberadas">
             <OSTable data={liberadas} />
           </TabsContent>
 
           <TabsContent value="nao-liberadas">
             <OSTable data={naoLiberadas} />
+          </TabsContent>
+
+          <TabsContent value="executadas">
+            <OSTable data={executadas} />
           </TabsContent>
         </Tabs>
       )}

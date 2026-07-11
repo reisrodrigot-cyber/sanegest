@@ -38,9 +38,12 @@ const OrdensPage = () => {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showLiberarModal, setShowLiberarModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'liberadas' | 'nao-liberadas' | 'executadas'>('liberadas');
 
   // Aggregated produção (sum comprimento_dia) per OS
   const [producaoByOs, setProducaoByOs] = useState<Record<string, number>>({});
+  // OS ids marcadas como executadas (pv final assentado)
+  const [executadasOsIds, setExecutadasOsIds] = useState<Set<string>>(new Set());
   // Latest status change date per OS
   const [statusSinceByOs, setStatusSinceByOs] = useState<Record<string, string>>({});
   // OS ids that have ≥2 as-built points (PV montante + jusante coords filled)
@@ -50,7 +53,7 @@ const OrdensPage = () => {
     let cancelled = false;
     (async () => {
       const [{ data: regs }, { data: hist }, { data: ab }] = await Promise.all([
-        supabase.from('registros_producao').select('os_id, comprimento_dia, comprimento_ajustado, status').eq('excluido', false).eq('status', 'ativo'),
+        supabase.from('registros_producao').select('os_id, comprimento_dia, comprimento_ajustado, status, pv_final_assentado').eq('excluido', false).eq('status', 'ativo'),
         supabase
           .from('os_status_historico')
           .select('os_id, created_at')
@@ -70,10 +73,13 @@ const OrdensPage = () => {
       setLocatableOsIds(locatable);
 
       const acc: Record<string, number> = {};
+      const exec = new Set<string>();
       (regs || []).forEach((r: any) => {
         acc[r.os_id] = (acc[r.os_id] || 0) + Number(r.comprimento_dia || 0);
+        if (r.pv_final_assentado) exec.add(r.os_id);
       });
       setProducaoByOs(acc);
+      setExecutadasOsIds(exec);
 
       const since: Record<string, string> = {};
       (hist || []).forEach((h: any) => {
@@ -110,6 +116,7 @@ const OrdensPage = () => {
     () => ordens
       .filter(os => {
         if (!os.liberado) return false;
+        if (executadasOsIds.has(os.id)) return false;
         if (!matchSearch(os)) return false;
         if (!matchBacia(os)) return false;
         if (!matchResponsavel(os)) return false;
@@ -117,11 +124,32 @@ const OrdensPage = () => {
         return true;
       })
       .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
-    [ordens, search, baciaFilter, responsavelFilter, faseFilter]
+    [ordens, search, baciaFilter, responsavelFilter, faseFilter, executadasOsIds]
   );
 
-  const countByStatus = (status: OSStatus) =>
-    ordens.filter(os => os.liberado && os.status === status).length;
+  const executadas = useMemo(
+    () => ordens
+      .filter(os => {
+        if (!executadasOsIds.has(os.id)) return false;
+        if (!matchSearch(os)) return false;
+        if (!matchBacia(os)) return false;
+        if (!matchResponsavel(os)) return false;
+        if (faseFilter !== 'TODAS' && os.status !== faseFilter) return false;
+        return true;
+      })
+      .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
+    [ordens, search, baciaFilter, responsavelFilter, faseFilter, executadasOsIds]
+  );
+
+  const liberadasBaseCount = ordens.filter(os => os.liberado && !executadasOsIds.has(os.id)).length;
+  const executadasBaseCount = ordens.filter(os => executadasOsIds.has(os.id)).length;
+
+  const countByStatus = (status: OSStatus) => {
+    const base = activeTab === 'executadas'
+      ? ordens.filter(os => executadasOsIds.has(os.id))
+      : ordens.filter(os => os.liberado && !executadasOsIds.has(os.id));
+    return base.filter(os => os.status === status).length;
+  };
 
   const daysSince = (iso?: string) => {
     if (!iso) return 0;
@@ -361,18 +389,20 @@ const OrdensPage = () => {
           <Loader2 className="animate-spin text-muted-foreground" size={24} />
         </div>
       ) : (
-        <Tabs defaultValue="liberadas" className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); setFaseFilter('TODAS'); }} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="liberadas">
-              Liberadas ({ordens.filter(os => os.liberado).length})
+              Liberadas ({liberadasBaseCount})
             </TabsTrigger>
             <TabsTrigger value="nao-liberadas">
               Não Liberadas ({ordens.filter(os => !os.liberado).length})
             </TabsTrigger>
+            <TabsTrigger value="executadas">
+              Executadas ({executadasBaseCount})
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="liberadas">
-            {/* Fase/status sub-filters */}
+          {(activeTab === 'liberadas' || activeTab === 'executadas') && (
             <div className="flex flex-wrap gap-2 mb-4">
               {([
                 { key: 'TODAS' as const, label: 'Todas as fases' },
@@ -395,11 +425,18 @@ const OrdensPage = () => {
                 </button>
               ))}
             </div>
+          )}
+
+          <TabsContent value="liberadas">
             <OSTable data={liberadas} />
           </TabsContent>
 
           <TabsContent value="nao-liberadas">
             <OSTable data={naoLiberadas} />
+          </TabsContent>
+
+          <TabsContent value="executadas">
+            <OSTable data={executadas} />
           </TabsContent>
         </Tabs>
       )}

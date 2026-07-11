@@ -73,10 +73,13 @@ const OrdensPage = () => {
       setLocatableOsIds(locatable);
 
       const acc: Record<string, number> = {};
+      const exec = new Set<string>();
       (regs || []).forEach((r: any) => {
         acc[r.os_id] = (acc[r.os_id] || 0) + Number(r.comprimento_dia || 0);
+        if (r.pv_final_assentado) exec.add(r.os_id);
       });
       setProducaoByOs(acc);
+      setExecutadasOsIds(exec);
 
       const since: Record<string, string> = {};
       (hist || []).forEach((h: any) => {

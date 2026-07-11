@@ -116,6 +116,7 @@ const OrdensPage = () => {
     () => ordens
       .filter(os => {
         if (!os.liberado) return false;
+        if (executadasOsIds.has(os.id)) return false;
         if (!matchSearch(os)) return false;
         if (!matchBacia(os)) return false;
         if (!matchResponsavel(os)) return false;
@@ -123,11 +124,32 @@ const OrdensPage = () => {
         return true;
       })
       .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
-    [ordens, search, baciaFilter, responsavelFilter, faseFilter]
+    [ordens, search, baciaFilter, responsavelFilter, faseFilter, executadasOsIds]
   );
 
-  const countByStatus = (status: OSStatus) =>
-    ordens.filter(os => os.liberado && os.status === status).length;
+  const executadas = useMemo(
+    () => ordens
+      .filter(os => {
+        if (!executadasOsIds.has(os.id)) return false;
+        if (!matchSearch(os)) return false;
+        if (!matchBacia(os)) return false;
+        if (!matchResponsavel(os)) return false;
+        if (faseFilter !== 'TODAS' && os.status !== faseFilter) return false;
+        return true;
+      })
+      .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
+    [ordens, search, baciaFilter, responsavelFilter, faseFilter, executadasOsIds]
+  );
+
+  const liberadasBaseCount = ordens.filter(os => os.liberado && !executadasOsIds.has(os.id)).length;
+  const executadasBaseCount = ordens.filter(os => executadasOsIds.has(os.id)).length;
+
+  const countByStatus = (status: OSStatus) => {
+    const base = activeTab === 'executadas'
+      ? ordens.filter(os => executadasOsIds.has(os.id))
+      : ordens.filter(os => os.liberado && !executadasOsIds.has(os.id));
+    return base.filter(os => os.status === status).length;
+  };
 
   const daysSince = (iso?: string) => {
     if (!iso) return 0;

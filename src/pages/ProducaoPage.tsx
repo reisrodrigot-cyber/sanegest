@@ -623,6 +623,7 @@ const ProducaoPage = () => {
   const [statusTab, setStatusTab] = useState<'em-execucao' | 'concluido'>('em-execucao');
   const [concluidosIds, setConcluidosIds] = useState<Set<string>>(new Set());
   const [statusLoading, setStatusLoading] = useState(true);
+  const [myNames, setMyNames] = useState<Set<string>>(new Set());
 
 
   // Scroll para "Meus registros enviados" quando vier do dashboard via #meus-registros
@@ -635,6 +636,25 @@ const ProducaoPage = () => {
       }, 200);
     }
   }, [loading]);
+
+  // Carrega TODOS os nomes/apelidos que identificam este encarregado em `liberado_para`/`executor`.
+  // Necessário porque OS antigas podem estar vinculadas ao display_name enquanto o apelido mudou.
+  useEffect(() => {
+    if (!effectiveUser?.id) { setMyNames(new Set()); return; }
+    const load = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, apelido')
+        .eq('user_id', effectiveUser.id)
+        .maybeSingle();
+      const names = new Set<string>();
+      if (effectiveUser.nome) names.add(effectiveUser.nome);
+      if ((data as any)?.display_name) names.add((data as any).display_name);
+      if ((data as any)?.apelido) names.add((data as any).apelido);
+      setMyNames(names);
+    };
+    load();
+  }, [effectiveUser?.id, effectiveUser?.nome]);
 
   // Carrega os ids das OS já marcadas como concluídas (PV final assentado) pelo usuário atual
   useEffect(() => {
@@ -675,9 +695,12 @@ const ProducaoPage = () => {
     return ordens.filter((os) => {
       if (!os.liberado) return false;
       if (effectiveUser?.role === 'admin') return true;
-      return os.liberado_para === effectiveUser?.nome || os.executor === effectiveUser?.nome;
+      return (
+        (os.liberado_para != null && myNames.has(os.liberado_para)) ||
+        (os.executor != null && myNames.has(os.executor))
+      );
     });
-  }, [ordens, effectiveUser]);
+  }, [ordens, effectiveUser, myNames]);
 
   const displayedOS = useMemo(() => {
     if (statusTab === 'concluido') {

@@ -38,9 +38,12 @@ const OrdensPage = () => {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showLiberarModal, setShowLiberarModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'liberadas' | 'nao-liberadas' | 'executadas'>('liberadas');
 
   // Aggregated produção (sum comprimento_dia) per OS
   const [producaoByOs, setProducaoByOs] = useState<Record<string, number>>({});
+  // OS ids marcadas como executadas (pv final assentado)
+  const [executadasOsIds, setExecutadasOsIds] = useState<Set<string>>(new Set());
   // Latest status change date per OS
   const [statusSinceByOs, setStatusSinceByOs] = useState<Record<string, string>>({});
   // OS ids that have ≥2 as-built points (PV montante + jusante coords filled)

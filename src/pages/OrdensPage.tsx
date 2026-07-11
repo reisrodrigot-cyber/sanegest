@@ -53,7 +53,7 @@ const OrdensPage = () => {
     let cancelled = false;
     (async () => {
       const [{ data: regs }, { data: hist }, { data: ab }] = await Promise.all([
-        supabase.from('registros_producao').select('os_id, comprimento_dia, comprimento_ajustado, status').eq('excluido', false).eq('status', 'ativo'),
+        supabase.from('registros_producao').select('os_id, comprimento_dia, comprimento_ajustado, status, pv_final_assentado').eq('excluido', false).eq('status', 'ativo'),
         supabase
           .from('os_status_historico')
           .select('os_id, created_at')

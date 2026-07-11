@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { MeusRegistrosEnviados } from '@/components/encarregado/MeusRegistrosEnviados';
 
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { Loader2, Save, MapPin, Eye, Pencil, X, Check } from 'lucide-react';

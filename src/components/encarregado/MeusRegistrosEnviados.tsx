@@ -91,6 +91,16 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
   const [editLig, setEditLig] = useState('');
   const [editObs, setEditObs] = useState('');
   const [saving, setSaving] = useState(false);
+  // Ligações do registro em edição
+  type LigItem = {
+    id?: string;
+    comprimento: string;
+    comprimento_original: number | null;
+    isNew?: boolean;
+    dirty?: boolean;
+  };
+  const [editLigItems, setEditLigItems] = useState<LigItem[]>([]);
+  const [loadingLigs, setLoadingLigs] = useState(false);
 
   // Exclusão
   const [deleting, setDeleting] = useState<RegistroRow | null>(null);
@@ -167,12 +177,46 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const podeEditar = (r: RegistroRow) => !temIntervencaoTecnica(r);
 
-  const abrirEdicao = (r: RegistroRow) => {
+  const abrirEdicao = async (r: RegistroRow) => {
     setEditing(r);
     setEditComp(String(r.comprimento_dia ?? ''));
     setEditLig(String(r.ligacoes_dia ?? ''));
     setEditObs(r.observacao ?? '');
+    setEditLigItems([]);
+    setLoadingLigs(true);
+    const { data: ligs } = await supabase
+      .from('ligacoes')
+      .select('id, comprimento, comprimento_original')
+      .eq('registro_producao_id', r.id)
+      .order('created_at', { ascending: true });
+    const items: LigItem[] = (ligs ?? []).map((l: any) => ({
+      id: l.id,
+      comprimento: l.comprimento != null ? String(l.comprimento).replace('.', ',') : '',
+      comprimento_original: l.comprimento_original,
+    }));
+    // Ajusta para bater com ligacoes_dia (mantém valores existentes)
+    const alvo = Math.max(0, Number(r.ligacoes_dia) || 0);
+    while (items.length < alvo) items.push({ comprimento: '', comprimento_original: null, isNew: true });
+    setEditLigItems(items);
+    setLoadingLigs(false);
   };
+
+  // Ajusta lista quando editLig muda (sem apagar preenchidos)
+  useEffect(() => {
+    if (!editing) return;
+    const target = Math.max(0, Math.floor(Number(editLig) || 0));
+    setEditLigItems((prev) => {
+      if (prev.length === target) return prev;
+      if (prev.length < target) {
+        const add: LigItem[] = [];
+        for (let i = 0; i < target - prev.length; i++) {
+          add.push({ comprimento: '', comprimento_original: null, isNew: true });
+        }
+        return [...prev, ...add];
+      }
+      return prev.slice(0, target);
+    });
+  }, [editLig, editing]);
 
   const salvarEdicao = async () => {
     if (!editing) return;
@@ -187,7 +231,27 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     }
     const novoComp = Number(editComp.replace(',', '.')) || 0;
     const novoLig = Math.max(0, Math.floor(Number(editLig) || 0));
-    if (novoComp < 0) { toast({ title: 'Valor inválido', variant: 'destructive' }); return; }
+    if (novoComp < 0) { toast({ title: 'Valor inválido', description: 'Comprimento não pode ser negativo.', variant: 'destructive' }); return; }
+    // Validação ligações
+    const ligsParsed: Array<{ id?: string; comprimento: number; comprimento_original: number | null; isNew?: boolean }> = [];
+    for (let i = 0; i < novoLig; i++) {
+      const raw = (editLigItems[i]?.comprimento ?? '').toString().trim();
+      if (raw === '') {
+        toast({ title: 'Comprimento obrigatório', description: `Informe o comprimento da ligação ${i + 1}.`, variant: 'destructive' });
+        return;
+      }
+      const v = Number(raw.replace(',', '.'));
+      if (!Number.isFinite(v) || v < 0) {
+        toast({ title: 'Valor inválido', description: `Comprimento inválido na ligação ${i + 1}.`, variant: 'destructive' });
+        return;
+      }
+      ligsParsed.push({
+        id: editLigItems[i]?.id,
+        comprimento: v,
+        comprimento_original: editLigItems[i]?.comprimento_original ?? null,
+        isNew: editLigItems[i]?.isNew,
+      });
+    }
     setSaving(true);
     const valor_anterior = {
       comprimento_dia: editing.comprimento_dia,
@@ -231,6 +295,55 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       valor_anterior,
       valor_novo,
     });
+
+    // Sincroniza ligacoes (comprimentos individuais) com auditoria
+    try {
+      const { data: existentes } = await supabase
+        .from('ligacoes')
+        .select('id, comprimento, comprimento_original')
+        .eq('registro_producao_id', editing.id)
+        .order('created_at', { ascending: true });
+      const existMap = new Map<string, any>((existentes ?? []).map((l: any) => [l.id, l]));
+      const keepIds = new Set<string>();
+      const nowIso = new Date().toISOString();
+
+      for (const item of ligsParsed) {
+        if (item.id && existMap.has(item.id)) {
+          keepIds.add(item.id);
+          const prev = existMap.get(item.id);
+          const prevComp = Number(prev.comprimento) || 0;
+          if (Math.abs(prevComp - item.comprimento) > 1e-9) {
+            const patch: any = {
+              comprimento: item.comprimento,
+              ajustado_por: userId,
+              ajustado_em: nowIso,
+            };
+            if (prev.comprimento_original == null) {
+              patch.comprimento_original = prevComp;
+            }
+            await supabase.from('ligacoes').update(patch).eq('id', item.id);
+          }
+        } else {
+          // nova ligação
+          await supabase.from('ligacoes').insert({
+            os_id: editing.os_id,
+            registro_producao_id: editing.id,
+            encarregado_id: userId,
+            comprimento: item.comprimento,
+          });
+        }
+      }
+      // Remove ligações excedentes (as que não estão mais na lista)
+      const toDelete = (existentes ?? [])
+        .map((l: any) => l.id as string)
+        .filter((id) => !keepIds.has(id) && !ligsParsed.some((p) => p.id === id));
+      if (toDelete.length > 0) {
+        await supabase.from('ligacoes').delete().in('id', toDelete);
+      }
+    } catch (e: any) {
+      toast({ title: 'Aviso', description: 'Registro salvo, mas houve um problema ao sincronizar ligações: ' + (e?.message ?? ''), variant: 'destructive' });
+    }
+
     setSaving(false);
     setEditing(null);
     setReloadKey((k) => k + 1);
@@ -464,21 +577,73 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
               Ajuste apenas os dados operacionais. O trecho, a obra e a data original não podem ser alterados.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
             <div>
               <Label htmlFor="edit-comp">Comprimento informado (m)</Label>
               <Input
                 id="edit-comp" inputMode="decimal" value={editComp}
                 onChange={(e) => setEditComp(e.target.value)} className="h-11"
+                placeholder="Ex.: 29,60"
               />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Metragem da rede/mainline informada no dia. Aceita vírgula ou ponto.
+              </p>
             </div>
             <div>
               <Label htmlFor="edit-lig">Ligações informadas</Label>
               <Input
                 id="edit-lig" inputMode="numeric" value={editLig}
-                onChange={(e) => setEditLig(e.target.value)} className="h-11"
+                onChange={(e) => setEditLig(e.target.value.replace(/[^0-9]/g, ''))} className="h-11"
               />
             </div>
+
+            {loadingLigs ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="animate-spin" size={14} /> Carregando ligações…
+              </div>
+            ) : (Math.max(0, Math.floor(Number(editLig) || 0)) > 0) && (
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-foreground">Comprimento de cada ligação (m)</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Soma: {editLigItems
+                      .slice(0, Math.max(0, Math.floor(Number(editLig) || 0)))
+                      .reduce((s, it) => s + (Number((it.comprimento || '0').toString().replace(',', '.')) || 0), 0)
+                      .toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m
+                  </p>
+                </div>
+                {Array.from({ length: Math.max(0, Math.floor(Number(editLig) || 0)) }).map((_, i) => {
+                  const item = editLigItems[i];
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <Label htmlFor={`lig-${i}`} className="w-20 text-xs">Ligação {i + 1}</Label>
+                      <Input
+                        id={`lig-${i}`}
+                        inputMode="decimal"
+                        value={item?.comprimento ?? ''}
+                        placeholder="0,00"
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setEditLigItems((prev) => {
+                            const next = [...prev];
+                            while (next.length <= i) next.push({ comprimento: '', comprimento_original: null, isNew: true });
+                            next[i] = { ...next[i], comprimento: v, dirty: true };
+                            return next;
+                          });
+                        }}
+                        className="h-10 flex-1"
+                      />
+                      {item?.comprimento_original != null && (
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          orig.: {Number(item.comprimento_original).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div>
               <Label htmlFor="edit-obs">Observação</Label>
               <Textarea

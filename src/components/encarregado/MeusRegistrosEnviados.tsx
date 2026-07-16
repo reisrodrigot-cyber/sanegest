@@ -53,10 +53,10 @@ const fmtMetros = (n: number) => `${n.toLocaleString('pt-BR', { minimumFractionD
 interface Props {
   limit?: number;
   hideFilters?: boolean;
-  filtroInicial?: Filtro;
+  filtroInicial?: 'hoje' | 'semana' | 'mes';
 }
 
-export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoje' }: Props) {
+export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtroInicial: _filtroInicial }: Props) {
   const { user, effectiveUser } = useAuth();
   const userId = effectiveUser?.id ?? user?.id ?? '';
   // Quando admin está "vendo como" outro usuário, a sessão real é a do admin.
@@ -64,7 +64,6 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
   const isImpersonating = !!user && !!effectiveUser && user.id !== effectiveUser.id;
   const [registros, setRegistros] = useState<RegistroRow[]>([]);
   const [ordens, setOrdens] = useState<Record<string, OSRow>>({});
-  const [filtro, setFiltro] = useState<Filtro>(filtroInicial);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
   const [, setTick] = useState(0);
@@ -101,13 +100,11 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     let cancel = false;
     (async () => {
       setLoading(true);
-      const since = startOf(filtro);
       const { data: regs } = await supabase
         .from('registros_producao')
         .select('id, os_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, ajustado_por, ajustado_em, cancelado_por, status, motivo_cancelamento, motivo_ajuste, observacao, tipo_pavimento, pv_final_assentado, pv_final_assentado_em, created_at')
         .eq('user_id', userId)
         .eq('excluido', false)
-        .gte('data_registro', since)
         .order('data_registro', { ascending: false })
         .order('created_at', { ascending: false });
       if (cancel) return;
@@ -127,7 +124,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       setLoading(false);
     })();
     return () => { cancel = true; };
-  }, [userId, filtro, reloadKey]);
+  }, [userId, reloadKey]);
 
   useEffect(() => {
     if (!userId) return;
@@ -394,20 +391,6 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     setReloadKey((k) => k + 1);
     toast({ title: 'Registro excluído' });
   };
-
-  const FilterBtn = ({ id, label }: { id: Filtro; label: string }) => (
-    <button
-      type="button"
-      onClick={() => setFiltro(id)}
-      className={`min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors border ${
-        filtro === id
-          ? 'bg-secondary text-secondary-foreground border-secondary'
-          : 'bg-card text-foreground border-border hover:bg-muted/60'
-      }`}
-    >
-      {label}
-    </button>
-  );
 
   return (
     <section id="meus-registros" className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-5">

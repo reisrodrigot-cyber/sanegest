@@ -401,14 +401,6 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
         </p>
       </div>
 
-      {!hideFilters && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          <FilterBtn id="hoje" label="Hoje" />
-          <FilterBtn id="semana" label="Semana" />
-          <FilterBtn id="mes" label="Mês" />
-        </div>
-      )}
-
       {loading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="animate-spin text-muted-foreground" size={20} />

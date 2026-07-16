@@ -37,22 +37,6 @@ interface OSRow {
   ligacoes_real: number | null;
 }
 
-type Filtro = 'hoje' | 'semana' | 'mes';
-
-
-
-const startOf = (filtro: Filtro): string => {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  if (filtro === 'hoje') return now.toISOString().slice(0, 10);
-  if (filtro === 'semana') {
-    const dow = (now.getDay() + 6) % 7;
-    now.setDate(now.getDate() - dow);
-    return now.toISOString().slice(0, 10);
-  }
-  now.setDate(1);
-  return now.toISOString().slice(0, 10);
-};
 
 const fmtDataCurta = (key: string) => {
   const today = new Date().toISOString().slice(0, 10);

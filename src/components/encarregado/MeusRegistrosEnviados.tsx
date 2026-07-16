@@ -295,6 +295,55 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
       valor_anterior,
       valor_novo,
     });
+
+    // Sincroniza ligacoes (comprimentos individuais) com auditoria
+    try {
+      const { data: existentes } = await supabase
+        .from('ligacoes')
+        .select('id, comprimento, comprimento_original')
+        .eq('registro_producao_id', editing.id)
+        .order('created_at', { ascending: true });
+      const existMap = new Map<string, any>((existentes ?? []).map((l: any) => [l.id, l]));
+      const keepIds = new Set<string>();
+      const nowIso = new Date().toISOString();
+
+      for (const item of ligsParsed) {
+        if (item.id && existMap.has(item.id)) {
+          keepIds.add(item.id);
+          const prev = existMap.get(item.id);
+          const prevComp = Number(prev.comprimento) || 0;
+          if (Math.abs(prevComp - item.comprimento) > 1e-9) {
+            const patch: any = {
+              comprimento: item.comprimento,
+              ajustado_por: userId,
+              ajustado_em: nowIso,
+            };
+            if (prev.comprimento_original == null) {
+              patch.comprimento_original = prevComp;
+            }
+            await supabase.from('ligacoes').update(patch).eq('id', item.id);
+          }
+        } else {
+          // nova ligação
+          await supabase.from('ligacoes').insert({
+            os_id: editing.os_id,
+            registro_producao_id: editing.id,
+            encarregado_id: userId,
+            comprimento: item.comprimento,
+          });
+        }
+      }
+      // Remove ligações excedentes (as que não estão mais na lista)
+      const toDelete = (existentes ?? [])
+        .map((l: any) => l.id as string)
+        .filter((id) => !keepIds.has(id) && !ligsParsed.some((p) => p.id === id));
+      if (toDelete.length > 0) {
+        await supabase.from('ligacoes').delete().in('id', toDelete);
+      }
+    } catch (e: any) {
+      toast({ title: 'Aviso', description: 'Registro salvo, mas houve um problema ao sincronizar ligações: ' + (e?.message ?? ''), variant: 'destructive' });
+    }
+
     setSaving(false);
     setEditing(null);
     setReloadKey((k) => k + 1);

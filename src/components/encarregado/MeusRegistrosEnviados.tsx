@@ -463,6 +463,149 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
         </p>
       </div>
 
+      {/* Filtros de período */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {([
+          { key: 'semana', label: '7 dias' },
+          { key: 'mes', label: '30 dias' },
+          { key: 'todos', label: 'Todos' },
+        ] as { key: PeriodoTipo; label: string }[]).map((opt) => (
+          <Button
+            key={opt.key}
+            type="button"
+            size="sm"
+            variant={periodo === opt.key ? 'default' : 'outline'}
+            className="min-h-[36px]"
+            onClick={() => { setPeriodo(opt.key); setRange(undefined); }}
+          >
+            {opt.label}
+          </Button>
+        ))}
+
+        {isMobile ? (
+          <>
+            <Button
+              type="button"
+              size="sm"
+              variant={periodo === 'personalizado' ? 'default' : 'outline'}
+              className="min-h-[36px]"
+              onClick={abrirPicker}
+            >
+              <CalendarIcon size={14} className="mr-1.5" />
+              {periodo === 'personalizado' && range?.from ? (
+                (() => {
+                  const a = fmtBR(range.from);
+                  const b = fmtBR(range.to ?? range.from);
+                  return a === b ? a : `${a} – ${b}`;
+                })()
+              ) : 'Personalizado'}
+            </Button>
+            <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
+              <SheetContent side="bottom" className="h-[85vh] flex flex-col">
+                <SheetHeader>
+                  <SheetTitle>Selecionar período</SheetTitle>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto flex justify-center py-2">
+                  {CalendarPicker}
+                </div>
+                <div className="text-center text-xs text-muted-foreground pb-2">
+                  {tempRange?.from ? (
+                    (() => {
+                      const a = fmtBR(tempRange.from);
+                      const b = tempRange.to ? fmtBR(tempRange.to) : a;
+                      return a === b ? `Dia: ${a}` : `${a} até ${b}`;
+                    })()
+                  ) : 'Toque em uma data inicial e depois na final.'}
+                </div>
+                <SheetFooter className="flex-row gap-2 sm:flex-row">
+                  <Button variant="ghost" className="flex-1 min-h-[44px]" onClick={() => setPickerOpen(false)}>
+                    Cancelar
+                  </Button>
+                  {tempRange?.from && !tempRange?.to && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 min-h-[44px]"
+                      onClick={() => aplicarRange({ from: tempRange.from, to: tempRange.from })}
+                    >
+                      Usar este dia
+                    </Button>
+                  )}
+                  <Button
+                    className="flex-1 min-h-[44px]"
+                    disabled={!tempRange?.from}
+                    onClick={() => aplicarRange(tempRange)}
+                  >
+                    Aplicar
+                  </Button>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </>
+        ) : (
+          <Popover open={pickerOpen} onOpenChange={(o) => { setPickerOpen(o); if (o) setTempRange(range); }}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={periodo === 'personalizado' ? 'default' : 'outline'}
+                className="min-h-[36px]"
+              >
+                <CalendarIcon size={14} className="mr-1.5" />
+                {periodo === 'personalizado' && range?.from ? (
+                  (() => {
+                    const a = fmtBR(range.from);
+                    const b = fmtBR(range.to ?? range.from);
+                    return a === b ? a : `${a} – ${b}`;
+                  })()
+                ) : 'Personalizado'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              {CalendarPicker}
+              <div className="flex items-center justify-between gap-2 p-2 border-t border-border">
+                <span className="text-xs text-muted-foreground px-1">
+                  {tempRange?.from ? (
+                    (() => {
+                      const a = fmtBR(tempRange.from);
+                      const b = tempRange.to ? fmtBR(tempRange.to) : a;
+                      return a === b ? `Dia: ${a}` : `${a} até ${b}`;
+                    })()
+                  ) : 'Selecione um intervalo.'}
+                </span>
+                <div className="flex gap-1">
+                  {tempRange?.from && !tempRange?.to && (
+                    <Button size="sm" variant="outline" onClick={() => aplicarRange({ from: tempRange.from, to: tempRange.from })}>
+                      Aplicar este dia
+                    </Button>
+                  )}
+                  <Button size="sm" disabled={!tempRange?.from} onClick={() => aplicarRange(tempRange)}>
+                    Aplicar
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {periodo === 'personalizado' && range?.from && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="min-h-[36px] text-muted-foreground"
+            onClick={limparPeriodo}
+          >
+            Limpar período
+          </Button>
+        )}
+      </div>
+
+      {periodoLabel && (
+        <p className="mb-3 text-xs text-muted-foreground">{periodoLabel}</p>
+      )}
+
+
+
       {loading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="animate-spin text-muted-foreground" size={20} />

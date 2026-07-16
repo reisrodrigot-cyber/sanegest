@@ -231,7 +231,27 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
     }
     const novoComp = Number(editComp.replace(',', '.')) || 0;
     const novoLig = Math.max(0, Math.floor(Number(editLig) || 0));
-    if (novoComp < 0) { toast({ title: 'Valor inválido', variant: 'destructive' }); return; }
+    if (novoComp < 0) { toast({ title: 'Valor inválido', description: 'Comprimento não pode ser negativo.', variant: 'destructive' }); return; }
+    // Validação ligações
+    const ligsParsed: Array<{ id?: string; comprimento: number; comprimento_original: number | null; isNew?: boolean }> = [];
+    for (let i = 0; i < novoLig; i++) {
+      const raw = (editLigItems[i]?.comprimento ?? '').toString().trim();
+      if (raw === '') {
+        toast({ title: 'Comprimento obrigatório', description: `Informe o comprimento da ligação ${i + 1}.`, variant: 'destructive' });
+        return;
+      }
+      const v = Number(raw.replace(',', '.'));
+      if (!Number.isFinite(v) || v < 0) {
+        toast({ title: 'Valor inválido', description: `Comprimento inválido na ligação ${i + 1}.`, variant: 'destructive' });
+        return;
+      }
+      ligsParsed.push({
+        id: editLigItems[i]?.id,
+        comprimento: v,
+        comprimento_original: editLigItems[i]?.comprimento_original ?? null,
+        isNew: editLigItems[i]?.isNew,
+      });
+    }
     setSaving(true);
     const valor_anterior = {
       comprimento_dia: editing.comprimento_dia,

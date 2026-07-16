@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, CheckCircle2, AlertTriangle, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertTriangle, MapPin, Pencil, Trash2, CalendarIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
+import type { DateRange } from 'react-day-picker';
 
 interface RegistroRow {
   id: string;
@@ -133,7 +139,77 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
     return () => { supabase.removeChannel(ch); };
   }, [userId]);
 
-  const itens = useMemo(() => (limit ? registros.slice(0, limit) : registros), [registros, limit]);
+  // Filtro de período
+  type PeriodoTipo = 'semana' | 'mes' | 'todos' | 'personalizado';
+  const [periodo, setPeriodo] = useState<PeriodoTipo>('semana');
+  const [range, setRange] = useState<DateRange | undefined>(undefined);
+  const [tempRange, setTempRange] = useState<DateRange | undefined>(undefined);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const isMobile = useIsMobile();
+
+  const toKey = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
+  const fmtBR = (d: Date) => d.toLocaleDateString('pt-BR');
+
+  const filtrados = useMemo(() => {
+    if (periodo === 'todos') return registros;
+    if (periodo === 'personalizado') {
+      if (!range?.from) return registros;
+      const from = toKey(range.from);
+      const to = toKey(range.to ?? range.from);
+      return registros.filter((r) => r.data_registro >= from && r.data_registro <= to);
+    }
+    const dias = periodo === 'semana' ? 7 : 30;
+    const limite = new Date();
+    limite.setHours(0, 0, 0, 0);
+    limite.setDate(limite.getDate() - (dias - 1));
+    const limKey = toKey(limite);
+    return registros.filter((r) => r.data_registro >= limKey);
+  }, [registros, periodo, range]);
+
+  const itens = useMemo(() => (limit ? filtrados.slice(0, limit) : filtrados), [filtrados, limit]);
+
+  const aplicarRange = (r: DateRange | undefined) => {
+    if (!r?.from) return;
+    setRange({ from: r.from, to: r.to ?? r.from });
+    setPeriodo('personalizado');
+    setPickerOpen(false);
+  };
+  const limparPeriodo = () => {
+    setRange(undefined);
+    setTempRange(undefined);
+    setPeriodo('semana');
+    setPickerOpen(false);
+  };
+  const abrirPicker = () => {
+    setTempRange(range);
+    setPickerOpen(true);
+  };
+
+  const periodoLabel = (() => {
+    if (periodo !== 'personalizado' || !range?.from) return null;
+    const a = fmtBR(range.from);
+    const b = fmtBR(range.to ?? range.from);
+    return a === b ? `Período: ${a}` : `Período: ${a} a ${b}`;
+  })();
+
+  const CalendarPicker = (
+    <Calendar
+      mode="range"
+      selected={tempRange}
+      onSelect={(r) => {
+        setTempRange(r);
+        if (!isMobile && r?.from && r?.to) aplicarRange(r);
+      }}
+      numberOfMonths={isMobile ? 1 : 2}
+      className={cn('p-3 pointer-events-auto')}
+    />
+  );
+
 
   const temIntervencaoTecnica = (r: RegistroRow) =>
     (r.status ?? 'ativo') === 'cancelado'
@@ -386,6 +462,149 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
           Cada envio já conta como produção. Você pode editar ou excluir seus registros enquanto eles estiverem ativos. A sala técnica pode ajustar, cancelar ou restaurar lançamentos com auditoria.
         </p>
       </div>
+
+      {/* Filtros de período */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {([
+          { key: 'semana', label: '7 dias' },
+          { key: 'mes', label: '30 dias' },
+          { key: 'todos', label: 'Todos' },
+        ] as { key: PeriodoTipo; label: string }[]).map((opt) => (
+          <Button
+            key={opt.key}
+            type="button"
+            size="sm"
+            variant={periodo === opt.key ? 'default' : 'outline'}
+            className="min-h-[36px]"
+            onClick={() => { setPeriodo(opt.key); setRange(undefined); }}
+          >
+            {opt.label}
+          </Button>
+        ))}
+
+        {isMobile ? (
+          <>
+            <Button
+              type="button"
+              size="sm"
+              variant={periodo === 'personalizado' ? 'default' : 'outline'}
+              className="min-h-[36px]"
+              onClick={abrirPicker}
+            >
+              <CalendarIcon size={14} className="mr-1.5" />
+              {periodo === 'personalizado' && range?.from ? (
+                (() => {
+                  const a = fmtBR(range.from);
+                  const b = fmtBR(range.to ?? range.from);
+                  return a === b ? a : `${a} – ${b}`;
+                })()
+              ) : 'Personalizado'}
+            </Button>
+            <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
+              <SheetContent side="bottom" className="h-[85vh] flex flex-col">
+                <SheetHeader>
+                  <SheetTitle>Selecionar período</SheetTitle>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto flex justify-center py-2">
+                  {CalendarPicker}
+                </div>
+                <div className="text-center text-xs text-muted-foreground pb-2">
+                  {tempRange?.from ? (
+                    (() => {
+                      const a = fmtBR(tempRange.from);
+                      const b = tempRange.to ? fmtBR(tempRange.to) : a;
+                      return a === b ? `Dia: ${a}` : `${a} até ${b}`;
+                    })()
+                  ) : 'Toque em uma data inicial e depois na final.'}
+                </div>
+                <SheetFooter className="flex-row gap-2 sm:flex-row">
+                  <Button variant="ghost" className="flex-1 min-h-[44px]" onClick={() => setPickerOpen(false)}>
+                    Cancelar
+                  </Button>
+                  {tempRange?.from && !tempRange?.to && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 min-h-[44px]"
+                      onClick={() => aplicarRange({ from: tempRange.from, to: tempRange.from })}
+                    >
+                      Usar este dia
+                    </Button>
+                  )}
+                  <Button
+                    className="flex-1 min-h-[44px]"
+                    disabled={!tempRange?.from}
+                    onClick={() => aplicarRange(tempRange)}
+                  >
+                    Aplicar
+                  </Button>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </>
+        ) : (
+          <Popover open={pickerOpen} onOpenChange={(o) => { setPickerOpen(o); if (o) setTempRange(range); }}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={periodo === 'personalizado' ? 'default' : 'outline'}
+                className="min-h-[36px]"
+              >
+                <CalendarIcon size={14} className="mr-1.5" />
+                {periodo === 'personalizado' && range?.from ? (
+                  (() => {
+                    const a = fmtBR(range.from);
+                    const b = fmtBR(range.to ?? range.from);
+                    return a === b ? a : `${a} – ${b}`;
+                  })()
+                ) : 'Personalizado'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              {CalendarPicker}
+              <div className="flex items-center justify-between gap-2 p-2 border-t border-border">
+                <span className="text-xs text-muted-foreground px-1">
+                  {tempRange?.from ? (
+                    (() => {
+                      const a = fmtBR(tempRange.from);
+                      const b = tempRange.to ? fmtBR(tempRange.to) : a;
+                      return a === b ? `Dia: ${a}` : `${a} até ${b}`;
+                    })()
+                  ) : 'Selecione um intervalo.'}
+                </span>
+                <div className="flex gap-1">
+                  {tempRange?.from && !tempRange?.to && (
+                    <Button size="sm" variant="outline" onClick={() => aplicarRange({ from: tempRange.from, to: tempRange.from })}>
+                      Aplicar este dia
+                    </Button>
+                  )}
+                  <Button size="sm" disabled={!tempRange?.from} onClick={() => aplicarRange(tempRange)}>
+                    Aplicar
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {periodo === 'personalizado' && range?.from && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="min-h-[36px] text-muted-foreground"
+            onClick={limparPeriodo}
+          >
+            Limpar período
+          </Button>
+        )}
+      </div>
+
+      {periodoLabel && (
+        <p className="mb-3 text-xs text-muted-foreground">{periodoLabel}</p>
+      )}
+
+
 
       {loading ? (
         <div className="flex justify-center py-8">

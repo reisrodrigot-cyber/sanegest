@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, CheckCircle2, Clock, AlertTriangle, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertTriangle, MapPin, Pencil, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,9 +59,6 @@ interface Props {
 export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtroInicial: _filtroInicial }: Props) {
   const { user, effectiveUser } = useAuth();
   const userId = effectiveUser?.id ?? user?.id ?? '';
-  // Quando admin está "vendo como" outro usuário, a sessão real é a do admin.
-  // A RLS exige user_id = auth.uid() para editar/excluir → impersonação não pode alterar dados.
-  const isImpersonating = !!user && !!effectiveUser && user.id !== effectiveUser.id;
   const [registros, setRegistros] = useState<RegistroRow[]>([]);
   const [ordens, setOrdens] = useState<Record<string, OSRow>>({});
   const [loading, setLoading] = useState(true);
@@ -137,17 +134,6 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
   }, [userId]);
 
   const itens = useMemo(() => (limit ? registros.slice(0, limit) : registros), [registros, limit]);
-
-  const somaPorOs = useMemo(() => {
-    const m = new Map<string, { comp: number; lig: number }>();
-    registros.forEach((r) => {
-      const c = m.get(r.os_id) ?? { comp: 0, lig: 0 };
-      c.comp += Number(r.comprimento_dia) || 0;
-      c.lig += Number(r.ligacoes_dia) || 0;
-      m.set(r.os_id, c);
-    });
-    return m;
-  }, [registros]);
 
   const temIntervencaoTecnica = (r: RegistroRow) =>
     (r.status ?? 'ativo') === 'cancelado'

@@ -411,229 +411,137 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
         </p>
       ) : (
         <div className="space-y-4">
-          {itens.reduce((acc: JSX.Element[], r, idx) => {
-            const prevDate = idx > 0 ? itens[idx - 1].data_registro : null;
-            const os = ordens[r.os_id];
-            const trecho = os?.trecho ?? 'Trecho —';
-            const cancelado = (r.status ?? 'ativo') === 'cancelado';
-            const ajustado = r.comprimento_ajustado != null || r.ligacoes_ajustadas != null;
-            const compContab = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
-            const ligContab = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
+          {(() => {
+            const groups: { date: string; items: RegistroRow[] }[] = [];
+            itens.forEach((r) => {
+              if (groups.length === 0 || groups[groups.length - 1].date !== r.data_registro) {
+                groups.push({ date: r.data_registro, items: [r] });
+              } else {
+                groups[groups.length - 1].items.push(r);
+              }
+            });
+            return groups.map((g) => (
+              <div key={g.date}>
+                <p className="text-sm font-semibold text-foreground py-1">
+                  {fmtDataCurta(g.date)}
+                </p>
+                <ul className="space-y-3 mt-2">
+                  {g.items.map((r) => {
+                    const os = ordens[r.os_id];
+                    const trecho = os?.trecho ?? 'Trecho —';
+                    const cancelado = (r.status ?? 'ativo') === 'cancelado';
+                    const ajustado = r.comprimento_ajustado != null || r.ligacoes_ajustadas != null;
+                    const compContab = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+                    const ligContab = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
-            const statusLabel = cancelado
-              ? 'Cancelado pela sala técnica'
-              : ajustado ? 'Ajustado pela sala técnica' : 'Contabilizado na produção';
-            const StatusIcon = cancelado ? AlertTriangle : ajustado ? AlertTriangle : CheckCircle2;
-            const statusColor = cancelado
-              ? 'text-destructive'
-              : ajustado ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400';
+                    const statusLabel = cancelado
+                      ? 'Cancelado pela sala técnica'
+                      : ajustado ? 'Ajustado pela sala técnica' : 'Contabilizado na produção';
+                    const StatusIcon = cancelado ? AlertTriangle : ajustado ? AlertTriangle : CheckCircle2;
+                    const statusColor = cancelado
+                      ? 'text-destructive'
+                      : ajustado ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400';
 
-            const editavel = podeEditar(r);
+                    const editavel = podeEditar(r);
 
-            if (r.data_registro !== prevDate) {
-              acc.push(
-                <div key={`date-${r.data_registro}`} className="pt-2">
-                  <p className="text-sm font-semibold text-foreground sticky top-0 bg-card py-1 z-10">
-                    {fmtDataCurta(r.data_registro)}
-                  </p>
-                  <ul className="space-y-3 mt-2">
-                    <li key={r.id} className={`rounded-lg border border-border bg-background p-3 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-base font-bold text-foreground flex items-center gap-1.5">
-                            <MapPin size={14} className="text-muted-foreground shrink-0" />
-                            <span className="truncate">{trecho}</span>
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">Enviado às {fmtHora(r.created_at)}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-md bg-muted/40 p-2">
-                          <p className="text-[11px] text-muted-foreground">Comprimento informado</p>
-                          <p className="text-base font-bold text-foreground">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
-                          {ajustado && r.comprimento_ajustado != null && (
-                            <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
-                              Ajustado: <span className="font-semibold">{fmtMetros(compContab)}</span>
+                    return (
+                      <li key={r.id} className={`rounded-lg border border-border bg-background p-3 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-base font-bold text-foreground flex items-center gap-1.5">
+                              <MapPin size={14} className="text-muted-foreground shrink-0" />
+                              <span className="truncate">{trecho}</span>
                             </p>
-                          )}
-                        </div>
-                        <div className="rounded-md bg-muted/40 p-2">
-                          <p className="text-[11px] text-muted-foreground">Ligações informadas</p>
-                          <p className="text-base font-bold text-foreground">{r.ligacoes_dia ?? 0}</p>
-                          {ajustado && r.ligacoes_ajustadas != null && (
-                            <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
-                              Ajustado: <span className="font-semibold">{ligContab}</span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {r.motivo_ajuste && (
-                        <p className="mt-2 text-[11px] text-orange-700 dark:text-orange-300 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
-                      )}
-                      {cancelado && r.motivo_cancelamento && (
-                        <p className="mt-2 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
-                      )}
-
-                      {r.observacao && (
-                        <p className="mt-2 text-xs text-muted-foreground italic">Obs.: {r.observacao}</p>
-                      )}
-
-                      <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${statusColor}`}>
-                        <StatusIcon size={14} />
-                        <span>{statusLabel}</span>
-                      </div>
-
-                      {r.pv_final_assentado && !cancelado && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-secondary/10 px-2 py-1 text-[11px] font-semibold text-secondary">
-                          <CheckCircle2 size={12} />
-                          PV final assentado — trecho concluído pelo encarregado
-                        </div>
-                      )}
-
-                      {/* Ações de edição/exclusão do encarregado */}
-                      {editavel ? (
-                        <div className="mt-3 pt-3 border-t border-border">
-                          <p className="text-[11px] text-muted-foreground mb-2">
-                            Este registro está ativo e ainda não foi ajustado pela sala técnica. Você pode editá-lo ou excluí-lo.
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="min-h-[44px]"
-                              onClick={() => abrirEdicao(r)}
-                            >
-                              <Pencil size={16} className="mr-1.5" /> Editar
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="min-h-[44px] text-destructive hover:text-destructive"
-                              onClick={() => setDeleting(r)}
-                            >
-                              <Trash2 size={16} className="mr-1.5" /> Excluir
-                            </Button>
+                            <p className="text-xs text-muted-foreground mt-0.5">Enviado às {fmtHora(r.created_at)}</p>
                           </div>
                         </div>
-                      ) : (
-                        <div className="mt-3 pt-3 border-t border-border">
-                          <p className={`text-[11px] font-semibold ${cancelado ? 'text-destructive' : 'text-orange-700 dark:text-orange-300'}`}>
-                            Registro {cancelado ? 'cancelado' : 'ajustado'} pela sala técnica
-                          </p>
-                          <p className="text-[11px] text-muted-foreground italic mt-0.5">
-                            Registro ajustado pela sala técnica. Solicite nova correção se necessário.
-                          </p>
-                        </div>
-                      )}
-                    </li>
-                  </ul>
-                </div>
-              );
-            } else {
-              acc[acc.length - 1] = (
-                <div key={acc[acc.length - 1].key} className={acc[acc.length - 1].props.className}>
-                  {acc[acc.length - 1].props.children[0]}
-                  <ul className="space-y-3 mt-2">
-                    {acc[acc.length - 1].props.children[1].props.children}
-                    <li key={r.id} className={`rounded-lg border border-border bg-background p-3 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-base font-bold text-foreground flex items-center gap-1.5">
-                            <MapPin size={14} className="text-muted-foreground shrink-0" />
-                            <span className="truncate">{trecho}</span>
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">Enviado às {fmtHora(r.created_at)}</p>
-                        </div>
-                      </div>
 
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-md bg-muted/40 p-2">
-                          <p className="text-[11px] text-muted-foreground">Comprimento informado</p>
-                          <p className="text-base font-bold text-foreground">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
-                          {ajustado && r.comprimento_ajustado != null && (
-                            <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
-                              Ajustado: <span className="font-semibold">{fmtMetros(compContab)}</span>
-                            </p>
-                          )}
-                        </div>
-                        <div className="rounded-md bg-muted/40 p-2">
-                          <p className="text-[11px] text-muted-foreground">Ligações informadas</p>
-                          <p className="text-base font-bold text-foreground">{r.ligacoes_dia ?? 0}</p>
-                          {ajustado && r.ligacoes_ajustadas != null && (
-                            <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
-                              Ajustado: <span className="font-semibold">{ligContab}</span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {r.motivo_ajuste && (
-                        <p className="mt-2 text-[11px] text-orange-700 dark:text-orange-300 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
-                      )}
-                      {cancelado && r.motivo_cancelamento && (
-                        <p className="mt-2 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
-                      )}
-
-                      {r.observacao && (
-                        <p className="mt-2 text-xs text-muted-foreground italic">Obs.: {r.observacao}</p>
-                      )}
-
-                      <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${statusColor}`}>
-                        <StatusIcon size={14} />
-                        <span>{statusLabel}</span>
-                      </div>
-
-                      {r.pv_final_assentado && !cancelado && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-secondary/10 px-2 py-1 text-[11px] font-semibold text-secondary">
-                          <CheckCircle2 size={12} />
-                          PV final assentado — trecho concluído pelo encarregado
-                        </div>
-                      )}
-
-                      {/* Ações de edição/exclusão do encarregado */}
-                      {editavel ? (
-                        <div className="mt-3 pt-3 border-t border-border">
-                          <p className="text-[11px] text-muted-foreground mb-2">
-                            Este registro está ativo e ainda não foi ajustado pela sala técnica. Você pode editá-lo ou excluí-lo.
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="min-h-[44px]"
-                              onClick={() => abrirEdicao(r)}
-                            >
-                              <Pencil size={16} className="mr-1.5" /> Editar
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="min-h-[44px] text-destructive hover:text-destructive"
-                              onClick={() => setDeleting(r)}
-                            >
-                              <Trash2 size={16} className="mr-1.5" /> Excluir
-                            </Button>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="rounded-md bg-muted/40 p-2">
+                            <p className="text-[11px] text-muted-foreground">Comprimento informado</p>
+                            <p className="text-base font-bold text-foreground">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
+                            {ajustado && r.comprimento_ajustado != null && (
+                              <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+                                Ajustado: <span className="font-semibold">{fmtMetros(compContab)}</span>
+                              </p>
+                            )}
+                          </div>
+                          <div className="rounded-md bg-muted/40 p-2">
+                            <p className="text-[11px] text-muted-foreground">Ligações informadas</p>
+                            <p className="text-base font-bold text-foreground">{r.ligacoes_dia ?? 0}</p>
+                            {ajustado && r.ligacoes_ajustadas != null && (
+                              <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+                                Ajustado: <span className="font-semibold">{ligContab}</span>
+                              </p>
+                            )}
                           </div>
                         </div>
-                      ) : (
-                        <div className="mt-3 pt-3 border-t border-border">
-                          <p className={`text-[11px] font-semibold ${cancelado ? 'text-destructive' : 'text-orange-700 dark:text-orange-300'}`}>
-                            Registro {cancelado ? 'cancelado' : 'ajustado'} pela sala técnica
-                          </p>
-                          <p className="text-[11px] text-muted-foreground italic mt-0.5">
-                            Registro ajustado pela sala técnica. Solicite nova correção se necessário.
-                          </p>
+
+                        {r.motivo_ajuste && (
+                          <p className="mt-2 text-[11px] text-orange-700 dark:text-orange-300 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
+                        )}
+                        {cancelado && r.motivo_cancelamento && (
+                          <p className="mt-2 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
+                        )}
+
+                        {r.observacao && (
+                          <p className="mt-2 text-xs text-muted-foreground italic">Obs.: {r.observacao}</p>
+                        )}
+
+                        <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${statusColor}`}>
+                          <StatusIcon size={14} />
+                          <span>{statusLabel}</span>
                         </div>
-                      )}
-                    </li>
-                  </ul>
-                </div>
-              );
-            }
-            return acc;
-          }, [] as JSX.Element[])}
+
+                        {r.pv_final_assentado && !cancelado && (
+                          <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-secondary/10 px-2 py-1 text-[11px] font-semibold text-secondary">
+                            <CheckCircle2 size={12} />
+                            PV final assentado — trecho concluído pelo encarregado
+                          </div>
+                        )}
+
+                        {/* Ações de edição/exclusão do encarregado */}
+                        {editavel ? (
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <p className="text-[11px] text-muted-foreground mb-2">
+                              Este registro está ativo e ainda não foi ajustado pela sala técnica. Você pode editá-lo ou excluí-lo.
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="min-h-[44px]"
+                                onClick={() => abrirEdicao(r)}
+                              >
+                                <Pencil size={16} className="mr-1.5" /> Editar
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="min-h-[44px] text-destructive hover:text-destructive"
+                                onClick={() => setDeleting(r)}
+                              >
+                                <Trash2 size={16} className="mr-1.5" /> Excluir
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <p className={`text-[11px] font-semibold ${cancelado ? 'text-destructive' : 'text-orange-700 dark:text-orange-300'}`}>
+                              Registro {cancelado ? 'cancelado' : 'ajustado'} pela sala técnica
+                            </p>
+                            <p className="text-[11px] text-muted-foreground italic mt-0.5">
+                              Registro ajustado pela sala técnica. Solicite nova correção se necessário.
+                            </p>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ));
+          })()}
         </div>
       )}
 

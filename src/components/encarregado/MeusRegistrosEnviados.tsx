@@ -139,7 +139,77 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
     return () => { supabase.removeChannel(ch); };
   }, [userId]);
 
-  const itens = useMemo(() => (limit ? registros.slice(0, limit) : registros), [registros, limit]);
+  // Filtro de período
+  type PeriodoTipo = 'semana' | 'mes' | 'todos' | 'personalizado';
+  const [periodo, setPeriodo] = useState<PeriodoTipo>('semana');
+  const [range, setRange] = useState<DateRange | undefined>(undefined);
+  const [tempRange, setTempRange] = useState<DateRange | undefined>(undefined);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const isMobile = useIsMobile();
+
+  const toKey = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
+  const fmtBR = (d: Date) => d.toLocaleDateString('pt-BR');
+
+  const filtrados = useMemo(() => {
+    if (periodo === 'todos') return registros;
+    if (periodo === 'personalizado') {
+      if (!range?.from) return registros;
+      const from = toKey(range.from);
+      const to = toKey(range.to ?? range.from);
+      return registros.filter((r) => r.data_registro >= from && r.data_registro <= to);
+    }
+    const dias = periodo === 'semana' ? 7 : 30;
+    const limite = new Date();
+    limite.setHours(0, 0, 0, 0);
+    limite.setDate(limite.getDate() - (dias - 1));
+    const limKey = toKey(limite);
+    return registros.filter((r) => r.data_registro >= limKey);
+  }, [registros, periodo, range]);
+
+  const itens = useMemo(() => (limit ? filtrados.slice(0, limit) : filtrados), [filtrados, limit]);
+
+  const aplicarRange = (r: DateRange | undefined) => {
+    if (!r?.from) return;
+    setRange({ from: r.from, to: r.to ?? r.from });
+    setPeriodo('personalizado');
+    setPickerOpen(false);
+  };
+  const limparPeriodo = () => {
+    setRange(undefined);
+    setTempRange(undefined);
+    setPeriodo('semana');
+    setPickerOpen(false);
+  };
+  const abrirPicker = () => {
+    setTempRange(range);
+    setPickerOpen(true);
+  };
+
+  const periodoLabel = (() => {
+    if (periodo !== 'personalizado' || !range?.from) return null;
+    const a = fmtBR(range.from);
+    const b = fmtBR(range.to ?? range.from);
+    return a === b ? `Período: ${a}` : `Período: ${a} a ${b}`;
+  })();
+
+  const CalendarPicker = (
+    <Calendar
+      mode="range"
+      selected={tempRange}
+      onSelect={(r) => {
+        setTempRange(r);
+        if (!isMobile && r?.from && r?.to) aplicarRange(r);
+      }}
+      numberOfMonths={isMobile ? 1 : 2}
+      className={cn('p-3 pointer-events-auto')}
+    />
+  );
+
 
   const temIntervencaoTecnica = (r: RegistroRow) =>
     (r.status ?? 'ativo') === 'cancelado'

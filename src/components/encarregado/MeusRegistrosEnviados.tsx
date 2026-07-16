@@ -91,6 +91,16 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
   const [editLig, setEditLig] = useState('');
   const [editObs, setEditObs] = useState('');
   const [saving, setSaving] = useState(false);
+  // Ligações do registro em edição
+  type LigItem = {
+    id?: string;
+    comprimento: string;
+    comprimento_original: number | null;
+    isNew?: boolean;
+    dirty?: boolean;
+  };
+  const [editLigItems, setEditLigItems] = useState<LigItem[]>([]);
+  const [loadingLigs, setLoadingLigs] = useState(false);
 
   // Exclusão
   const [deleting, setDeleting] = useState<RegistroRow | null>(null);

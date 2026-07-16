@@ -407,7 +407,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
         </div>
       ) : itens.length === 0 ? (
         <p className="text-sm text-muted-foreground py-6 text-center">
-          Nenhum envio neste período.
+          Nenhum envio encontrado.
         </p>
       ) : (
         <div className="space-y-4">

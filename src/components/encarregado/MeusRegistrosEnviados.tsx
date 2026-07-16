@@ -577,21 +577,73 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
               Ajuste apenas os dados operacionais. O trecho, a obra e a data original não podem ser alterados.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
             <div>
               <Label htmlFor="edit-comp">Comprimento informado (m)</Label>
               <Input
                 id="edit-comp" inputMode="decimal" value={editComp}
                 onChange={(e) => setEditComp(e.target.value)} className="h-11"
+                placeholder="Ex.: 29,60"
               />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Metragem da rede/mainline informada no dia. Aceita vírgula ou ponto.
+              </p>
             </div>
             <div>
               <Label htmlFor="edit-lig">Ligações informadas</Label>
               <Input
                 id="edit-lig" inputMode="numeric" value={editLig}
-                onChange={(e) => setEditLig(e.target.value)} className="h-11"
+                onChange={(e) => setEditLig(e.target.value.replace(/[^0-9]/g, ''))} className="h-11"
               />
             </div>
+
+            {loadingLigs ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="animate-spin" size={14} /> Carregando ligações…
+              </div>
+            ) : (Math.max(0, Math.floor(Number(editLig) || 0)) > 0) && (
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-foreground">Comprimento de cada ligação (m)</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Soma: {editLigItems
+                      .slice(0, Math.max(0, Math.floor(Number(editLig) || 0)))
+                      .reduce((s, it) => s + (Number((it.comprimento || '0').toString().replace(',', '.')) || 0), 0)
+                      .toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m
+                  </p>
+                </div>
+                {Array.from({ length: Math.max(0, Math.floor(Number(editLig) || 0)) }).map((_, i) => {
+                  const item = editLigItems[i];
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <Label htmlFor={`lig-${i}`} className="w-20 text-xs">Ligação {i + 1}</Label>
+                      <Input
+                        id={`lig-${i}`}
+                        inputMode="decimal"
+                        value={item?.comprimento ?? ''}
+                        placeholder="0,00"
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setEditLigItems((prev) => {
+                            const next = [...prev];
+                            while (next.length <= i) next.push({ comprimento: '', comprimento_original: null, isNew: true });
+                            next[i] = { ...next[i], comprimento: v, dirty: true };
+                            return next;
+                          });
+                        }}
+                        className="h-10 flex-1"
+                      />
+                      {item?.comprimento_original != null && (
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          orig.: {Number(item.comprimento_original).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div>
               <Label htmlFor="edit-obs">Observação</Label>
               <Textarea

@@ -177,12 +177,46 @@ export function MeusRegistrosEnviados({ limit, hideFilters, filtroInicial = 'hoj
 
   const podeEditar = (r: RegistroRow) => !temIntervencaoTecnica(r);
 
-  const abrirEdicao = (r: RegistroRow) => {
+  const abrirEdicao = async (r: RegistroRow) => {
     setEditing(r);
     setEditComp(String(r.comprimento_dia ?? ''));
     setEditLig(String(r.ligacoes_dia ?? ''));
     setEditObs(r.observacao ?? '');
+    setEditLigItems([]);
+    setLoadingLigs(true);
+    const { data: ligs } = await supabase
+      .from('ligacoes')
+      .select('id, comprimento, comprimento_original')
+      .eq('registro_producao_id', r.id)
+      .order('created_at', { ascending: true });
+    const items: LigItem[] = (ligs ?? []).map((l: any) => ({
+      id: l.id,
+      comprimento: l.comprimento != null ? String(l.comprimento).replace('.', ',') : '',
+      comprimento_original: l.comprimento_original,
+    }));
+    // Ajusta para bater com ligacoes_dia (mantém valores existentes)
+    const alvo = Math.max(0, Number(r.ligacoes_dia) || 0);
+    while (items.length < alvo) items.push({ comprimento: '', comprimento_original: null, isNew: true });
+    setEditLigItems(items);
+    setLoadingLigs(false);
   };
+
+  // Ajusta lista quando editLig muda (sem apagar preenchidos)
+  useEffect(() => {
+    if (!editing) return;
+    const target = Math.max(0, Math.floor(Number(editLig) || 0));
+    setEditLigItems((prev) => {
+      if (prev.length === target) return prev;
+      if (prev.length < target) {
+        const add: LigItem[] = [];
+        for (let i = 0; i < target - prev.length; i++) {
+          add.push({ comprimento: '', comprimento_original: null, isNew: true });
+        }
+        return [...prev, ...add];
+      }
+      return prev.slice(0, target);
+    });
+  }, [editLig, editing]);
 
   const salvarEdicao = async () => {
     if (!editing) return;

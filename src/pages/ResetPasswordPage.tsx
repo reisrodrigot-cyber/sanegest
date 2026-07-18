@@ -156,7 +156,7 @@ const ResetPasswordPage = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="••••••••"
-                  minLength={6}
+                  minLength={8}
                   required
                   disabled={status !== 'ready'}
                 />
@@ -171,7 +171,7 @@ const ResetPasswordPage = () => {
                   onChange={(e) => setPassword2(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="••••••••"
-                  minLength={6}
+                  minLength={8}
                   required
                   disabled={status !== 'ready'}
                 />

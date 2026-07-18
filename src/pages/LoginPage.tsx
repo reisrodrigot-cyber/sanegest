@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Droplets, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Droplets, Loader2, X, Mail, ArrowLeft } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
 
 const LoginPage = () => {
@@ -13,6 +14,15 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  // Forgot password modal state
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -24,7 +34,6 @@ const LoginPage = () => {
       if (result.error) {
         setError(result.error);
       } else {
-        // Auto-login após cadastro (sem confirmação de e-mail)
         const loginResult = await login(email, password);
         if (loginResult.error) {
           setMessage('Cadastro realizado. Faça login para continuar.');
@@ -49,6 +58,44 @@ const LoginPage = () => {
       setError('Erro ao conectar com Google.');
     }
     if (result.redirected) return;
+  };
+
+  const openForgot = () => {
+    setForgotEmail(email);
+    setForgotSent(false);
+    setForgotError('');
+    setForgotOpen(true);
+  };
+
+  const closeForgot = () => {
+    if (forgotLoading) return;
+    setForgotOpen(false);
+  };
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+
+    const trimmed = forgotEmail.trim();
+    if (!emailRegex.test(trimmed)) {
+      setForgotError('Informe um e-mail válido.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo: `${window.location.origin}/redefinir-senha`,
+      });
+      // Neutral response regardless of whether the email exists
+      setForgotSent(true);
+    } catch {
+      // Show a technical error only for unexpected client-side failures,
+      // without disclosing whether the email exists.
+      setForgotError('Não foi possível enviar o link agora. Tente novamente em instantes.');
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   return (
@@ -103,6 +150,17 @@ const LoginPage = () => {
                 required
                 minLength={6}
               />
+              {!isSignup && (
+                <div className="flex justify-end mt-2">
+                  <button
+                    type="button"
+                    onClick={openForgot}
+                    className="min-h-[44px] inline-flex items-center px-1 text-sm font-medium text-status-green hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
+              )}
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -151,6 +209,102 @@ const LoginPage = () => {
           Após o cadastro, um administrador precisa atribuir seu perfil de acesso.
         </p>
       </div>
+
+      {forgotOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="forgot-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={closeForgot}
+        >
+          <div
+            className="w-full max-w-md bg-card rounded-xl shadow-2xl p-6 relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={closeForgot}
+              className="absolute top-3 right-3 p-2 rounded-lg text-muted-foreground hover:bg-muted min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Fechar"
+              disabled={forgotLoading}
+            >
+              <X size={18} />
+            </button>
+
+            <div className="mb-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-3">
+                <Mail size={22} className="text-primary" />
+              </div>
+              <h3 id="forgot-title" className="text-lg font-semibold text-card-foreground">
+                Recuperar acesso
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Informe seu e-mail cadastrado. Enviaremos um link seguro para você criar uma nova senha.
+              </p>
+            </div>
+
+            {forgotSent ? (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-status-green/10 border border-status-green/30 text-sm text-card-foreground">
+                  Se houver uma conta vinculada a este e-mail, você receberá em instantes um link para redefinir sua senha.
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setForgotSent(false); setForgotError(''); }}
+                    className="w-full min-h-[44px] py-2.5 rounded-lg border border-border text-foreground font-medium hover:bg-muted"
+                  >
+                    Enviar para outro e-mail
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeForgot}
+                    className="w-full min-h-[44px] py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 inline-flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft size={16} /> Voltar para entrar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-card-foreground mb-1">E-mail</label>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="seu@email.com"
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                {forgotError && <p className="text-sm text-destructive">{forgotError}</p>}
+
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="w-full min-h-[44px] py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                >
+                  {forgotLoading && <Loader2 size={16} className="animate-spin" />}
+                  Enviar link de recuperação
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeForgot}
+                  disabled={forgotLoading}
+                  className="w-full min-h-[44px] py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft size={14} /> Voltar para entrar
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

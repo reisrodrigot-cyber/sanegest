@@ -96,6 +96,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
       <Route path="/login" element={supabaseUser && !isRecoveryFlow ? <Navigate to={home} replace /> : <LoginPage />} />
       <Route path="/" element={<Navigate to={isRecoveryFlow ? "/reset-password" + window.location.hash : supabaseUser ? home : "/login"} replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

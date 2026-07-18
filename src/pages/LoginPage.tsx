@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Droplets, Loader2, X, Mail, ArrowLeft } from 'lucide-react';
+import { Droplets, Loader2, X, Mail, ArrowLeft, MailWarning } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
 
 const LoginPage = () => {
@@ -248,6 +248,18 @@ const LoginPage = () => {
               <div className="space-y-4">
                 <div className="p-3 rounded-lg bg-status-green/10 border border-status-green/30 text-sm text-card-foreground">
                   Se houver uma conta vinculada a este e-mail, você receberá em instantes um link para redefinir sua senha.
+                </div>
+                <div
+                  role="note"
+                  className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/40 text-sm text-card-foreground"
+                >
+                  <MailWarning size={18} className="text-amber-500 shrink-0 mt-0.5" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="font-medium text-card-foreground">Verifique seu e-mail</p>
+                    <p className="text-muted-foreground mt-0.5">
+                      Confira também a pasta Spam ou Lixo eletrônico. Se encontrar a mensagem lá, marque como “Não é spam” para receber os próximos e-mails corretamente.
+                    </p>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <button

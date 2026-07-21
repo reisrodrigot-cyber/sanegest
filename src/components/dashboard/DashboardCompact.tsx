@@ -387,30 +387,78 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const ligAtual = (r: any) =>
     Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
-  // Produção por encarregado no período — total, dias e média/dia (somente rede)
+  // Produção por Encarregado — fonte única: view `relatorio_producao_diaria`.
+  // Regras:
+  //   - Rede: soma direta de comprimento_trecho_executado no período.
+  //   - Ligações (un): soma direta de quantidade_ligacoes_realizadas.
+  //   - Ligações (m): agrupa por os_id (fallback trecho normalizado) e usa o
+  //     MAIOR comprimento_total_ligacoes registrado no período por grupo. Isso
+  //     evita dupla contagem quando a mesma OS aparece em vários dias e o
+  //     comprimento acumulado da OS se repete linha a linha.
+  //   - Total: rede + ligações (m).
+  //   - Média (m/dia): total / dias distintos COM produção do encarregado.
+  //   - Normaliza nomes: "nilton*" → Nilton Alexandre, "ailton*" → Ailton Santos.
   const porEncarregado = useMemo(() => {
-    const map = new Map<string, { nome: string; ns: Set<string>; total: number; days: Set<string> }>();
-    registrosPeriodo.forEach((r) => {
-      const metros = compAtual(r);
-      if (metros <= 0) return;
-      const nome = encNames[r.user_id] || '—';
-      const c = map.get(r.user_id) ?? { nome, ns: new Set<string>(), total: 0, days: new Set<string>() };
-      c.nome = nome;
-      c.ns.add(r.os_id);
-      c.total += metros;
-      c.days.add(r.data_registro);
-      map.set(r.user_id, c);
-    });
+    interface Agg {
+      nome: string;
+      rede: number;
+      ligUn: number;
+      days: Set<string>;
+      ligMaxPorOs: Map<string, number>;
+    }
+    const map = new Map<string, Agg>();
+    const trechoKey = (t: string | null | undefined) =>
+      String(t ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    for (const row of relatorioRows) {
+      const data = String(row.data_producao ?? '');
+      if (!data) continue;
+      if (data < periodo.inicio || data > periodo.fim) continue;
+
+      const rawNome = row.encarregado || row.liberado_para || row.responsavel_nome || '—';
+      const nome = normalizarEncarregado(rawNome);
+      const rede = Number(row.comprimento_trecho_executado) || 0;
+      const ligUn = Number(row.quantidade_ligacoes_realizadas) || 0;
+      const ligTot = Number(row.comprimento_total_ligacoes) || 0;
+
+      // Só conta o registro se houve efetivamente produção lançada.
+      if (rede <= 0 && ligUn <= 0 && ligTot <= 0) continue;
+
+      const grupo = row.os_id ? `os:${row.os_id}` : `tr:${trechoKey(row.trecho)}`;
+      const cur = map.get(nome) ?? {
+        nome,
+        rede: 0,
+        ligUn: 0,
+        days: new Set<string>(),
+        ligMaxPorOs: new Map<string, number>(),
+      };
+      cur.rede += rede;
+      cur.ligUn += ligUn;
+      cur.days.add(data);
+      const prevMax = cur.ligMaxPorOs.get(grupo) ?? 0;
+      if (ligTot > prevMax) cur.ligMaxPorOs.set(grupo, ligTot);
+      map.set(nome, cur);
+    }
+
     return Array.from(map.values())
-      .map((v) => ({
-        nome: v.nome,
-        ns: v.ns.size,
-        total: v.total,
-        dias: v.days.size,
-        media: v.days.size > 0 ? v.total / v.days.size : 0,
-      }))
+      .map((v) => {
+        let ligM = 0;
+        v.ligMaxPorOs.forEach((m) => { ligM += m; });
+        const total = v.rede + ligM;
+        const dias = v.days.size;
+        return {
+          nome: v.nome,
+          rede: Math.round(v.rede * 100) / 100,
+          ligM: Math.round(ligM * 100) / 100,
+          ligUn: v.ligUn,
+          total: Math.round(total * 100) / 100,
+          dias,
+          media: dias > 0 ? Math.round((total / dias) * 100) / 100 : 0,
+        };
+      })
       .sort((a, b) => b.total - a.total);
-  }, [registrosPeriodo, encNames]);
+  }, [relatorioRows, periodo.inicio, periodo.fim]);
+
 
   const kpis = useMemo(() => {
     const totalPrevisto = ordens.reduce((s, o) => s + (o.comprimento_previsto ?? 0), 0);

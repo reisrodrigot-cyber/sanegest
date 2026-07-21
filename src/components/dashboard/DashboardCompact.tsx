@@ -725,35 +725,137 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return `${Math.round(m)}m`;
   };
 
-  const totalPeriodo = porEncarregado.reduce((s, e) => s + e.total, 0);
-  const somaMediasPeriodo = porEncarregado.reduce((s, e) => s + e.media, 0);
+  const totaisEnc = useMemo(() => {
+    const t = { rede: 0, ligM: 0, ligUn: 0, total: 0, dias: 0, media: 0 };
+    porEncarregado.forEach((e) => {
+      t.rede += e.rede;
+      t.ligM += e.ligM;
+      t.ligUn += e.ligUn;
+      t.total += e.total;
+    });
+    t.media = porEncarregado.reduce((s, e) => s + e.media, 0);
+    return {
+      rede: Math.round(t.rede * 100) / 100,
+      ligM: Math.round(t.ligM * 100) / 100,
+      ligUn: t.ligUn,
+      total: Math.round(t.total * 100) / 100,
+      media: Math.round(t.media * 100) / 100,
+    };
+  }, [porEncarregado]);
 
-  // Filtro discreto de período — afeta apenas os cards "Produção por
-  // Encarregado" e "Produtividade por Profundidade". Apenas duas datas.
-  const PeriodoFiltro = () => (
-    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-      <span>Período:</span>
-      <input
-        type="date"
-        value={periodoInicio}
-        max={periodoFim || undefined}
-        onChange={(e) => setPeriodoInicio(e.target.value)}
-        className="h-6 px-1.5 text-[11px] rounded border border-border bg-background text-foreground"
-        aria-label="Data inicial"
-      />
-      <span>até</span>
-      <input
-        type="date"
-        value={periodoFim}
-        min={periodoInicio || undefined}
-        onChange={(e) => setPeriodoFim(e.target.value)}
-        className="h-6 px-1.5 text-[11px] rounded border border-border bg-background text-foreground"
-        aria-label="Data final"
-      />
-    </div>
-  );
+  // Persiste o período aplicado na URL (di/df) para deep-link e refresh.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (periodoInicio) params.set('di', periodoInicio); else params.delete('di');
+    if (periodoFim) params.set('df', periodoFim); else params.delete('df');
+    const qs = params.toString();
+    const next = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
+    window.history.replaceState(null, '', next);
+  }, [periodoInicio, periodoFim]);
+
+  // Seletor de período discreto com Popover + calendário shadcn + presets.
+  // Estado draft: alterações só entram em vigor no botão "Aplicar".
+  const PeriodoPicker = () => {
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState<DateRange | undefined>(() => {
+      const parse = (s: string) => {
+        if (!s) return undefined;
+        const [y, m, d] = s.split('-').map(Number);
+        return new Date(y, (m || 1) - 1, d || 1);
+      };
+      return { from: parse(periodoInicio), to: parse(periodoFim) };
+    });
+
+    const applyRange = (from: Date, to: Date) => {
+      setPeriodoInicio(toISODate(from));
+      setPeriodoFim(toISODate(to));
+      setOpen(false);
+    };
+
+    const preset = (label: string, fn: () => { from: Date; to: Date }) => {
+      const r = fn();
+      return (
+        <button
+          key={label}
+          type="button"
+          onClick={() => applyRange(r.from, r.to)}
+          className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors text-foreground"
+        >
+          {label}
+        </button>
+      );
+    };
+
+    const hoje = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+    const days = (n: number) => { const d = hoje(); d.setDate(d.getDate() - n); return d; };
+    const startOfMonth = () => { const d = hoje(); d.setDate(1); return d; };
+    const startOfLastMonth = () => { const d = startOfMonth(); d.setMonth(d.getMonth() - 1); return d; };
+    const endOfLastMonth = () => { const d = startOfMonth(); d.setDate(0); return d; };
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md border border-border/60 bg-background/60 hover:bg-muted/60 text-[11px] text-foreground transition-colors"
+            aria-label="Selecionar período"
+          >
+            <CalendarRange size={12} className="text-muted-foreground" />
+            <span className="tabular-nums">
+              {periodoInicio && periodoFim
+                ? `${fmtDateBR(periodo.inicio)} — ${fmtDateBR(periodo.fim)}`
+                : 'Selecionar período'}
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-auto p-0" sideOffset={4}>
+          <div className="flex flex-col sm:flex-row">
+            <div className="flex flex-col gap-0.5 p-2 border-b sm:border-b-0 sm:border-r border-border min-w-[140px]">
+              {preset('Hoje', () => ({ from: hoje(), to: hoje() }))}
+              {preset('Ontem', () => ({ from: days(1), to: days(1) }))}
+              {preset('Últimos 7 dias', () => ({ from: days(6), to: hoje() }))}
+              {preset('Últimos 30 dias', () => ({ from: days(29), to: hoje() }))}
+              {preset('Mês atual', () => ({ from: startOfMonth(), to: hoje() }))}
+              {preset('Mês anterior', () => ({ from: startOfLastMonth(), to: endOfLastMonth() }))}
+              {preset('Todo o período', () => ({
+                from: firstProducaoDate ? new Date(firstProducaoDate + 'T00:00:00') : hoje(),
+                to: hoje(),
+              }))}
+            </div>
+            <div className="p-2">
+              <Calendar
+                mode="range"
+                selected={draft}
+                onSelect={setDraft}
+                numberOfMonths={1}
+                initialFocus
+                className={cn('p-0 pointer-events-auto')}
+              />
+              <div className="flex items-center justify-end gap-2 mt-2">
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={!draft?.from}
+                  onClick={() => {
+                    if (draft?.from) applyRange(draft.from, draft.to ?? draft.from);
+                  }}
+                >
+                  Aplicar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   const periodoRangeLabel = `${fmtDateBR(periodo.inicio)} a ${fmtDateBR(periodo.fim)}`;
+
 
   return (
     <div className="dc-root flex flex-col gap-3">

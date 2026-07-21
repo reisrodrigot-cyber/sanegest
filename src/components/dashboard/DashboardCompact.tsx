@@ -287,6 +287,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         .order('created_at', { ascending: true })
         .range(from, to),
     );
+    const fetchAllRelatorio = () => fetchAllPaged<RelatorioRow>((from, to) =>
+      supabase
+        .from('relatorio_producao_diaria')
+        .select('os_id, trecho, encarregado, liberado_para, responsavel_nome, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes')
+        .order('data_producao', { ascending: true })
+        .range(from, to),
+    );
 
     Promise.all([fetchAllRegistros(), fetchAllOrdens(), fetchAllLigacoes()])
       .then(([r, o, l]) => {
@@ -295,7 +302,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         setLigacoesRows(l);
         setLoading(false);
       });
+    fetchAllRelatorio().then((rows) => {
+      setRelatorioRows(rows);
+      setLoadingEncarregado(false);
+    });
   }, []);
+
 
 
 

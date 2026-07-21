@@ -19,7 +19,7 @@ import {
   CalendarDays,
   TrendingUp,
   ListChecks,
-  
+  CalendarRange,
   Layers,
   Loader2,
   Radio,
@@ -27,8 +27,14 @@ import {
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import type { DateRange } from 'react-day-picker';
 
 import type { OrdemServico } from '@/types/sanegest';
+
 
 interface DailyRow {
   user_id: string;
@@ -44,6 +50,29 @@ interface OSRow {
   ligacoes_real: number | null;
   real_validado: boolean | null;
 }
+
+interface RelatorioRow {
+  os_id: string | null;
+  trecho: string | null;
+  encarregado: string | null;
+  liberado_para: string | null;
+  responsavel_nome: string | null;
+  data_producao: string;
+  comprimento_trecho_executado: number | null;
+  quantidade_ligacoes_realizadas: number | null;
+  comprimento_total_ligacoes: number | null;
+}
+
+// Normaliza variações de nome de encarregado para nomes canônicos exibidos.
+const normalizarEncarregado = (raw: string | null | undefined): string => {
+  const s = String(raw ?? '').trim();
+  if (!s) return '—';
+  const low = s.toLowerCase();
+  if (low.includes('nilton')) return 'Nilton Alexandre';
+  if (low.includes('ailton')) return 'Ailton Santos';
+  return s;
+};
+
 
 
 const MES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -193,12 +222,24 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [registrosBrutos, setRegistrosBrutos] = useState<any[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
   const [ligacoesRows, setLigacoesRows] = useState<{ os_id: string; comprimento: number | null; registro_producao_id: string | null }[]>([]);
+  const [relatorioRows, setRelatorioRows] = useState<RelatorioRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingEncarregado, setLoadingEncarregado] = useState(true);
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
   const [subBaciaTab, setSubBaciaTab] = useState<'rede' | 'ligacoes' | 'resumo'>('rede');
-  const [periodoInicio, setPeriodoInicio] = useState<string>('');
-  const [periodoFim, setPeriodoFim] = useState<string>('');
+  // Período aplicado (afeta o card). Inicializa a partir da URL se presente.
+  const [periodoInicio, setPeriodoInicio] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    const p = new URLSearchParams(window.location.search).get('di');
+    return p && /^\d{4}-\d{2}-\d{2}$/.test(p) ? p : '';
+  });
+  const [periodoFim, setPeriodoFim] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    const p = new URLSearchParams(window.location.search).get('df');
+    return p && /^\d{4}-\d{2}-\d{2}$/.test(p) ? p : '';
+  });
+
 
   const [encNames, setEncNames] = useState<Record<string, string>>({});
 
@@ -246,6 +287,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         .order('created_at', { ascending: true })
         .range(from, to),
     );
+    const fetchAllRelatorio = () => fetchAllPaged<RelatorioRow>((from, to) =>
+      supabase
+        .from('relatorio_producao_diaria')
+        .select('os_id, trecho, encarregado, liberado_para, responsavel_nome, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes')
+        .order('data_producao', { ascending: true })
+        .range(from, to),
+    );
 
     Promise.all([fetchAllRegistros(), fetchAllOrdens(), fetchAllLigacoes()])
       .then(([r, o, l]) => {
@@ -254,7 +302,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         setLigacoesRows(l);
         setLoading(false);
       });
+    fetchAllRelatorio().then((rows) => {
+      setRelatorioRows(rows);
+      setLoadingEncarregado(false);
+    });
   }, []);
+
 
 
 
@@ -334,30 +387,78 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const ligAtual = (r: any) =>
     Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
-  // Produção por encarregado no período — total, dias e média/dia (somente rede)
+  // Produção por Encarregado — fonte única: view `relatorio_producao_diaria`.
+  // Regras:
+  //   - Rede: soma direta de comprimento_trecho_executado no período.
+  //   - Ligações (un): soma direta de quantidade_ligacoes_realizadas.
+  //   - Ligações (m): agrupa por os_id (fallback trecho normalizado) e usa o
+  //     MAIOR comprimento_total_ligacoes registrado no período por grupo. Isso
+  //     evita dupla contagem quando a mesma OS aparece em vários dias e o
+  //     comprimento acumulado da OS se repete linha a linha.
+  //   - Total: rede + ligações (m).
+  //   - Média (m/dia): total / dias distintos COM produção do encarregado.
+  //   - Normaliza nomes: "nilton*" → Nilton Alexandre, "ailton*" → Ailton Santos.
   const porEncarregado = useMemo(() => {
-    const map = new Map<string, { nome: string; ns: Set<string>; total: number; days: Set<string> }>();
-    registrosPeriodo.forEach((r) => {
-      const metros = compAtual(r);
-      if (metros <= 0) return;
-      const nome = encNames[r.user_id] || '—';
-      const c = map.get(r.user_id) ?? { nome, ns: new Set<string>(), total: 0, days: new Set<string>() };
-      c.nome = nome;
-      c.ns.add(r.os_id);
-      c.total += metros;
-      c.days.add(r.data_registro);
-      map.set(r.user_id, c);
-    });
+    interface Agg {
+      nome: string;
+      rede: number;
+      ligUn: number;
+      days: Set<string>;
+      ligMaxPorOs: Map<string, number>;
+    }
+    const map = new Map<string, Agg>();
+    const trechoKey = (t: string | null | undefined) =>
+      String(t ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    for (const row of relatorioRows) {
+      const data = String(row.data_producao ?? '');
+      if (!data) continue;
+      if (data < periodo.inicio || data > periodo.fim) continue;
+
+      const rawNome = row.encarregado || row.liberado_para || row.responsavel_nome || '—';
+      const nome = normalizarEncarregado(rawNome);
+      const rede = Number(row.comprimento_trecho_executado) || 0;
+      const ligUn = Number(row.quantidade_ligacoes_realizadas) || 0;
+      const ligTot = Number(row.comprimento_total_ligacoes) || 0;
+
+      // Só conta o registro se houve efetivamente produção lançada.
+      if (rede <= 0 && ligUn <= 0 && ligTot <= 0) continue;
+
+      const grupo = row.os_id ? `os:${row.os_id}` : `tr:${trechoKey(row.trecho)}`;
+      const cur = map.get(nome) ?? {
+        nome,
+        rede: 0,
+        ligUn: 0,
+        days: new Set<string>(),
+        ligMaxPorOs: new Map<string, number>(),
+      };
+      cur.rede += rede;
+      cur.ligUn += ligUn;
+      cur.days.add(data);
+      const prevMax = cur.ligMaxPorOs.get(grupo) ?? 0;
+      if (ligTot > prevMax) cur.ligMaxPorOs.set(grupo, ligTot);
+      map.set(nome, cur);
+    }
+
     return Array.from(map.values())
-      .map((v) => ({
-        nome: v.nome,
-        ns: v.ns.size,
-        total: v.total,
-        dias: v.days.size,
-        media: v.days.size > 0 ? v.total / v.days.size : 0,
-      }))
+      .map((v) => {
+        let ligM = 0;
+        v.ligMaxPorOs.forEach((m) => { ligM += m; });
+        const total = v.rede + ligM;
+        const dias = v.days.size;
+        return {
+          nome: v.nome,
+          rede: Math.round(v.rede * 100) / 100,
+          ligM: Math.round(ligM * 100) / 100,
+          ligUn: v.ligUn,
+          total: Math.round(total * 100) / 100,
+          dias,
+          media: dias > 0 ? Math.round((total / dias) * 100) / 100 : 0,
+        };
+      })
       .sort((a, b) => b.total - a.total);
-  }, [registrosPeriodo, encNames]);
+  }, [relatorioRows, periodo.inicio, periodo.fim]);
+
 
   const kpis = useMemo(() => {
     const totalPrevisto = ordens.reduce((s, o) => s + (o.comprimento_previsto ?? 0), 0);
@@ -624,35 +725,137 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return `${Math.round(m)}m`;
   };
 
-  const totalPeriodo = porEncarregado.reduce((s, e) => s + e.total, 0);
-  const somaMediasPeriodo = porEncarregado.reduce((s, e) => s + e.media, 0);
+  const totaisEnc = useMemo(() => {
+    const t = { rede: 0, ligM: 0, ligUn: 0, total: 0, dias: 0, media: 0 };
+    porEncarregado.forEach((e) => {
+      t.rede += e.rede;
+      t.ligM += e.ligM;
+      t.ligUn += e.ligUn;
+      t.total += e.total;
+    });
+    t.media = porEncarregado.reduce((s, e) => s + e.media, 0);
+    return {
+      rede: Math.round(t.rede * 100) / 100,
+      ligM: Math.round(t.ligM * 100) / 100,
+      ligUn: t.ligUn,
+      total: Math.round(t.total * 100) / 100,
+      media: Math.round(t.media * 100) / 100,
+    };
+  }, [porEncarregado]);
 
-  // Filtro discreto de período — afeta apenas os cards "Produção por
-  // Encarregado" e "Produtividade por Profundidade". Apenas duas datas.
-  const PeriodoFiltro = () => (
-    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-      <span>Período:</span>
-      <input
-        type="date"
-        value={periodoInicio}
-        max={periodoFim || undefined}
-        onChange={(e) => setPeriodoInicio(e.target.value)}
-        className="h-6 px-1.5 text-[11px] rounded border border-border bg-background text-foreground"
-        aria-label="Data inicial"
-      />
-      <span>até</span>
-      <input
-        type="date"
-        value={periodoFim}
-        min={periodoInicio || undefined}
-        onChange={(e) => setPeriodoFim(e.target.value)}
-        className="h-6 px-1.5 text-[11px] rounded border border-border bg-background text-foreground"
-        aria-label="Data final"
-      />
-    </div>
-  );
+  // Persiste o período aplicado na URL (di/df) para deep-link e refresh.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (periodoInicio) params.set('di', periodoInicio); else params.delete('di');
+    if (periodoFim) params.set('df', periodoFim); else params.delete('df');
+    const qs = params.toString();
+    const next = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
+    window.history.replaceState(null, '', next);
+  }, [periodoInicio, periodoFim]);
+
+  // Seletor de período discreto com Popover + calendário shadcn + presets.
+  // Estado draft: alterações só entram em vigor no botão "Aplicar".
+  const PeriodoPicker = () => {
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState<DateRange | undefined>(() => {
+      const parse = (s: string) => {
+        if (!s) return undefined;
+        const [y, m, d] = s.split('-').map(Number);
+        return new Date(y, (m || 1) - 1, d || 1);
+      };
+      return { from: parse(periodoInicio), to: parse(periodoFim) };
+    });
+
+    const applyRange = (from: Date, to: Date) => {
+      setPeriodoInicio(toISODate(from));
+      setPeriodoFim(toISODate(to));
+      setOpen(false);
+    };
+
+    const preset = (label: string, fn: () => { from: Date; to: Date }) => {
+      const r = fn();
+      return (
+        <button
+          key={label}
+          type="button"
+          onClick={() => applyRange(r.from, r.to)}
+          className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors text-foreground"
+        >
+          {label}
+        </button>
+      );
+    };
+
+    const hoje = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+    const days = (n: number) => { const d = hoje(); d.setDate(d.getDate() - n); return d; };
+    const startOfMonth = () => { const d = hoje(); d.setDate(1); return d; };
+    const startOfLastMonth = () => { const d = startOfMonth(); d.setMonth(d.getMonth() - 1); return d; };
+    const endOfLastMonth = () => { const d = startOfMonth(); d.setDate(0); return d; };
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md border border-border/60 bg-background/60 hover:bg-muted/60 text-[11px] text-foreground transition-colors"
+            aria-label="Selecionar período"
+          >
+            <CalendarRange size={12} className="text-muted-foreground" />
+            <span className="tabular-nums">
+              {periodoInicio && periodoFim
+                ? `${fmtDateBR(periodo.inicio)} — ${fmtDateBR(periodo.fim)}`
+                : 'Selecionar período'}
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-auto p-0" sideOffset={4}>
+          <div className="flex flex-col sm:flex-row">
+            <div className="flex flex-col gap-0.5 p-2 border-b sm:border-b-0 sm:border-r border-border min-w-[140px]">
+              {preset('Hoje', () => ({ from: hoje(), to: hoje() }))}
+              {preset('Ontem', () => ({ from: days(1), to: days(1) }))}
+              {preset('Últimos 7 dias', () => ({ from: days(6), to: hoje() }))}
+              {preset('Últimos 30 dias', () => ({ from: days(29), to: hoje() }))}
+              {preset('Mês atual', () => ({ from: startOfMonth(), to: hoje() }))}
+              {preset('Mês anterior', () => ({ from: startOfLastMonth(), to: endOfLastMonth() }))}
+              {preset('Todo o período', () => ({
+                from: firstProducaoDate ? new Date(firstProducaoDate + 'T00:00:00') : hoje(),
+                to: hoje(),
+              }))}
+            </div>
+            <div className="p-2">
+              <Calendar
+                mode="range"
+                selected={draft}
+                onSelect={setDraft}
+                numberOfMonths={1}
+                initialFocus
+                className={cn('p-0 pointer-events-auto')}
+              />
+              <div className="flex items-center justify-end gap-2 mt-2">
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={!draft?.from}
+                  onClick={() => {
+                    if (draft?.from) applyRange(draft.from, draft.to ?? draft.from);
+                  }}
+                >
+                  Aplicar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   const periodoRangeLabel = `${fmtDateBR(periodo.inicio)} a ${fmtDateBR(periodo.fim)}`;
+
 
   return (
     <div className="dc-root flex flex-col gap-3">
@@ -784,31 +987,46 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         <div className="dc-tables col-span-3 flex flex-col gap-2">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-[1.6] min-h-0 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between gap-2 mb-1">
-              <PeriodoFiltro />
-            </div>
-            <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="text-sm font-semibold text-foreground">Produção por Encarregado</h3>
+              <PeriodoPicker />
             </div>
+            <p className="text-[10px] text-muted-foreground mb-2">
+              Produção lançada de {fmtDateBR(periodo.inicio)} a {fmtDateBR(periodo.fim)}
+            </p>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="text-left text-muted-foreground border-b border-border">
                     <th className="pb-1 font-medium">Encarregado</th>
-                    <th className="pb-1 font-medium text-right">Produção (m)</th>
-                    <th className="pb-1 font-medium text-right">Média (m/dia)</th>
+                    <th className="pb-1 font-medium text-right">Rede (m)</th>
+                    <th className="pb-1 font-medium text-right">Lig. (m)</th>
+                    <th className="pb-1 font-medium text-right">Lig. (un)</th>
+                    <th className="pb-1 font-medium text-right">Total (m)</th>
+                    <th className="pb-1 font-medium text-right">Média (m/d)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {porEncarregado.length === 0 ? (
-                    <tr><td colSpan={3} className="text-center text-muted-foreground py-3">Sem dados</td></tr>
+                  {loadingEncarregado ? (
+                    <tr><td colSpan={6} className="text-center text-muted-foreground py-3">
+                      <span className="inline-flex items-center gap-1.5"><Loader2 className="animate-spin" size={12} /> Carregando…</span>
+                    </td></tr>
+                  ) : porEncarregado.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center text-muted-foreground py-3">Sem produção lançada no período</td></tr>
                   ) : porEncarregado.map((e) => (
                     <tr key={e.nome} className="border-b border-border/40">
                       <td className="py-1 text-foreground">{e.nome}</td>
-                      <td className="py-1 text-right font-semibold">
-                        {(Math.round(e.total * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      <td className="py-1 text-right tabular-nums">
+                        {e.rede.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
-                      <td className="py-1 text-right text-foreground">
-                        {(Math.round(e.media * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      <td className="py-1 text-right tabular-nums">
+                        {e.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      </td>
+                      <td className="py-1 text-right tabular-nums text-muted-foreground">{e.ligUn}</td>
+                      <td className="py-1 text-right font-semibold tabular-nums">
+                        {e.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      </td>
+                      <td className="py-1 text-right tabular-nums text-foreground">
+                        {e.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
                     </tr>
                   ))}
@@ -816,22 +1034,35 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               </table>
             </div>
             {porEncarregado.length > 0 && (
-              <div className="border-t border-border mt-2 pt-2 text-[11px] space-y-0.5">
+              <div className="border-t border-border mt-2 pt-2 text-[11px] grid grid-cols-2 gap-x-3 gap-y-0.5">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total produção</span>
-                  <span className="font-semibold text-foreground">
-                    {(Math.round(totalPeriodo * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
+                  <span className="text-muted-foreground">Rede</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {totaisEnc.rede.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Produção diária média da obra</span>
-                  <span className="font-semibold text-foreground">
-                    {(Math.round(somaMediasPeriodo * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia
+                  <span className="text-muted-foreground">Ligações</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {totaisEnc.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m · {totaisEnc.ligUn} un
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total produção</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {totaisEnc.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Média diária</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {totaisEnc.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia
                   </span>
                 </div>
               </div>
             )}
           </div>
+
 
           <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-2 flex-1 min-h-0 overflow-hidden flex flex-col">
             <div className="flex flex-col gap-0.5 mb-1">

@@ -51,6 +51,29 @@ interface OSRow {
   real_validado: boolean | null;
 }
 
+interface RelatorioRow {
+  os_id: string | null;
+  trecho: string | null;
+  encarregado: string | null;
+  liberado_para: string | null;
+  responsavel_nome: string | null;
+  data_producao: string;
+  comprimento_trecho_executado: number | null;
+  quantidade_ligacoes_realizadas: number | null;
+  comprimento_total_ligacoes: number | null;
+}
+
+// Normaliza variações de nome de encarregado para nomes canônicos exibidos.
+const normalizarEncarregado = (raw: string | null | undefined): string => {
+  const s = String(raw ?? '').trim();
+  if (!s) return '—';
+  const low = s.toLowerCase();
+  if (low.includes('nilton')) return 'Nilton Alexandre';
+  if (low.includes('ailton')) return 'Ailton Santos';
+  return s;
+};
+
+
 
 const MES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const formatDayLabel = (d: Date) =>

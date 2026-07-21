@@ -222,12 +222,24 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const [registrosBrutos, setRegistrosBrutos] = useState<any[]>([]);
   const [osRows, setOsRows] = useState<OSRow[]>([]);
   const [ligacoesRows, setLigacoesRows] = useState<{ os_id: string; comprimento: number | null; registro_producao_id: string | null }[]>([]);
+  const [relatorioRows, setRelatorioRows] = useState<RelatorioRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingEncarregado, setLoadingEncarregado] = useState(true);
   const [baciaFilter, setBaciaFilter] = useState('');
   const [baciaMode, setBaciaMode] = useState<'todas' | 'com_execucao'>('todas');
   const [subBaciaTab, setSubBaciaTab] = useState<'rede' | 'ligacoes' | 'resumo'>('rede');
-  const [periodoInicio, setPeriodoInicio] = useState<string>('');
-  const [periodoFim, setPeriodoFim] = useState<string>('');
+  // Período aplicado (afeta o card). Inicializa a partir da URL se presente.
+  const [periodoInicio, setPeriodoInicio] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    const p = new URLSearchParams(window.location.search).get('di');
+    return p && /^\d{4}-\d{2}-\d{2}$/.test(p) ? p : '';
+  });
+  const [periodoFim, setPeriodoFim] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    const p = new URLSearchParams(window.location.search).get('df');
+    return p && /^\d{4}-\d{2}-\d{2}$/.test(p) ? p : '';
+  });
+
 
   const [encNames, setEncNames] = useState<Record<string, string>>({});
 

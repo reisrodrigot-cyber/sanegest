@@ -19,7 +19,7 @@ import {
   CalendarDays,
   TrendingUp,
   ListChecks,
-  
+  CalendarRange,
   Layers,
   Loader2,
   Radio,
@@ -27,8 +27,14 @@ import {
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import type { DateRange } from 'react-day-picker';
 
 import type { OrdemServico } from '@/types/sanegest';
+
 
 interface DailyRow {
   user_id: string;

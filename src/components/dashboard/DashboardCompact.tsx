@@ -987,31 +987,46 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         <div className="dc-tables col-span-3 flex flex-col gap-2">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-[1.6] min-h-0 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between gap-2 mb-1">
-              <PeriodoFiltro />
-            </div>
-            <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="text-sm font-semibold text-foreground">Produção por Encarregado</h3>
+              <PeriodoPicker />
             </div>
+            <p className="text-[10px] text-muted-foreground mb-2">
+              Produção lançada de {fmtDateBR(periodo.inicio)} a {fmtDateBR(periodo.fim)}
+            </p>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="text-left text-muted-foreground border-b border-border">
                     <th className="pb-1 font-medium">Encarregado</th>
-                    <th className="pb-1 font-medium text-right">Produção (m)</th>
-                    <th className="pb-1 font-medium text-right">Média (m/dia)</th>
+                    <th className="pb-1 font-medium text-right">Rede (m)</th>
+                    <th className="pb-1 font-medium text-right">Lig. (m)</th>
+                    <th className="pb-1 font-medium text-right">Lig. (un)</th>
+                    <th className="pb-1 font-medium text-right">Total (m)</th>
+                    <th className="pb-1 font-medium text-right">Média (m/d)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {porEncarregado.length === 0 ? (
-                    <tr><td colSpan={3} className="text-center text-muted-foreground py-3">Sem dados</td></tr>
+                  {loadingEncarregado ? (
+                    <tr><td colSpan={6} className="text-center text-muted-foreground py-3">
+                      <span className="inline-flex items-center gap-1.5"><Loader2 className="animate-spin" size={12} /> Carregando…</span>
+                    </td></tr>
+                  ) : porEncarregado.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center text-muted-foreground py-3">Sem produção lançada no período</td></tr>
                   ) : porEncarregado.map((e) => (
                     <tr key={e.nome} className="border-b border-border/40">
                       <td className="py-1 text-foreground">{e.nome}</td>
-                      <td className="py-1 text-right font-semibold">
-                        {(Math.round(e.total * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      <td className="py-1 text-right tabular-nums">
+                        {e.rede.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
-                      <td className="py-1 text-right text-foreground">
-                        {(Math.round(e.media * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      <td className="py-1 text-right tabular-nums">
+                        {e.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      </td>
+                      <td className="py-1 text-right tabular-nums text-muted-foreground">{e.ligUn}</td>
+                      <td className="py-1 text-right font-semibold tabular-nums">
+                        {e.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      </td>
+                      <td className="py-1 text-right tabular-nums text-foreground">
+                        {e.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
                     </tr>
                   ))}
@@ -1019,22 +1034,35 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               </table>
             </div>
             {porEncarregado.length > 0 && (
-              <div className="border-t border-border mt-2 pt-2 text-[11px] space-y-0.5">
+              <div className="border-t border-border mt-2 pt-2 text-[11px] grid grid-cols-2 gap-x-3 gap-y-0.5">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total produção</span>
-                  <span className="font-semibold text-foreground">
-                    {(Math.round(totalPeriodo * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
+                  <span className="text-muted-foreground">Rede</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {totaisEnc.rede.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Produção diária média da obra</span>
-                  <span className="font-semibold text-foreground">
-                    {(Math.round(somaMediasPeriodo * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia
+                  <span className="text-muted-foreground">Ligações</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {totaisEnc.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m · {totaisEnc.ligUn} un
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total produção</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {totaisEnc.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Média diária</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {totaisEnc.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia
                   </span>
                 </div>
               </div>
             )}
           </div>
+
 
           <div className="dc-table-bacia bg-card rounded-lg border border-border shadow-sm p-2 flex-1 min-h-0 overflow-hidden flex flex-col">
             <div className="flex flex-col gap-0.5 mb-1">

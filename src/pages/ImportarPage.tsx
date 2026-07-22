@@ -108,7 +108,13 @@ function parseExcel(data: ArrayBuffer): ParsedOS[] {
       pv_montante: toStr(row[3]), pv_jusante: toStr(row[4]),
       comprimento_previsto: comprimento,
       largura_vala: toNum(row[7]),
-      prof_media_prevista: toNum(row[9]),
+      prof_media_prevista: (() => {
+        const raw = toNum(row[9]);
+        if (raw != null) return raw;
+        const mont = toNum(row[12]);
+        const jus = toNum(row[13]);
+        return mont != null && jus != null ? (mont + jus) / 2 : null;
+      })(),
       dn: toNum(row[11]),
       prof_montante: toNum(row[12]),
       prof_jusante: toNum(row[13]),

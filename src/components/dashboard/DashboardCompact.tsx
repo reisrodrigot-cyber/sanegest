@@ -1191,7 +1191,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       />
                     </div>
                     <span className="text-[11px] font-semibold text-foreground w-[58px] text-right">
-                      {s.media.toLocaleString('pt-BR')} m/d
+                      {s.media == null ? '—' : `${s.media.toLocaleString('pt-BR')} m/d`}
                     </span>
                   </div>
                 ))}

@@ -412,13 +412,26 @@ const OSDetailPage = () => {
     setSavingEdit(true);
     const toNum = (v: string) => v ? Number(v) : null;
     const toInt = (v: string) => v ? parseInt(v) : null;
+    // Regra: prof_media_prevista/real é calculada apenas quando o valor
+    // atual no banco é NULL e ambas as pontas (montante + jusante) existem.
+    // Nunca sobrescreve um valor já existente.
+    const montPrev = toNum(editFields.prof_montante);
+    const jusPrev = toNum(editFields.prof_jusante);
+    const montReal = toNum(editFields.prof_montante_real);
+    const jusReal = toNum(editFields.prof_jusante_real);
+    const profMediaPrevOut = os.prof_media_prevista != null
+      ? os.prof_media_prevista
+      : (montPrev != null && jusPrev != null ? (montPrev + jusPrev) / 2 : null);
+    const profMediaRealOut = os.prof_media_real != null
+      ? os.prof_media_real
+      : (montReal != null && jusReal != null ? (montReal + jusReal) / 2 : null);
     const update: any = {
       bacia: editFields.bacia ?? '',
       trecho: editFields.trecho ?? '',
       comprimento_previsto: toNum(editFields.comprimento_previsto),
       // comprimento_real é cache automático dos registros_producao — não sobrescrever.
-      prof_media_prevista: toNum(editFields.prof_media_prevista),
-      prof_media_real: toNum(editFields.prof_media_real),
+      prof_media_prevista: profMediaPrevOut,
+      prof_media_real: profMediaRealOut,
       dn: toNum(editFields.dn),
       dn_real: toNum(editFields.dn_real),
       largura_vala: toNum(editFields.largura_vala),

@@ -145,16 +145,18 @@ const ChartFrame = ({
 
 const FAIXAS = [
   { label: 'Até 1,25m', max: 1.25 },
-  { label: '1,25m a 2,00m', max: 2.0 },
-  { label: '2,00m a 3,00m', max: 3.0 },
-  { label: 'Acima de 3,00m', max: Infinity },
+  { label: '1,25m a 1,80m', max: 1.80 },
+  { label: '1,80m a 2,80m', max: 2.80 },
+  { label: '2,80m a 3,80m', max: 3.80 },
+  { label: 'Acima de 3,80m', max: Infinity },
 ];
 const faixaIndex = (prof: number | null) => {
   if (prof == null) return -1;
   if (prof <= 1.25) return 0;
-  if (prof <= 2.0) return 1;
-  if (prof <= 3.0) return 2;
-  return 3;
+  if (prof <= 1.80) return 1;
+  if (prof <= 2.80) return 2;
+  if (prof <= 3.80) return 3;
+  return 4;
 };
 
 const toISODate = (d: Date) => {

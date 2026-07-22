@@ -912,7 +912,39 @@ const OSDetailPage = () => {
                   {fmt(os.comprimento_real)} <span className="text-[10px]">(auto)</span>
                 </span>
               </div>
-              <EditableRow label="Prof. Média (m)" previstoValue={editFields.prof_media_prevista} realValue={editFields.prof_media_real} previstoField="prof_media_prevista" realField="prof_media_real" onChange={updateEditField} />
+              {(() => {
+                const parseN = (v: string) => { const n = Number(v); return v && !isNaN(n) ? n : null; };
+                const mp = parseN(editFields.prof_montante);
+                const jp = parseN(editFields.prof_jusante);
+                const mr = parseN(editFields.prof_montante_real);
+                const jr = parseN(editFields.prof_jusante_real);
+                const prevSaved = os.prof_media_prevista;
+                const realSaved = os.prof_media_real;
+                const prevAuto = prevSaved != null
+                  ? prevSaved
+                  : (mp != null && jp != null ? (mp + jp) / 2 : null);
+                const realAuto = realSaved != null
+                  ? realSaved
+                  : (mr != null && jr != null ? (mr + jr) / 2 : null);
+                const fmt2 = (n: number | null) => n != null ? n.toFixed(2) : '';
+                return (
+                  <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-center">
+                    <span className="text-sm text-muted-foreground">Prof. Média (m)</span>
+                    <input
+                      readOnly
+                      value={fmt2(prevAuto)}
+                      title={prevSaved != null ? 'Valor salvo (não é sobrescrito)' : 'Calculada automaticamente a partir de Prof. Montante e Prof. Jusante'}
+                      className="px-2 py-1 rounded border border-input bg-muted/50 text-muted-foreground text-sm w-full cursor-not-allowed"
+                    />
+                    <input
+                      readOnly
+                      value={fmt2(realAuto)}
+                      title={realSaved != null ? 'Valor salvo (não é sobrescrito)' : 'Calculada automaticamente a partir das profundidades reais'}
+                      className="px-2 py-1 rounded border border-input bg-muted/50 text-muted-foreground text-sm w-full cursor-not-allowed"
+                    />
+                  </div>
+                );
+              })()}
               <EditableRow label="DN (m)" previstoValue={editFields.dn} realValue={editFields.dn_real} previstoField="dn" realField="dn_real" onChange={updateEditField} />
               <EditableRow label="Largura Vala (m)" previstoValue={editFields.largura_vala} realValue={editFields.largura_vala_real} previstoField="largura_vala" realField="largura_vala_real" onChange={updateEditField} />
               <EditableRow label="Prof. Montante (m)" previstoValue={editFields.prof_montante} realValue={editFields.prof_montante_real} previstoField="prof_montante" realField="prof_montante_real" onChange={updateEditField} />

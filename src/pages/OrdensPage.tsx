@@ -280,16 +280,27 @@ const OrdensPage = () => {
                     </div>
                   </td>
                   <td className="px-2 py-3">
-                    {locatableOsIds.has(os.id) && (
-                      <button
-                        onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-primary/10 transition-colors"
-                        style={{ color: '#4dd9ac' }}
-                        title="Localizar no mapa"
-                      >
-                        <MapPin size={14} /> <span className="hidden lg:inline">Localizar</span>
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1 justify-end">
+                      {locatableOsIds.has(os.id) && (
+                        <button
+                          onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-primary/10 transition-colors"
+                          style={{ color: '#4dd9ac' }}
+                          title="Localizar no mapa"
+                        >
+                          <MapPin size={14} /> <span className="hidden lg:inline">Localizar</span>
+                        </button>
+                      )}
+                      {canLiberar && os.liberado && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDesatribuirOS([os]); }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Desatribuir N.S."
+                        >
+                          <UserMinus size={14} /> <span className="hidden lg:inline">Desatribuir</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

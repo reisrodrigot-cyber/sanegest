@@ -316,7 +316,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         >
           <AlertTriangle className="mt-0.5 shrink-0" size={18} />
           <span className="font-semibold">
-            PREENCHER APENAS O EXECUTADO REAL DE CAMPO, A N.S. DO SANEGEST PODE NÃO ESTAR ATUALIZADA, USE A SUA PRODUÇÃO
+            PREENCHER COM O EXECUTADO REAL DE CAMPO, A O.S. DO SANEGEST PODE NÃO ESTAR ATUALIZADA, USE A SUA PRODUÇÃO REAL DO DIA
           </span>
         </div>
         <div className="grid md:grid-cols-2 gap-3">

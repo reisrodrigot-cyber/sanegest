@@ -5,7 +5,7 @@ import { MeusRegistrosEnviados } from '@/components/encarregado/MeusRegistrosEnv
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
-import { Loader2, Save, MapPin, Eye, Pencil, X, Check } from 'lucide-react';
+import { Loader2, Save, MapPin, Eye, Pencil, X, Check, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OrdemServico } from '@/types/sanegest';
@@ -309,6 +309,16 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       {/* Novo registro do dia */}
       <div className="bg-card border border-border rounded-lg p-4 space-y-3">
         <h3 className="text-sm font-semibold text-foreground">Registro de hoje</h3>
+        <div
+          className="flex items-start gap-2.5 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm leading-snug text-destructive"
+          role="alert"
+          aria-live="assertive"
+        >
+          <AlertTriangle className="mt-0.5 shrink-0" size={18} />
+          <span className="font-semibold">
+            PREENCHER APENAS O EXECUTADO REAL DE CAMPO, A N.S. DO SANEGEST PODE NÃO ESTAR ATUALIZADA, USE A SUA PRODUÇÃO
+          </span>
+        </div>
         <div className="grid md:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-muted-foreground">Rede do dia — comprimento de trecho (m)</label>

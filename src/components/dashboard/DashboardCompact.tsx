@@ -736,22 +736,32 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return m;
   }, [ligacoesExecutadasPorOs]);
 
-  // Totais de ligações (para KPI superior) — usa EXATAMENTE a mesma
-  // consolidação da tabela "Produção por Encarregado" (via `porEncarregado`),
-  // para garantir consistência de metragem. Regras:
-  //   - qtd: soma de quantidade_ligacoes_realizadas no período;
+  // Totais de ligações (KPI superior) — usa a MESMA regra de consolidação
+  // da tabela "Produção por Encarregado":
+  //   - qtd: soma direta de quantidade_ligacoes_realizadas no período;
   //   - metragem: agrupa por os_id (fallback trecho normalizado) e usa o
-  //     MAIOR comprimento_total_ligacoes por grupo, evitando dupla contagem
-  //     quando uma O.S. aparece em vários lançamentos/datas.
+  //     MAIOR comprimento_total_ligacoes por grupo. Uma O.S. nunca é contada
+  //     duas vezes, mesmo que apareça em várias datas ou encarregados.
   const totaisLigacoes = useMemo(() => {
+    const trechoKey = (t: string | null | undefined) =>
+      String(t ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const maxPorGrupo = new Map<string, number>();
     let qtd = 0;
-    let comprimento = 0;
-    for (const enc of porEncarregado) {
-      qtd += enc.ligUn;
-      comprimento += enc.ligM;
+    for (const row of relatorioRows) {
+      const data = String(row.data_producao ?? '');
+      if (!data || data < periodo.inicio || data > periodo.fim) continue;
+      const ligUn = Number(row.quantidade_ligacoes_realizadas) || 0;
+      const ligTot = Number(row.comprimento_total_ligacoes) || 0;
+      qtd += ligUn;
+      if (ligTot <= 0) continue;
+      const grupo = row.os_id ? `os:${row.os_id}` : `tr:${trechoKey(row.trecho)}`;
+      const prev = maxPorGrupo.get(grupo) ?? 0;
+      if (ligTot > prev) maxPorGrupo.set(grupo, ligTot);
     }
+    let comprimento = 0;
+    maxPorGrupo.forEach((v) => { comprimento += v; });
     return { qtd, comprimento: Math.round(comprimento * 100) / 100 };
-  }, [porEncarregado]);
+  }, [relatorioRows, periodo.inicio, periodo.fim]);
 
   // Avanço por Sub-bacia (todas as NS, independente de status/liberação)
   const porTrecho = useMemo(() => {

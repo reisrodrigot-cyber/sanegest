@@ -818,15 +818,28 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       t.ligUn += e.ligUn;
       t.total += e.total;
     });
-    t.media = porEncarregado.reduce((s, e) => s + e.media, 0);
+    // Dias produtivos da obra: datas distintas dentro do período com
+    // pelo menos um lançamento com rede > 0 ou ligação realizada > 0.
+    const diasProdutivos = new Set<string>();
+    for (const row of relatorioRows) {
+      const data = String(row.data_producao ?? '');
+      if (!data) continue;
+      if (data < periodo.inicio || data > periodo.fim) continue;
+      const rede = Number(row.comprimento_trecho_executado) || 0;
+      const ligUn = Number(row.quantidade_ligacoes_realizadas) || 0;
+      if (rede > 0 || ligUn > 0) diasProdutivos.add(data);
+    }
+    t.dias = diasProdutivos.size;
+    t.media = t.dias > 0 ? t.total / t.dias : 0;
     return {
       rede: Math.round(t.rede * 100) / 100,
       ligM: Math.round(t.ligM * 100) / 100,
       ligUn: t.ligUn,
       total: Math.round(t.total * 100) / 100,
+      dias: t.dias,
       media: Math.round(t.media * 100) / 100,
     };
-  }, [porEncarregado]);
+  }, [porEncarregado, relatorioRows, periodo.inicio, periodo.fim]);
 
   // Persiste o período aplicado na URL (di/df) para deep-link e refresh.
   useEffect(() => {

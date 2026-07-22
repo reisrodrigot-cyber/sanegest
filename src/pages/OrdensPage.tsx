@@ -463,6 +463,15 @@ const OrdensPage = () => {
           >
             <UserPlus size={14} /> Liberar para encarregado
           </button>
+          {selectedOS.some(o => o.liberado) && (
+            <button
+              onClick={() => setDesatribuirOS(selectedOS.filter(o => o.liberado))}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-destructive/40 text-destructive text-sm font-medium hover:bg-destructive/10"
+              title="Desatribuir N.S. selecionadas"
+            >
+              <UserMinus size={14} /> Desatribuir
+            </button>
+          )}
           <button
             onClick={() => setSelected(new Set())}
             className="inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-muted text-muted-foreground"
@@ -477,6 +486,13 @@ const OrdensPage = () => {
         open={showLiberarModal}
         onClose={() => setShowLiberarModal(false)}
         selectedOS={selectedOS}
+        onDone={() => { setSelected(new Set()); refetch(); }}
+      />
+
+      <DesatribuirModal
+        open={desatribuirOS.length > 0}
+        onClose={() => setDesatribuirOS([])}
+        selectedOS={desatribuirOS}
         onDone={() => { setSelected(new Set()); refetch(); }}
       />
     </AppLayout>

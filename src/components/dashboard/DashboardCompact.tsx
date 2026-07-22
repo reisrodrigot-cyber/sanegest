@@ -671,13 +671,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         diasProp[i] += m / totalDia;
       });
     });
-    const medias = totais.map((t, i) => (diasProp[i] > 0 ? t / diasProp[i] : 0));
-    const max = Math.max(1, ...medias);
+    const medias = totais.map((t, i) => (diasProp[i] > 0 ? t / diasProp[i] : null));
+    const max = Math.max(1, ...medias.map((v) => v ?? 0));
     return FAIXAS.map((f, i) => ({
       label: f.label,
-      media: Math.round(medias[i] * 10) / 10,
+      media: medias[i] == null ? null : Math.round((medias[i] as number) * 10) / 10,
       total: Math.round(totais[i]),
-      pctBar: (medias[i] / max) * 100,
+      pctBar: medias[i] == null ? 0 : ((medias[i] as number) / max) * 100,
     }));
   }, [registrosPeriodo, osRows]);
 

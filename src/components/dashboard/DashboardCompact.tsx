@@ -497,6 +497,79 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     };
   }, [ordens, registros, yesterdayStr]);
 
+  // ------------------------------------------------------------
+  // Avanço Físico separado por POV e SEDE.
+  // Classificação por prefixo normalizado da bacia. Reage ao filtro de
+  // período e à aba (Rede / Ligações / Resumo). Executado vem da view
+  // `relatorio_producao_diaria` (respeita período); previsto vem do plano
+  // (ordens.comprimento_previsto).
+  // ------------------------------------------------------------
+  const classifyBacia = (bacia: string | null | undefined): 'POV' | 'SEDE' | null => {
+    const n = String(bacia ?? '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().replace(/[.\s]+/g, ' ').trim();
+    if (n.startsWith('POV')) return 'POV';
+    if (n.startsWith('SEDE')) return 'SEDE';
+    return null;
+  };
+
+  const avancoPovSede = useMemo(() => {
+    const classByOs = new Map<string, 'POV' | 'SEDE'>();
+    const prev = { POV: 0, SEDE: 0 };
+    ordens.forEach((o) => {
+      const c = classifyBacia(o.bacia);
+      if (!c) return;
+      classByOs.set(o.id, c);
+      prev[c] += Number(o.comprimento_previsto) || 0;
+    });
+
+    const execRede = { POV: 0, SEDE: 0 };
+    // ligações (m): pega o MAIOR comprimento_total_ligacoes por (os_id,
+    // encarregado) no período — mesma regra do card "Produção por
+    // Encarregado" — para evitar contagem duplicada quando o encarregado
+    // relança o total acumulado.
+    const ligGroups = new Map<string, { cls: 'POV' | 'SEDE'; max: number }>();
+    for (const row of relatorioRows) {
+      const d = row.data_producao;
+      if (!d || d < periodo.inicio || d > periodo.fim) continue;
+      if (!row.os_id) continue;
+      const cls = classByOs.get(row.os_id);
+      if (!cls) continue;
+      execRede[cls] += Number(row.comprimento_trecho_executado) || 0;
+      const key = `${row.os_id}|${row.encarregado ?? ''}`;
+      const cur = Number(row.comprimento_total_ligacoes) || 0;
+      const g = ligGroups.get(key);
+      if (!g || cur > g.max) ligGroups.set(key, { cls, max: cur });
+    }
+    const execLig = { POV: 0, SEDE: 0 };
+    ligGroups.forEach((g) => { execLig[g.cls] += g.max; });
+
+    const build = (cls: 'POV' | 'SEDE') => {
+      let executado = 0;
+      let previsto = 0;
+      if (subBaciaTab === 'rede') {
+        executado = execRede[cls];
+        previsto = prev[cls];
+      } else if (subBaciaTab === 'ligacoes') {
+        executado = execLig[cls];
+        previsto = 0; // ligações não têm previsto confiável
+      } else {
+        executado = execRede[cls] + execLig[cls];
+        previsto = prev[cls];
+      }
+      const pct = previsto > 0 ? Math.round((executado / previsto) * 100) : null;
+      const fmt0 = (n: number) => Math.round(n).toLocaleString('pt-BR');
+      return {
+        pct: pct != null ? `${pct}%` : '—',
+        label: previsto > 0
+          ? `${fmt0(executado)} / ${fmt0(previsto)} m`
+          : `${fmt0(executado)} m executados`,
+      };
+    };
+    return { POV: build('POV'), SEDE: build('SEDE') };
+  }, [ordens, relatorioRows, periodo.inicio, periodo.fim, subBaciaTab]);
+
+
   // Produção diária (30 dias)
   const dailyData = useMemo(() => {
     const now = new Date();
@@ -862,13 +935,20 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
 
       {/* Row 1 — KPIs */}
-      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
-          label="Avanço Físico"
-          value={kpis.avancoPct}
-          sub={kpis.avancoLabel}
+          label="Avanço Físico — POV"
+          value={avancoPovSede.POV.pct}
+          sub={avancoPovSede.POV.label}
           accent={accent.blueDark}
+        />
+        <KpiCard
+          icon={<TrendingUp size={16} />}
+          label="Avanço Físico — SEDE"
+          value={avancoPovSede.SEDE.pct}
+          sub={avancoPovSede.SEDE.label}
+          accent={accent.blue}
         />
         <KpiCard
           icon={<CalendarDays size={16} />}

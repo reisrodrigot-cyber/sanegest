@@ -412,13 +412,26 @@ const OSDetailPage = () => {
     setSavingEdit(true);
     const toNum = (v: string) => v ? Number(v) : null;
     const toInt = (v: string) => v ? parseInt(v) : null;
+    // Regra: prof_media_prevista/real é calculada apenas quando o valor
+    // atual no banco é NULL e ambas as pontas (montante + jusante) existem.
+    // Nunca sobrescreve um valor já existente.
+    const montPrev = toNum(editFields.prof_montante);
+    const jusPrev = toNum(editFields.prof_jusante);
+    const montReal = toNum(editFields.prof_montante_real);
+    const jusReal = toNum(editFields.prof_jusante_real);
+    const profMediaPrevOut = os.prof_media_prevista != null
+      ? os.prof_media_prevista
+      : (montPrev != null && jusPrev != null ? (montPrev + jusPrev) / 2 : null);
+    const profMediaRealOut = os.prof_media_real != null
+      ? os.prof_media_real
+      : (montReal != null && jusReal != null ? (montReal + jusReal) / 2 : null);
     const update: any = {
       bacia: editFields.bacia ?? '',
       trecho: editFields.trecho ?? '',
       comprimento_previsto: toNum(editFields.comprimento_previsto),
       // comprimento_real é cache automático dos registros_producao — não sobrescrever.
-      prof_media_prevista: toNum(editFields.prof_media_prevista),
-      prof_media_real: toNum(editFields.prof_media_real),
+      prof_media_prevista: profMediaPrevOut,
+      prof_media_real: profMediaRealOut,
       dn: toNum(editFields.dn),
       dn_real: toNum(editFields.dn_real),
       largura_vala: toNum(editFields.largura_vala),
@@ -462,9 +475,16 @@ const OSDetailPage = () => {
     setSavingReal(true);
     const toNum = (v: string) => v ? Number(v) : null;
     const toInt = (v: string) => v ? parseInt(v) : null;
+    // Mesma regra do previsto: só deriva a média executada quando o valor
+    // atual é NULL e ambas as pontas reais estão preenchidas.
+    const montReal = toNum(realFields.prof_montante_real);
+    const jusReal = toNum(realFields.prof_jusante_real);
+    const profMediaRealOut = os.prof_media_real != null
+      ? os.prof_media_real
+      : (montReal != null && jusReal != null ? (montReal + jusReal) / 2 : null);
     const update: any = {
       // comprimento_real: cache automático — não sobrescrever pela UI.
-      prof_media_real: toNum(realFields.prof_media_real),
+      prof_media_real: profMediaRealOut,
       dn_real: toNum(realFields.dn_real),
       largura_vala_real: toNum(realFields.largura_vala_real),
       prof_montante_real: toNum(realFields.prof_montante_real),
@@ -892,7 +912,39 @@ const OSDetailPage = () => {
                   {fmt(os.comprimento_real)} <span className="text-[10px]">(auto)</span>
                 </span>
               </div>
-              <EditableRow label="Prof. Média (m)" previstoValue={editFields.prof_media_prevista} realValue={editFields.prof_media_real} previstoField="prof_media_prevista" realField="prof_media_real" onChange={updateEditField} />
+              {(() => {
+                const parseN = (v: string) => { const n = Number(v); return v && !isNaN(n) ? n : null; };
+                const mp = parseN(editFields.prof_montante);
+                const jp = parseN(editFields.prof_jusante);
+                const mr = parseN(editFields.prof_montante_real);
+                const jr = parseN(editFields.prof_jusante_real);
+                const prevSaved = os.prof_media_prevista;
+                const realSaved = os.prof_media_real;
+                const prevAuto = prevSaved != null
+                  ? prevSaved
+                  : (mp != null && jp != null ? (mp + jp) / 2 : null);
+                const realAuto = realSaved != null
+                  ? realSaved
+                  : (mr != null && jr != null ? (mr + jr) / 2 : null);
+                const fmt2 = (n: number | null) => n != null ? n.toFixed(2) : '';
+                return (
+                  <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-center">
+                    <span className="text-sm text-muted-foreground">Prof. Média (m)</span>
+                    <input
+                      readOnly
+                      value={fmt2(prevAuto)}
+                      title={prevSaved != null ? 'Valor salvo (não é sobrescrito)' : 'Calculada automaticamente a partir de Prof. Montante e Prof. Jusante'}
+                      className="px-2 py-1 rounded border border-input bg-muted/50 text-muted-foreground text-sm w-full cursor-not-allowed"
+                    />
+                    <input
+                      readOnly
+                      value={fmt2(realAuto)}
+                      title={realSaved != null ? 'Valor salvo (não é sobrescrito)' : 'Calculada automaticamente a partir das profundidades reais'}
+                      className="px-2 py-1 rounded border border-input bg-muted/50 text-muted-foreground text-sm w-full cursor-not-allowed"
+                    />
+                  </div>
+                );
+              })()}
               <EditableRow label="DN (m)" previstoValue={editFields.dn} realValue={editFields.dn_real} previstoField="dn" realField="dn_real" onChange={updateEditField} />
               <EditableRow label="Largura Vala (m)" previstoValue={editFields.largura_vala} realValue={editFields.largura_vala_real} previstoField="largura_vala" realField="largura_vala_real" onChange={updateEditField} />
               <EditableRow label="Prof. Montante (m)" previstoValue={editFields.prof_montante} realValue={editFields.prof_montante_real} previstoField="prof_montante" realField="prof_montante_real" onChange={updateEditField} />
@@ -928,7 +980,27 @@ const OSDetailPage = () => {
                 <span className="text-xs font-semibold text-secondary uppercase">Real (editável)</span>
               </div>
               <RealEditableRow label="Comprimento (m)" previsto={os.comprimento_previsto} realValue={realFields.comprimento_real} realField="comprimento_real" onChange={updateRealField} />
-              <RealEditableRow label="Prof. Média (m)" previsto={os.prof_media_prevista} realValue={realFields.prof_media_real} realField="prof_media_real" onChange={updateRealField} />
+              {(() => {
+                const parseN = (v: string) => { const n = Number(v); return v && !isNaN(n) ? n : null; };
+                const mr = parseN(realFields.prof_montante_real);
+                const jr = parseN(realFields.prof_jusante_real);
+                const saved = os.prof_media_real;
+                const auto = saved != null
+                  ? saved
+                  : (mr != null && jr != null ? (mr + jr) / 2 : null);
+                return (
+                  <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-center">
+                    <span className="text-sm text-muted-foreground">Prof. Média (m)</span>
+                    <span className="text-sm font-medium text-foreground">{fmt(os.prof_media_prevista)}</span>
+                    <input
+                      readOnly
+                      value={auto != null ? auto.toFixed(2) : ''}
+                      title={saved != null ? 'Valor salvo (não é sobrescrito)' : 'Calculada automaticamente a partir das profundidades reais'}
+                      className="px-2 py-1 rounded border border-input bg-muted/50 text-muted-foreground text-sm w-full cursor-not-allowed"
+                    />
+                  </div>
+                );
+              })()}
               <RealEditableRow label="DN (m)" previsto={os.dn} realValue={realFields.dn_real} realField="dn_real" onChange={updateRealField} />
               <RealEditableRow label="Largura Vala (m)" previsto={os.largura_vala} realValue={realFields.largura_vala_real} realField="largura_vala_real" onChange={updateRealField} />
               <RealEditableRow label="Prof. Montante (m)" previsto={os.prof_montante} realValue={realFields.prof_montante_real} realField="prof_montante_real" onChange={updateRealField} />

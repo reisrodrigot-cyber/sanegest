@@ -475,9 +475,16 @@ const OSDetailPage = () => {
     setSavingReal(true);
     const toNum = (v: string) => v ? Number(v) : null;
     const toInt = (v: string) => v ? parseInt(v) : null;
+    // Mesma regra do previsto: só deriva a média executada quando o valor
+    // atual é NULL e ambas as pontas reais estão preenchidas.
+    const montReal = toNum(realFields.prof_montante_real);
+    const jusReal = toNum(realFields.prof_jusante_real);
+    const profMediaRealOut = os.prof_media_real != null
+      ? os.prof_media_real
+      : (montReal != null && jusReal != null ? (montReal + jusReal) / 2 : null);
     const update: any = {
       // comprimento_real: cache automático — não sobrescrever pela UI.
-      prof_media_real: toNum(realFields.prof_media_real),
+      prof_media_real: profMediaRealOut,
       dn_real: toNum(realFields.dn_real),
       largura_vala_real: toNum(realFields.largura_vala_real),
       prof_montante_real: toNum(realFields.prof_montante_real),

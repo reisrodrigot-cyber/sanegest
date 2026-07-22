@@ -980,7 +980,27 @@ const OSDetailPage = () => {
                 <span className="text-xs font-semibold text-secondary uppercase">Real (editável)</span>
               </div>
               <RealEditableRow label="Comprimento (m)" previsto={os.comprimento_previsto} realValue={realFields.comprimento_real} realField="comprimento_real" onChange={updateRealField} />
-              <RealEditableRow label="Prof. Média (m)" previsto={os.prof_media_prevista} realValue={realFields.prof_media_real} realField="prof_media_real" onChange={updateRealField} />
+              {(() => {
+                const parseN = (v: string) => { const n = Number(v); return v && !isNaN(n) ? n : null; };
+                const mr = parseN(realFields.prof_montante_real);
+                const jr = parseN(realFields.prof_jusante_real);
+                const saved = os.prof_media_real;
+                const auto = saved != null
+                  ? saved
+                  : (mr != null && jr != null ? (mr + jr) / 2 : null);
+                return (
+                  <div className="grid grid-cols-3 gap-2 py-2 border-b border-border items-center">
+                    <span className="text-sm text-muted-foreground">Prof. Média (m)</span>
+                    <span className="text-sm font-medium text-foreground">{fmt(os.prof_media_prevista)}</span>
+                    <input
+                      readOnly
+                      value={auto != null ? auto.toFixed(2) : ''}
+                      title={saved != null ? 'Valor salvo (não é sobrescrito)' : 'Calculada automaticamente a partir das profundidades reais'}
+                      className="px-2 py-1 rounded border border-input bg-muted/50 text-muted-foreground text-sm w-full cursor-not-allowed"
+                    />
+                  </div>
+                );
+              })()}
               <RealEditableRow label="DN (m)" previsto={os.dn} realValue={realFields.dn_real} realField="dn_real" onChange={updateRealField} />
               <RealEditableRow label="Largura Vala (m)" previsto={os.largura_vala} realValue={realFields.largura_vala_real} realField="largura_vala_real" onChange={updateRealField} />
               <RealEditableRow label="Prof. Montante (m)" previsto={os.prof_montante} realValue={realFields.prof_montante_real} realField="prof_montante_real" onChange={updateRealField} />

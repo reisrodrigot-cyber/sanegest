@@ -736,14 +736,22 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return m;
   }, [ligacoesExecutadasPorOs]);
 
-  // Totais de ligações (para KPI) — soma direta de ligacoes.comprimento das
-  // ligações vinculadas a registros ativos.
+  // Totais de ligações (para KPI superior) — usa EXATAMENTE a mesma
+  // consolidação da tabela "Produção por Encarregado" (via `porEncarregado`),
+  // para garantir consistência de metragem. Regras:
+  //   - qtd: soma de quantidade_ligacoes_realizadas no período;
+  //   - metragem: agrupa por os_id (fallback trecho normalizado) e usa o
+  //     MAIOR comprimento_total_ligacoes por grupo, evitando dupla contagem
+  //     quando uma O.S. aparece em vários lançamentos/datas.
   const totaisLigacoes = useMemo(() => {
     let qtd = 0;
     let comprimento = 0;
-    ligacoesExecutadasPorOs.forEach((v) => { qtd += v.count; comprimento += v.comprimento; });
-    return { qtd, comprimento };
-  }, [ligacoesExecutadasPorOs]);
+    for (const enc of porEncarregado) {
+      qtd += enc.ligUn;
+      comprimento += enc.ligM;
+    }
+    return { qtd, comprimento: Math.round(comprimento * 100) / 100 };
+  }, [porEncarregado]);
 
   // Avanço por Sub-bacia (todas as NS, independente de status/liberação)
   const porTrecho = useMemo(() => {

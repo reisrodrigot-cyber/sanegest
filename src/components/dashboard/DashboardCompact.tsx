@@ -935,13 +935,20 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
 
       {/* Row 1 — KPIs */}
-      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard
           icon={<TrendingUp size={16} />}
-          label="Avanço Físico"
-          value={kpis.avancoPct}
-          sub={kpis.avancoLabel}
+          label="Avanço Físico — POV"
+          value={avancoPovSede.POV.pct}
+          sub={avancoPovSede.POV.label}
           accent={accent.blueDark}
+        />
+        <KpiCard
+          icon={<TrendingUp size={16} />}
+          label="Avanço Físico — SEDE"
+          value={avancoPovSede.SEDE.pct}
+          sub={avancoPovSede.SEDE.label}
+          accent={accent.blue}
         />
         <KpiCard
           icon={<CalendarDays size={16} />}

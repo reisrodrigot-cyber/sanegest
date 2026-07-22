@@ -3,7 +3,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, UserPlus, X } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, UserPlus, UserMinus, X } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LiberarLoteModal } from '@/components/LiberarLoteModal';
+import { DesatribuirModal } from '@/components/DesatribuirModal';
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ const OrdensPage = () => {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showLiberarModal, setShowLiberarModal] = useState(false);
+  const [desatribuirOS, setDesatribuirOS] = useState<typeof ordens>([]);
   const [activeTab, setActiveTab] = useState<'liberadas' | 'nao-liberadas' | 'executadas'>('liberadas');
 
   // Aggregated produção (sum comprimento_dia) per OS
@@ -225,7 +227,7 @@ const OrdensPage = () => {
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell w-[160px]">%</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Responsável</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-              <th className="px-2 py-3 w-[44px]"></th>
+              <th className="px-2 py-3 w-[180px]"></th>
             </tr>
           </thead>
           <tbody>
@@ -278,16 +280,27 @@ const OrdensPage = () => {
                     </div>
                   </td>
                   <td className="px-2 py-3">
-                    {locatableOsIds.has(os.id) && (
-                      <button
-                        onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-primary/10 transition-colors"
-                        style={{ color: '#4dd9ac' }}
-                        title="Localizar no mapa"
-                      >
-                        <MapPin size={14} /> <span className="hidden lg:inline">Localizar</span>
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1 justify-end">
+                      {locatableOsIds.has(os.id) && (
+                        <button
+                          onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-primary/10 transition-colors"
+                          style={{ color: '#4dd9ac' }}
+                          title="Localizar no mapa"
+                        >
+                          <MapPin size={14} /> <span className="hidden lg:inline">Localizar</span>
+                        </button>
+                      )}
+                      {canLiberar && os.liberado && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDesatribuirOS([os]); }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Desatribuir N.S."
+                        >
+                          <UserMinus size={14} /> <span className="hidden lg:inline">Desatribuir</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -450,6 +463,15 @@ const OrdensPage = () => {
           >
             <UserPlus size={14} /> Liberar para encarregado
           </button>
+          {selectedOS.some(o => o.liberado) && (
+            <button
+              onClick={() => setDesatribuirOS(selectedOS.filter(o => o.liberado))}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-destructive/40 text-destructive text-sm font-medium hover:bg-destructive/10"
+              title="Desatribuir N.S. selecionadas"
+            >
+              <UserMinus size={14} /> Desatribuir
+            </button>
+          )}
           <button
             onClick={() => setSelected(new Set())}
             className="inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-muted text-muted-foreground"
@@ -464,6 +486,13 @@ const OrdensPage = () => {
         open={showLiberarModal}
         onClose={() => setShowLiberarModal(false)}
         selectedOS={selectedOS}
+        onDone={() => { setSelected(new Set()); refetch(); }}
+      />
+
+      <DesatribuirModal
+        open={desatribuirOS.length > 0}
+        onClose={() => setDesatribuirOS([])}
+        selectedOS={desatribuirOS}
         onDone={() => { setSelected(new Set()); refetch(); }}
       />
     </AppLayout>

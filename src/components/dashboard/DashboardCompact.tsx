@@ -515,28 +515,38 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
   const avancoPovSede = useMemo(() => {
     const classByOs = new Map<string, 'POV' | 'SEDE'>();
+    const classByTrecho = new Map<string, 'POV' | 'SEDE'>();
+    const normTrecho = (t: string | null | undefined) =>
+      String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase().replace(/\s+/g, ' ').trim();
     const prev = { POV: 0, SEDE: 0 };
     ordens.forEach((o) => {
       const c = classifyBacia(o.bacia);
       if (!c) return;
       classByOs.set(o.id, c);
+      const nt = normTrecho(o.trecho);
+      if (nt) classByTrecho.set(nt, c);
       prev[c] += Number(o.comprimento_previsto) || 0;
     });
 
     const execRede = { POV: 0, SEDE: 0 };
-    // ligações (m): pega o MAIOR comprimento_total_ligacoes por (os_id,
-    // encarregado) no período — mesma regra do card "Produção por
-    // Encarregado" — para evitar contagem duplicada quando o encarregado
-    // relança o total acumulado.
+    // Ligações (m): dedup por O.S. — chave = os_id, com fallback para trecho
+    // normalizado quando os_id vier nulo. Nunca compor com encarregado, pois
+    // uma mesma O.S. pode aparecer com encarregados diferentes no período e
+    // seria contada em dobro. Para cada grupo, ficamos com o MAIOR
+    // comprimento_total_ligacoes lançado no período.
     const ligGroups = new Map<string, { cls: 'POV' | 'SEDE'; max: number }>();
     for (const row of relatorioRows) {
       const d = row.data_producao;
       if (!d || d < periodo.inicio || d > periodo.fim) continue;
-      if (!row.os_id) continue;
-      const cls = classByOs.get(row.os_id);
+      const nt = normTrecho(row.trecho);
+      const cls: 'POV' | 'SEDE' | undefined = row.os_id
+        ? classByOs.get(row.os_id)
+        : (nt ? classByTrecho.get(nt) : undefined);
       if (!cls) continue;
       execRede[cls] += Number(row.comprimento_trecho_executado) || 0;
-      const key = `${row.os_id}|${row.encarregado ?? ''}`;
+      const key = row.os_id ? `os:${row.os_id}` : (nt ? `tr:${nt}` : null);
+      if (!key) continue;
       const cur = Number(row.comprimento_total_ligacoes) || 0;
       const g = ligGroups.get(key);
       if (!g || cur > g.max) ligGroups.set(key, { cls, max: cur });

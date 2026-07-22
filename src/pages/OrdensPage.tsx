@@ -39,6 +39,7 @@ const OrdensPage = () => {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showLiberarModal, setShowLiberarModal] = useState(false);
+  const [desatribuirOS, setDesatribuirOS] = useState<typeof ordens>([]);
   const [activeTab, setActiveTab] = useState<'liberadas' | 'nao-liberadas' | 'executadas'>('liberadas');
 
   // Aggregated produção (sum comprimento_dia) per OS

@@ -145,16 +145,18 @@ const ChartFrame = ({
 
 const FAIXAS = [
   { label: 'Até 1,25m', max: 1.25 },
-  { label: '1,25m a 2,00m', max: 2.0 },
-  { label: '2,00m a 3,00m', max: 3.0 },
-  { label: 'Acima de 3,00m', max: Infinity },
+  { label: '1,25m a 1,80m', max: 1.80 },
+  { label: '1,80m a 2,80m', max: 2.80 },
+  { label: '2,80m a 3,80m', max: 3.80 },
+  { label: 'Acima de 3,80m', max: Infinity },
 ];
 const faixaIndex = (prof: number | null) => {
   if (prof == null) return -1;
   if (prof <= 1.25) return 0;
-  if (prof <= 2.0) return 1;
-  if (prof <= 3.0) return 2;
-  return 3;
+  if (prof <= 1.80) return 1;
+  if (prof <= 2.80) return 2;
+  if (prof <= 3.80) return 3;
+  return 4;
 };
 
 const toISODate = (d: Date) => {
@@ -669,13 +671,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         diasProp[i] += m / totalDia;
       });
     });
-    const medias = totais.map((t, i) => (diasProp[i] > 0 ? t / diasProp[i] : 0));
-    const max = Math.max(1, ...medias);
+    const medias = totais.map((t, i) => (diasProp[i] > 0 ? t / diasProp[i] : null));
+    const max = Math.max(1, ...medias.map((v) => v ?? 0));
     return FAIXAS.map((f, i) => ({
       label: f.label,
-      media: Math.round(medias[i] * 10) / 10,
+      media: medias[i] == null ? null : Math.round((medias[i] as number) * 10) / 10,
       total: Math.round(totais[i]),
-      pctBar: (medias[i] / max) * 100,
+      pctBar: medias[i] == null ? 0 : ((medias[i] as number) / max) * 100,
     }));
   }, [registrosPeriodo, osRows]);
 
@@ -816,15 +818,28 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       t.ligUn += e.ligUn;
       t.total += e.total;
     });
-    t.media = porEncarregado.reduce((s, e) => s + e.media, 0);
+    // Dias produtivos da obra: datas distintas dentro do período com
+    // pelo menos um lançamento com rede > 0 ou ligação realizada > 0.
+    const diasProdutivos = new Set<string>();
+    for (const row of relatorioRows) {
+      const data = String(row.data_producao ?? '');
+      if (!data) continue;
+      if (data < periodo.inicio || data > periodo.fim) continue;
+      const rede = Number(row.comprimento_trecho_executado) || 0;
+      const ligUn = Number(row.quantidade_ligacoes_realizadas) || 0;
+      if (rede > 0 || ligUn > 0) diasProdutivos.add(data);
+    }
+    t.dias = diasProdutivos.size;
+    t.media = t.dias > 0 ? t.total / t.dias : 0;
     return {
       rede: Math.round(t.rede * 100) / 100,
       ligM: Math.round(t.ligM * 100) / 100,
       ligUn: t.ligUn,
       total: Math.round(t.total * 100) / 100,
+      dias: t.dias,
       media: Math.round(t.media * 100) / 100,
     };
-  }, [porEncarregado]);
+  }, [porEncarregado, relatorioRows, periodo.inicio, periodo.fim]);
 
   // Persiste o período aplicado na URL (di/df) para deep-link e refresh.
   useEffect(() => {
@@ -1176,7 +1191,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       />
                     </div>
                     <span className="text-[11px] font-semibold text-foreground w-[58px] text-right">
-                      {s.media.toLocaleString('pt-BR')} m/d
+                      {s.media == null ? '—' : `${s.media.toLocaleString('pt-BR')} m/d`}
                     </span>
                   </div>
                 ))}

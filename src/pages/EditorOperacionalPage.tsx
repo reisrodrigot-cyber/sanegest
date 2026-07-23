@@ -66,11 +66,12 @@ const EditorOperacionalPage = () => {
 
   // Dialog states
   const [vincularOpen, setVincularOpen] = useState(false);
-  const [dividirOpen, setDividirOpen] = useState<null | { trechoId: string; latlng: L.LatLng }>(null);
+  const [dividirOpen, setDividirOpen] = useState<null | { trechoId: string; latlng: L.LatLng; vinculosAtivos: OSVinc[] }>(null);
   const [moverConfirm, setMoverConfirm] = useState<null | {
     pvId: string; from: Coord; to: Coord; deltaM: number;
     trechosAfetados: string[];
   }>(null);
+  const [dragPreview, setDragPreview] = useState<null | { pvId: string; from: Coord; to: Coord; deltaM: number }>(null);
   const [suprimirTrechoOpen, setSuprimirTrechoOpen] = useState(false);
   const [suprimirPvOpen, setSuprimirPvOpen] = useState<null | {
     pvId: string; trechosConectados: string[];

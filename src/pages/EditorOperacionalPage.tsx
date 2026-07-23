@@ -887,16 +887,26 @@ const VincularNSDialog = ({ open, onClose, onConfirm, allOs, currentIds, bacia }
   );
 };
 
-const DividirDialog = ({ open, rotuloBase, onClose, onConfirm }: {
-  open: boolean; rotuloBase: string; onClose: () => void;
-  onConfirm: (a: string, b: string, novoPv: string, cota: string, prof: string) => void;
+const DividirDialog = ({ open, rotuloBase, vinculosAtivos, onClose, onConfirm }: {
+  open: boolean; rotuloBase: string;
+  vinculosAtivos: OSVinc[];
+  onClose: () => void;
+  onConfirm: (a: string, b: string, novoPv: string, cota: string, prof: string, destinos: Record<string, DestinoDivisao>) => void;
 }) => {
   const [a, setA] = useState(''); const [b, setB] = useState(''); const [pv, setPv] = useState('');
   const [cota, setCota] = useState(''); const [prof, setProf] = useState('');
-  useEffect(() => { if (open) { setA(`${rotuloBase}.1`); setB(`${rotuloBase}.2`); setPv(''); setCota(''); setProf(''); } }, [open, rotuloBase]);
+  const [destinos, setDestinos] = useState<Record<string, DestinoDivisao>>({});
+  useEffect(() => {
+    if (open) {
+      setA(`${rotuloBase}.1`); setB(`${rotuloBase}.2`); setPv('');
+      setCota(''); setProf(''); setDestinos({});
+    }
+  }, [open, rotuloBase]);
+  const todosDecididos = vinculosAtivos.every((v) => !!destinos[v.id]);
+  const podeSalvar = !!pv && !!a && !!b && todosDecididos;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Dividir trecho — adicionar PV</DialogTitle>
           <DialogDescription>Novo PV será snapado sobre a linha. Extensões serão recalculadas.</DialogDescription>
@@ -908,9 +918,46 @@ const DividirDialog = ({ open, rotuloBase, onClose, onConfirm }: {
           <div><Label>Cota (opc.)</Label><Input value={cota} onChange={(e) => setCota(e.target.value)} /></div>
           <div><Label>Profundidade (opc.)</Label><Input value={prof} onChange={(e) => setProf(e.target.value)} /></div>
         </div>
+
+        {vinculosAtivos.length > 0 && (
+          <div className="mt-2 border-t pt-3">
+            <div className="flex items-center gap-2 mb-2 text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <div className="text-sm font-semibold">Este trecho possui N.S. vinculadas</div>
+            </div>
+            <div className="text-xs text-muted-foreground mb-2">
+              Os vínculos do trecho atual serão desativados. Escolha o destino de cada N.S. abaixo.
+              Sem uma decisão explícita a divisão não será salva.
+            </div>
+            <div className="space-y-2 max-h-56 overflow-auto">
+              {vinculosAtivos.map((v) => {
+                const d = destinos[v.id];
+                const setD = (val: DestinoDivisao) => setDestinos((prev) => ({ ...prev, [v.id]: val }));
+                return (
+                  <div key={v.id} className="border rounded p-2">
+                    <div className="text-sm font-medium">{v.trecho} <span className="text-xs text-muted-foreground">({v.bacia}) — {v.status}</span></div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {(['A','B','AMBOS','NENHUM'] as DestinoDivisao[]).map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setD(opt)}
+                          className={`px-2 py-0.5 text-xs rounded border ${d === opt ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
+                        >
+                          {opt === 'A' ? 'Segmento A' : opt === 'B' ? 'Segmento B' : opt === 'AMBOS' ? 'Ambos' : 'Nenhum (vinculo depois)'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button disabled={!pv || !a || !b} onClick={() => onConfirm(a, b, pv, cota, prof)}>Dividir</Button>
+          <Button disabled={!podeSalvar} onClick={() => onConfirm(a, b, pv, cota, prof, destinos)}>Dividir</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

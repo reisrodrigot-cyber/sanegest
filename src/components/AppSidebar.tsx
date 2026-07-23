@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS, UserRole } from '@/types/sanegest';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ClipboardList, HardHat, Package, Map, MapPin, BarChart3, LogOut, Menu, X, Droplets, Users, UserCircle
+  LayoutDashboard, ClipboardList, HardHat, Package, Map, MapPin, BarChart3, LogOut, Menu, X, Droplets, Users, UserCircle, Pencil
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ViewAsSelector } from './ViewAsSelector';
@@ -23,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Entrega de Materiais', path: '/materiais', icon: <Package size={20} />, roles: ['admin', 'almoxarifado'] },
   { label: 'Topografia', path: '/topografia', icon: <Map size={20} />, roles: ['admin', 'topografo'] },
   { label: 'Bases geográficas', path: '/mapa/bases', icon: <MapPin size={20} />, roles: ['admin', 'sala_tecnica'] },
+  { label: 'Editor Operacional do Mapa', path: '/mapa/editor', icon: <Pencil size={20} />, roles: ['sala_tecnica'] },
   { label: 'Gestão de Usuários', path: '/usuarios', icon: <Users size={20} />, roles: ['admin'] },
 
 ];
@@ -56,7 +57,7 @@ export const AppSidebar = () => {
   // Explicit role → allowed paths mapping
   const ROLE_MENU: Record<UserRole, string[]> = {
     admin: ['/dashboard', '/ordens', '/producao', '/materiais', '/topografia', '/mapa/bases', '/usuarios'],
-    sala_tecnica: ['/dashboard', '/ordens', '/mapa/bases'],
+    sala_tecnica: ['/dashboard', '/ordens', '/mapa/bases', '/mapa/editor'],
 
     encarregado: ['/dashboard', '/producao'],
     almoxarifado: ['/materiais'],

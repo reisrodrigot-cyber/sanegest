@@ -1,101 +1,115 @@
-# Fase 1 — Novo módulo de mapa geográfico (Preview SS-08)
 
-Escopo desta autorização: importar base real SS-08 (shapefile ZIP), vincular trechos às N.S. e renderizar como camada Preview no Leaflet, sem tocar no KMZ atual nem em produção.
+# Fase 2 — Editor Operacional de Trechos e PVs
 
-## 1. Backend (Lovable Cloud)
+Editor exclusivo para `sala_tecnica`. Sobrepõe uma camada operacional editável à base importada, **sem tocar na geometria original** nem no KMZ, importação SS-08, Mapa de Campo ou promoção de base.
 
-### Storage
-- Bucket privado `mapa-base` — originais (ZIP/SHP/GPKG), imutáveis, path `ss-08/<versao>/<hash>.zip`.
+## Princípio estrutural
 
-### Tabelas novas (todas com RLS, GRANTs, updated_at)
+Todo trecho operacional existe **sempre** entre dois PVs (`pv_inicial_id` → `pv_final_id`). Nenhum trecho pode ser salvo sem os dois nós. A geometria original permanece imutável em `mapa_trechos` / `mapa_pontos`. Alterações vivem em duas tabelas novas de "estado atual".
 
-- `mapa_bases` — versionamento da importação
-  - `ss` (ex.: `SS-08`), `versao`, `status` (`processando|preview|falha|ativa|arquivada`), `arquivo_path`, `arquivo_hash`, `arquivo_bytes`, `feicoes_rede`, `feicoes_pv`, `bbox` jsonb, `relatorio_validacao` jsonb, `motivo_falha`, `importado_por`, `promovido_em/por`.
-- `mapa_camadas_geo` — camadas lógicas da base (`REDE`, `PV`).
-  - `base_id`, `tipo` (`LINESTRING|POINT`), `nome_camada`, `campos_originais` jsonb.
-- `mapa_trechos` — linhas da REDE
-  - `base_id`, `rotulo_original` (imutável, ex.: `TR-8.40`), `rotulo_chave` (normalizado apenas p/ sugestão), `no_inicial`, `no_final`, `dn`, `material`, `l_escala`, `inv_inic`, `inv_fim`, `declividade`, `geometry` jsonb (GeoJSON LineString em 4326), `min_lon/lat`, `max_lon/lat`, `atributos_extra` jsonb.
-- `mapa_pontos` — PV/TL/TQ
-  - `base_id`, `rotulo_original`, `tipo_no` (`PV|TL|TQ|OUTRO`), `cota_marg`, `cota_inv`, `prof`, `geometry` jsonb (Point), `lon`, `lat`, `atributos_extra` jsonb.
-- `mapa_trecho_os` — N:N trecho ↔ N.S.
-  - `trecho_id`, `os_id`, `origem` (`AUTO|MANUAL`), `fracao` (default 1.0), `ativo` bool, `motivo`, `criado_por`, `desativado_por/em`.
-- `mapa_vinculos_auditoria` — histórico de toda mudança de vínculo (INSERT/UPDATE/DELETE lógico) com snapshot antes/depois.
-- `mapa_divergencias` — fila de revisão
-  - `base_id`, `tipo` (`COLISAO|SEM_NS|SEM_LINHA|AMBIGUO|SEM_GEOMETRIA|OUTRO`), `rotulo`, `detalhes` jsonb, `status` (`aberta|resolvida|ignorada`), `resolvido_por/em`, `resolucao`.
+## Modelo de dados (novas tabelas — estado atual, sem versionamento)
 
-### Índices
-B-Tree em `base_id`, `rotulo_chave`, `min_lon/lat`, `max_lon/lat`, `mapa_trecho_os(trecho_id, ativo)`, `(os_id, ativo)`.
+### `mapa_pv_operacional`
+- `id`, `base_id` (→ `mapa_bases`), `ponto_origem_id` (→ `mapa_pontos`, nullable — null = PV manual novo)
+- `rotulo`, `tipo` (`original` | `movido` | `manual` | `suprimido`)
+- `geom` (jsonb Point [lon,lat]), `lat`, `lon` (escalares para índice)
+- `cota`, `profundidade`, `observacao` (opcionais)
+- `motivo`, `updated_by`, `updated_at`, `created_at`
+- Único: `(base_id, ponto_origem_id)` quando não-null.
+
+### `mapa_trecho_operacional`
+- `id`, `base_id`, `trecho_origem_id` (→ `mapa_trechos`, nullable — null = manual)
+- `rotulo`, `tipo` (`original` | `derivado` | `manual` | `suprimido`)
+- `pv_inicial_id` (→ `mapa_pv_operacional`, NOT NULL), `pv_final_id` (idem, NOT NULL)
+- `geom` (jsonb LineString), `extensao_m` (numeric, recalculada), `dn`, `material`
+- `motivo`, `updated_by`, `updated_at`, `created_at`
+- Check: `pv_inicial_id <> pv_final_id`.
+
+### Reuso de tabela existente
+`mapa_trecho_os` já é N:N trecho↔N.S. Adicionar coluna opcional `trecho_operacional_id` (nullable) para vincular quando o trecho é operacional derivado/manual. Vínculos originais continuam por `trecho_id`.
 
 ### RLS
-- Sala Técnica/Admin/Gerência: leitura completa; escrita apenas Sala Técnica e Admin.
-- Bases com `status != 'ativa'` só visíveis para Sala Técnica/Admin.
-- Encarregado/Topógrafo/Almoxarifado: leitura apenas de bases `ativa` (nesta fase, nenhuma — camada preview fica invisível para eles).
+Todas as três operações (SELECT/INSERT/UPDATE/DELETE) em `mapa_pv_operacional`, `mapa_trecho_operacional` e nas colunas novas de `mapa_trecho_os` restritas via `has_role(auth.uid(),'sala_tecnica') OR has_role(auth.uid(),'admin')` — admin só para leitura de auditoria; **edição real apenas `sala_tecnica`** conforme requisito. GRANTs explícitos para `authenticated` + `service_role`.
 
-## 2. Parsing (frontend + Web Worker)
+## Rotas e navegação
 
-- Lib: `shpjs` (roda no browser, aceita ZIP, decodifica DBF UTF-8 via `.cpg`).
-- `proj4` para reprojetar EPSG:31985 → EPSG:4326.
-- Web Worker (`src/workers/shpImport.worker.ts`) faz: unzip → identifica conjuntos completos (`.shp/.shx/.dbf/.prj/.cpg`) → parse → reprojeção → normalização → devolve payload JSON com features e bbox.
-- Validação: exigir camada LINESTRING (`SS-08-REDE`) e POINT (`SS-08-PV`). GeoJSON `[lon, lat]`. Preservar acentos (`RÓTULO`).
-- Upload do ZIP original vai para Storage antes do parse; hash SHA-256 calculado no browser.
+- Nova rota `/mapa/editor` → `EditorOperacionalPage`.
+- `ROUTE_ROLES['/mapa/editor'] = ['sala_tecnica']`.
+- Item no `AppSidebar` visível **apenas** para `sala_tecnica` (não para admin no menu; admin acessa por URL só se for útil — por padrão bloqueado para respeitar "apenas sala_tecnica").
+- `ProtectedRoute` já bloqueia por `effectiveRole`.
 
-## 3. Fluxo de importação
+## Interface (`src/pages/EditorOperacionalPage.tsx` + componentes)
 
-1. Upload → cria `mapa_bases` com `status=processando`, guarda arquivo + hash.
-2. Worker faz parse; UI mostra progresso.
-3. Insert em chunks: `mapa_camadas_geo`, `mapa_trechos`, `mapa_pontos`.
-4. Executa reconciliação de vínculos (ver 4). Popula `mapa_trecho_os` (só matches únicos) e `mapa_divergencias`.
-5. Só então `status = preview`. Em qualquer erro: `status = falha`, motivo gravado, dados parciais removidos (delete cascata por `base_id`).
+Layout: mapa Leaflet central + painel lateral direito de propriedades + toolbar superior.
 
-## 4. Vínculo automático
+Camadas simultâneas com toggles:
+- Geometria original (referência, cinza claro tracejado fino).
+- Trechos operacionais (linha sólida colorida por status).
+- PVs originais (círculo pequeno).
+- PVs operacionais novos/movidos (marcador distinto — losango).
+- Suprimidos (tracejado vermelho, ocultos por padrão).
+- Divergências/pendências (badge discreto).
 
-- Chave normalizada: uppercase + trim + colapso de espaços; **não remover dígitos**. `TR-8.40 ≠ TR-8.4`.
-- Match único (1 trecho ↔ 1 N.S. da SS-08 ativa) → vínculo `AUTO`.
-- Colisão / múltiplos / ausência / grafia ambígua → `mapa_divergencias` (sem vínculo).
-- Casos conhecidos pré-carregados como pendência: `TR-8.4 × TR-8.40`, `TR-8.42` sem N.S., `TR-8.18 1-A` sem geometria, Linha de Recalque, `TQ-8.19/20/23/40/41`.
+Seleção obrigatória antes de qualquer edição.
 
-## 5. Renderização no mapa
+## Ferramentas
 
-- `MapaInterativo.tsx` recebe nova camada `Base geográfica — SS-08 (Preview)` com toggle próprio, ao lado das camadas KMZ (KMZ intocado).
-- Fetch: trechos e pontos da base preview mais recente da SS-08 (via hook `useMapaBasePreview`).
-- Cor do trecho calculada **client-side** a partir das N.S. ativas vinculadas:
-  - Precedência `VERMELHO > LARANJA > AMARELO > VERDE > CINZA`.
-  - Sem N.S. → CINZA. `pv_final_assentado` não força VERDE (mensagem só no popup).
-- Popup do trecho: rótulo original, SS, extensão, DN, material, nós, N.S. vinculadas com status individual, status agregado, origem AUTO/MANUAL, alerta de divergência, aviso "PV final assentado — pronto para Topografia" quando aplicável.
-- Pontos PV/TL/TQ como marcadores discretos com popup de rótulo + cotas.
+Componentes em `src/components/mapa/editor/`:
 
-## 6. Tela de administração (Sala Técnica)
+1. **SelecionarTrecho** — painel mostra rótulo original, extensão original vs operacional, PVs, N.S. vinculadas, status agregado, tipo, ações.
+2. **VincularNS** — modal com busca de N.S. da bacia; multi-select; motivo curto. Cor permanece derivada.
+3. **DividirTrecho** — botão "Adicionar PV": ativa modo clique-na-linha; snap ao segmento mais próximo (projeção ortogonal via turf `nearestPointOnLine`); cria PV operacional novo + 2 trechos derivados; recalcula extensões (turf `length`); modal para rótulos e N.S. de cada segmento.
+4. **MoverPV** — arraste com preview em metros (turf `distance`); lista trechos afetados; alerta reforçado se >10 m com campo de justificativa obrigatório; atualiza extremidades e recalcula extensões.
+5. **SuprimirTrecho** — motivo obrigatório; marca `tipo='suprimido'`; PVs permanecem.
+6. **SuprimirPV** — se sem trechos ativos: suprime. Se com trechos: modal com opções (cancelar / suprimir trechos / unir dois trechos quando exatamente 2 / reposicionar). Ao unir: escolher N.S. atual, confirmar comprimento.
+7. **CriarTrechoManual** — selecionar PV1 → PV2 → desenhar polilinha entre eles (vértices intermediários livres); campos rótulo, DN, material, N.S.; marcado como `manual`.
+8. **RestaurarOriginal** — botão no painel: remove overlay operacional daquele trecho (soft delete do `mapa_trecho_operacional` e PVs derivados órfãos); confirma antes.
 
-Rota `/mapa/bases` (guard por role):
-- Upload de ZIP + campo SS (fixo `SS-08` nesta fase).
-- Lista de bases com status, contagens, hash, data, ações (ver relatório, ver divergências, arquivar). **Sem botão de promover para `ativa`** nesta fase.
-- Sub-tela de divergências: lista, filtros, ação de vínculo manual (com confirmação) que grava em `mapa_trecho_os` origem `MANUAL` + auditoria.
+## Bibliotecas
 
-## 7. Permissões
-- Rota admin + escrita: `admin`, `sala_tecnica`.
-- Camada Preview visível: `admin`, `sala_tecnica`, `gerencia` (read-only).
-- Demais roles: não veem toggle, não recebem dados.
+Adicionar `@turf/turf` (`nearestPointOnLine`, `length`, `distance`, `lineSlice`). `react-leaflet` + `leaflet` já usados.
 
-## 8. Testes (script `scripts/mapa-fase1-smoke.ts` + Playwright)
+## Hook de dados
 
-- Importa `22.07_shapes.zip` real; espera 42 LINESTRING + 42 POINT.
-- Confere bbox dentro de SS-08.
-- Reconciliação: reporta matches / pendências / divergências conhecidas.
-- Toggle liga/desliga camada sem afetar KMZ.
-- Simulação de falha (ZIP corrompido) → base fica `falha`, nada renderiza.
-- Mudança de status de uma N.S. altera cor do trecho.
-- Playwright: login como sala_tecnica vê a camada; login como encarregado não vê.
+`useEditorOperacional(baseId)`:
+- Carrega trechos e PVs originais + operacionais.
+- Faz merge: para cada trecho original com operacional derivado/suprimido, aplica overlay.
+- Retorna geometria efetiva + status agregado (reusa lógica de `useMapaBasePreview`).
+- Mutations com invalidation via React Query.
 
-## 9. Entregáveis
-- Migrações + código + tela admin + camada preview.
-- Relatório de execução dos testes (contagens, matches, pendências).
-- Lista de itens para validação da Sala Técnica (colisão TR-8.4/8.40, TR-8.42, etc.).
-- Nenhuma base promovida para `ativa`.
+## Cores e popups
 
-## Detalhes técnicos
+- Sempre via `statusAgregado` das N.S. ativas vinculadas (VERMELHO > LARANJA > AMARELO > VERDE > CINZA).
+- `pv_final_assentado=true` → linha do popup: "PV final assentado — pronto para Topografia".
+- Popup indica: Original | Derivado | Manual | Suprimido.
 
-- Deps novas: `shpjs`, `proj4`, `@types/proj4`. `jszip` já vem via `shpjs`.
-- Nenhuma alteração em: `ordens_servico`, produção, topografia, dashboard, KMZ, tabelas `mapa_camadas` / `kmz_layer_groups` / `estacas` / `ligacoes`.
-- Ordem de execução: (1) migração SQL + storage, (2) worker + parser, (3) tela admin + fluxo import, (4) camada preview no mapa, (5) testes.
+## Segurança
 
-Confirma para eu começar pela migração?
+- Menu escondido para não-sala_tecnica.
+- Rota bloqueada por `ProtectedRoute`.
+- RLS restringe todas as operações a `sala_tecnica`.
+- Sem endpoint público que permita bypass; todo acesso vai por PostgREST + RLS.
+
+## Testes (via Playwright, base SS-08 Preview)
+
+1. Login sala_tecnica → abre `/mapa/editor`.
+2. Login encarregado → rota bloqueada, menu ausente.
+3. Selecionar TR-8.37, adicionar PV no meio → 2 segmentos com extensões somando o original.
+4. Vincular N.S. distintas aos 2 segmentos → cores independentes.
+5. Mover PV <10m e >10m (alerta + justificativa).
+6. Suprimir PV conectado → bloqueio + opções.
+7. Unir 2 trechos.
+8. Criar trecho manual entre 2 PVs (ex: Linha de Recalque).
+9. Suprimir trecho e restaurar original.
+10. Confirmar KMZ, Mapa de Campo, importação SS-08 sem regressão; nenhuma base promovida.
+
+## Entregas ao final
+
+- Código implementado (migração + páginas + componentes + hook).
+- Relatório de testes reais (Playwright).
+- Decisões técnicas (turf, N:N via coluna nullable, RLS estrita sala_tecnica).
+- Limitações: sem versionamento/timeline; snap usa projeção ortogonal simples; polilinha manual limitada a cliques (sem edição de vértice após criar — v1).
+
+## Fora de escopo (não implementar)
+
+Promoção de base, edição por outros perfis, integração com novos projetos, automação de N.S., timeline/aprovação de edições.

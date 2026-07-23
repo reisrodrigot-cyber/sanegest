@@ -98,13 +98,21 @@ export function useMapaBasePreview(canView: boolean) {
       const osIds = [...new Set(vincDoBase.map((v) => v.os_id))];
 
       let osMap = new Map<string, any>();
+      const pvFinalSet = new Set<string>();
       if (osIds.length) {
-        const { data: osData } = await supabase
-          .from('ordens_servico')
-          .select('id, trecho, bacia, status, pv_final_assentado')
-          .in('id', osIds);
+        const [{ data: osData }, { data: regs }] = await Promise.all([
+          supabase.from('ordens_servico')
+            .select('id, trecho, bacia, status')
+            .in('id', osIds),
+          supabase.from('registros_producao')
+            .select('os_id')
+            .in('os_id', osIds)
+            .eq('pv_final_assentado', true),
+        ]);
         osMap = new Map((osData ?? []).map((o) => [o.id, o]));
+        for (const r of (regs ?? []) as any[]) pvFinalSet.add(r.os_id);
       }
+
 
       // divergências por trecho
       const divPorTrecho = new Map<string, Array<{ tipo: string; detalhes: any }>>();

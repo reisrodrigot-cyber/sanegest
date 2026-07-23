@@ -726,21 +726,39 @@ const EditorOperacionalPage = () => {
                 </div>
                 <div className="text-xs">Lat/Lon: {selectedPv.lat.toFixed(6)}, {selectedPv.lon.toFixed(6)}</div>
                 <div className="mt-3 flex flex-col gap-2">
-                  <Button size="sm" variant="outline" onClick={() => {
-                    const newLatStr = prompt('Nova latitude:', String(selectedPv.lat)); if (!newLatStr) return;
-                    const newLonStr = prompt('Nova longitude:', String(selectedPv.lon)); if (!newLonStr) return;
-                    const to: Coord = [Number(newLonStr), Number(newLatStr)];
-                    acaoMoverPvIniciar(selectedPv.id, to);
-                  }}><Move className="h-3 w-3 mr-1" /> Mover PV (por coordenadas)</Button>
+                  <Button
+                    size="sm"
+                    variant={tool.kind === 'move-pv' && tool.pvId === selectedPv.id ? 'default' : 'outline'}
+                    onClick={() => {
+                      if (tool.kind === 'move-pv' && tool.pvId === selectedPv.id) {
+                        setTool({ kind: 'none' });
+                        toast.info('Movimentação cancelada');
+                      } else {
+                        setTool({ kind: 'move-pv', pvId: selectedPv.id });
+                        toast.info('Arraste o PV no mapa para a nova posição');
+                      }
+                    }}
+                  ><Move className="h-3 w-3 mr-1" /> Mover PV (arraste no mapa)</Button>
                   <Button size="sm" variant="outline" onClick={acaoSuprimirPvSimples}><Trash2 className="h-3 w-3 mr-1" /> Suprimir PV</Button>
                 </div>
-                <div className="mt-2 text-[11px] text-muted-foreground">
-                  Dica: para mover por arraste no mapa, use a ação acima e ajuste; futuras versões trarão arraste direto.
-                </div>
+                {tool.kind === 'move-pv' && tool.pvId === selectedPv.id && (
+                  <div className="mt-2 text-[11px] p-2 bg-amber-50 text-amber-800 rounded">
+                    Modo Mover PV ativo. Arraste o marcador destacado. Deslocamentos acima de 10 m exigem justificativa.
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
+
+        {/* Preview de deslocamento durante o arraste */}
+        {dragPreview && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-card border shadow-lg rounded px-3 py-2 text-xs z-[500] pointer-events-none">
+            <div className="font-semibold">Deslocamento: {dragPreview.deltaM.toFixed(2)} m {dragPreview.deltaM > 10 && <span className="text-destructive ml-1">⚠ &gt; 10 m</span>}</div>
+            <div className="text-muted-foreground">De: {dragPreview.from[1].toFixed(6)}, {dragPreview.from[0].toFixed(6)}</div>
+            <div className="text-muted-foreground">Para: {dragPreview.to[1].toFixed(6)}, {dragPreview.to[0].toFixed(6)}</div>
+          </div>
+        )}
       </div>
 
       {/* Vincular N.S. modal */}

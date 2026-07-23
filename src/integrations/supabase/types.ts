@@ -569,6 +569,158 @@ export type Database = {
           },
         ]
       }
+      mapa_pv_operacional: {
+        Row: {
+          base_id: string
+          cota: number | null
+          created_at: string
+          geom: Json
+          id: string
+          lat: number
+          lon: number
+          motivo: string | null
+          observacao: string | null
+          ponto_origem_id: string | null
+          profundidade: number | null
+          rotulo: string
+          tipo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_id: string
+          cota?: number | null
+          created_at?: string
+          geom: Json
+          id?: string
+          lat: number
+          lon: number
+          motivo?: string | null
+          observacao?: string | null
+          ponto_origem_id?: string | null
+          profundidade?: number | null
+          rotulo: string
+          tipo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_id?: string
+          cota?: number | null
+          created_at?: string
+          geom?: Json
+          id?: string
+          lat?: number
+          lon?: number
+          motivo?: string | null
+          observacao?: string | null
+          ponto_origem_id?: string | null
+          profundidade?: number | null
+          rotulo?: string
+          tipo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mapa_pv_operacional_base_id_fkey"
+            columns: ["base_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_bases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mapa_pv_operacional_ponto_origem_id_fkey"
+            columns: ["ponto_origem_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_pontos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mapa_trecho_operacional: {
+        Row: {
+          base_id: string
+          created_at: string
+          dn: number | null
+          extensao_m: number | null
+          geom: Json
+          id: string
+          material: string | null
+          motivo: string | null
+          pv_final_id: string
+          pv_inicial_id: string
+          rotulo: string
+          tipo: string
+          trecho_origem_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_id: string
+          created_at?: string
+          dn?: number | null
+          extensao_m?: number | null
+          geom: Json
+          id?: string
+          material?: string | null
+          motivo?: string | null
+          pv_final_id: string
+          pv_inicial_id: string
+          rotulo: string
+          tipo: string
+          trecho_origem_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_id?: string
+          created_at?: string
+          dn?: number | null
+          extensao_m?: number | null
+          geom?: Json
+          id?: string
+          material?: string | null
+          motivo?: string | null
+          pv_final_id?: string
+          pv_inicial_id?: string
+          rotulo?: string
+          tipo?: string
+          trecho_origem_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mapa_trecho_operacional_base_id_fkey"
+            columns: ["base_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_bases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mapa_trecho_operacional_pv_final_id_fkey"
+            columns: ["pv_final_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_pv_operacional"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mapa_trecho_operacional_pv_inicial_id_fkey"
+            columns: ["pv_inicial_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_pv_operacional"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mapa_trecho_operacional_trecho_origem_id_fkey"
+            columns: ["trecho_origem_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_trechos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mapa_trecho_os: {
         Row: {
           ativo: boolean
@@ -582,6 +734,7 @@ export type Database = {
           origem: Database["public"]["Enums"]["mapa_vinculo_origem"]
           os_id: string
           trecho_id: string
+          trecho_operacional_id: string | null
           updated_at: string
         }
         Insert: {
@@ -596,6 +749,7 @@ export type Database = {
           origem?: Database["public"]["Enums"]["mapa_vinculo_origem"]
           os_id: string
           trecho_id: string
+          trecho_operacional_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -610,6 +764,7 @@ export type Database = {
           origem?: Database["public"]["Enums"]["mapa_vinculo_origem"]
           os_id?: string
           trecho_id?: string
+          trecho_operacional_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -632,6 +787,13 @@ export type Database = {
             columns: ["trecho_id"]
             isOneToOne: false
             referencedRelation: "mapa_trechos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mapa_trecho_os_trecho_operacional_id_fkey"
+            columns: ["trecho_operacional_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_trecho_operacional"
             referencedColumns: ["id"]
           },
         ]

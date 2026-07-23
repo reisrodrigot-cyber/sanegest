@@ -19,6 +19,7 @@ import TopografiaPage from "./pages/TopografiaPage";
 import MeuPerfilPage from "./pages/MeuPerfilPage";
 import MapaPage from "./pages/MapaPage";
 import MapaBasesPage from "./pages/MapaBasesPage";
+import EditorOperacionalPage from "./pages/EditorOperacionalPage";
 
 
 import UsuariosPage from "./pages/UsuariosPage";
@@ -37,6 +38,7 @@ const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/materiais': ['admin', 'almoxarifado'],
   '/topografia': ['admin', 'topografo'],
   '/mapa/bases': ['admin', 'sala_tecnica'],
+  '/mapa/editor': ['sala_tecnica'],
   '/mapa': ['admin', 'sala_tecnica', 'gerencia', 'encarregado', 'topografo', 'almoxarifado'],
   '/usuarios': ['admin'],
 
@@ -112,6 +114,7 @@ const AppRoutes = () => {
       <Route path="/materiais" element={<ProtectedRoute><MateriaisPage /></ProtectedRoute>} />
       <Route path="/topografia" element={<ProtectedRoute><TopografiaPage /></ProtectedRoute>} />
       <Route path="/mapa/bases" element={<ProtectedRoute><MapaBasesPage /></ProtectedRoute>} />
+      <Route path="/mapa/editor" element={<ProtectedRoute><EditorOperacionalPage /></ProtectedRoute>} />
       <Route path="/mapa" element={<ProtectedRoute><MapaPage /></ProtectedRoute>} />
 
       <Route path="/usuarios" element={<ProtectedRoute><UsuariosPage /></ProtectedRoute>} />

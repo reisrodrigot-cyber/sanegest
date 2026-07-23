@@ -319,10 +319,17 @@ const EditorOperacionalPage = () => {
 
   // ============ Ações ============
 
-  async function acaoDividirTrecho(rotuloA: string, rotuloB: string, novoPvRotulo: string, cota: string, prof: string) {
+  async function acaoDividirTrecho(
+    rotuloA: string, rotuloB: string, novoPvRotulo: string, cota: string, prof: string,
+    destinos: Record<string, DestinoDivisao>,
+  ) {
     if (!dividirOpen || !base || !user) return;
     try {
-      const { trechoId, latlng } = dividirOpen;
+      const { trechoId, latlng, vinculosAtivos } = dividirOpen;
+      // exige decisão explícita para cada vínculo ativo
+      for (const v of vinculosAtivos) {
+        if (!destinos[v.id]) throw new Error(`Defina o destino da N.S. ${v.trecho}`);
+      }
       const { opId, pvIniId, pvFimId, coords } = await ensureTrechoOperacional(trechoId);
       const line = turf.lineString(coords);
       const snap = turf.nearestPointOnLine(line, turf.point([latlng.lng, latlng.lat]), { units: 'meters' });
@@ -350,7 +357,7 @@ const EditorOperacionalPage = () => {
       await supabase.from('mapa_trecho_operacional' as any)
         .update({ tipo: 'suprimido', motivo: 'Substituído por divisão', updated_by: user.id })
         .eq('id', opId);
-      // Desativar vínculos do trecho original operacional (usuário vinculará N.S. aos segmentos)
+      // Desativar vínculos do trecho original operacional
       await supabase.from('mapa_trecho_os' as any)
         .update({ ativo: false })
         .eq('trecho_operacional_id', opId)
@@ -358,13 +365,12 @@ const EditorOperacionalPage = () => {
 
       // Criar dois derivados
       const orig = trechosEfetivos.find((t) => t.id === trechoId);
-      const insertPayload = [
+      const { data: inseridos, error: e2 } = await supabase.from('mapa_trecho_operacional' as any).insert([
         {
           base_id: base.id, trecho_origem_id: orig?.origem_id ?? null,
           rotulo: rotuloA, tipo: 'derivado',
           pv_inicial_id: pvIniId, pv_final_id: novoPvId,
-          geom: { type: 'LineString', coordinates: coordsA },
-          extensao_m: lineLength(coordsA),
+          geom: { type: 'LineString', coordinates: coordsA }, extensao_m: lineLength(coordsA),
           dn: orig?.dn ?? null, material: orig?.material ?? null,
           motivo: 'Divisão de trecho', updated_by: user.id,
         },
@@ -372,15 +378,37 @@ const EditorOperacionalPage = () => {
           base_id: base.id, trecho_origem_id: orig?.origem_id ?? null,
           rotulo: rotuloB, tipo: 'derivado',
           pv_inicial_id: novoPvId, pv_final_id: pvFimId,
-          geom: { type: 'LineString', coordinates: coordsB },
-          extensao_m: lineLength(coordsB),
+          geom: { type: 'LineString', coordinates: coordsB }, extensao_m: lineLength(coordsB),
           dn: orig?.dn ?? null, material: orig?.material ?? null,
           motivo: 'Divisão de trecho', updated_by: user.id,
         },
-      ];
-      const { error: e2 } = await supabase.from('mapa_trecho_operacional' as any).insert(insertPayload);
+      ]).select('id, rotulo');
       if (e2) throw e2;
-      toast.success('Trecho dividido em 2 segmentos');
+
+      const arrInseridos = (inseridos ?? []) as Array<{ id: string; rotulo: string }>;
+      const opA = arrInseridos.find((x) => x.rotulo === rotuloA)?.id;
+      const opB = arrInseridos.find((x) => x.rotulo === rotuloB)?.id;
+
+      // Reaplicar vínculos conforme destino escolhido pela Sala Técnica
+      const novosVinc: any[] = [];
+      for (const v of vinculosAtivos) {
+        const d = destinos[v.id];
+        if (d === 'A' || d === 'AMBOS') novosVinc.push({
+          trecho_id: orig?.origem_id ?? null, trecho_operacional_id: opA,
+          os_id: v.id, origem: 'MANUAL', ativo: true, motivo: 'Divisão — destino A',
+        });
+        if (d === 'B' || d === 'AMBOS') novosVinc.push({
+          trecho_id: orig?.origem_id ?? null, trecho_operacional_id: opB,
+          os_id: v.id, origem: 'MANUAL', ativo: true, motivo: 'Divisão — destino B',
+        });
+        // NENHUM: não recria vínculo (Sala Técnica vincula depois)
+      }
+      if (novosVinc.length) {
+        const { error: eV } = await supabase.from('mapa_trecho_os' as any).insert(novosVinc);
+        if (eV) throw eV;
+      }
+
+      toast.success('Trecho dividido' + (novosVinc.length ? ` — ${novosVinc.length} vínculo(s) transferido(s)` : ''));
       setDividirOpen(null); setSelectedTrechoId(null);
       await reload();
     } catch (e: any) {
@@ -392,11 +420,11 @@ const EditorOperacionalPage = () => {
     const p = pvsEfetivos.find((x) => x.id === pvId); if (!p) return;
     const from: Coord = [p.lon, p.lat];
     const delta = turf.distance(turf.point(from), turf.point(to), { units: 'meters' });
+    if (delta < 0.01) return; // arraste desprezível
     // Trechos afetados
     const opTrechosAfetados = trechosEfetivos.filter((t) =>
       t.op_id && (t.pv_inicial_id === p.op_id || t.pv_final_id === p.op_id)
     ).map((t) => t.rotulo);
-    // Trechos originais que serão puxados ao operacional
     const origTrechosAfetados = trechosEfetivos.filter((t) =>
       !t.op_id && p.original && (t.original?.no_inicial === p.original.rotulo_original || t.original?.no_final === p.original.rotulo_original)
     ).map((t) => t.rotulo);

@@ -209,11 +209,20 @@ export async function importarBaseSS08(
       .from('mapa_trechos' as any)
       .select('id, rotulo_original, rotulo_chave, no_inicial, no_final')
       .eq('base_id', baseId);
-    // Busca N.S. ativas
-    const { data: nsAll } = await supabase
-      .from('ordens_servico')
-      .select('id, trecho, bacia, status_vigencia, pv_montante, pv_jusante');
-    const nsAtivas = (nsAll ?? []).filter((n) => (n as any).status_vigencia !== 'SUPRIMIDO');
+    // Busca N.S. ativas (com paginação — pode haver > 1000 no total)
+    const PAGE = 1000;
+    const nsAll: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('ordens_servico')
+        .select('id, trecho, bacia, status_vigencia, pv_montante, pv_jusante')
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      const rows = (data ?? []) as any[];
+      nsAll.push(...rows);
+      if (rows.length < PAGE) break;
+    }
+    const nsAtivas = nsAll.filter((n) => (n as any).status_vigencia !== 'SUPRIMIDO');
 
     // Índices dos dois lados por chave EXATA e por chave CANDIDATA
     const nsByChave = new Map<string, any[]>();

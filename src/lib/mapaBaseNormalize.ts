@@ -44,7 +44,6 @@ export function classificarTipoNo(rotulo: string): TipoNo {
 // Observação: TR-8.4 e TR-8.40 NÃO são mais pendência — a chave candidata
 // não os funde, e ambos existem literalmente em REDE e N.S. → match exato.
 export const PENDENCIAS_CONHECIDAS_SS08 = [
-  { rotulo: 'TR-8.42',       motivo: 'Trecho sem N.S. correspondente' },
   { rotulo: 'TR-8.18 1-A',   motivo: 'N.S. sem geometria própria' },
   { rotulo: 'LINHA DE RECALQUE', motivo: 'Sem geometria — importar separadamente' },
   { rotulo: 'TQ-8.19', motivo: 'TQ sem linha correspondente' },

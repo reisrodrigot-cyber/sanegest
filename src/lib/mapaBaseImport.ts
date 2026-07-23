@@ -1,12 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 import {
   normalizarRotulo,
+  chaveCandidata,
   classificarTipoNo,
   bboxFromCoords,
   sha256Hex,
   PENDENCIAS_CONHECIDAS_SS08,
   PENDENCIA_CHAVES,
 } from './mapaBaseNormalize';
+
 import type { ImportPayload, ImportError } from '@/workers/shpImport.worker';
 
 const CHUNK = 200;
@@ -201,41 +203,60 @@ export async function importarBaseSS08(
       if (error) throw error;
     }
 
-    // ---- Reconciliação ----
+    // ---- Reconciliação (2 níveis: chave exata → chave candidata) ----
     onProgress('Reconciliando trechos com N.S...');
     const { data: trechosInseridos } = await supabase
       .from('mapa_trechos' as any)
-      .select('id, rotulo_original, rotulo_chave')
+      .select('id, rotulo_original, rotulo_chave, no_inicial, no_final')
       .eq('base_id', baseId);
     // Busca N.S. ativas
     const { data: nsAll } = await supabase
       .from('ordens_servico')
-      .select('id, trecho, bacia, status_vigencia');
+      .select('id, trecho, bacia, status_vigencia, pv_montante, pv_jusante');
     const nsAtivas = (nsAll ?? []).filter((n) => (n as any).status_vigencia !== 'SUPRIMIDO');
-    const nsPorChave = new Map<string, any[]>();
+
+    // Índices dos dois lados por chave EXATA e por chave CANDIDATA
+    const nsByChave = new Map<string, any[]>();
+    const nsByCand = new Map<string, any[]>();
     for (const n of nsAtivas) {
-      const k = normalizarRotulo((n as any).trecho);
-      const arr = nsPorChave.get(k) ?? [];
-      arr.push(n);
-      nsPorChave.set(k, arr);
+      const chave = normalizarRotulo((n as any).trecho);
+      const cand = chaveCandidata(chave);
+      (nsByChave.get(chave) ?? nsByChave.set(chave, []).get(chave)!).push(n);
+      (nsByCand.get(cand) ?? nsByCand.set(cand, []).get(cand)!).push(n);
+    }
+    const shpChaveCount = new Map<string, number>();
+    const shpCandCount = new Map<string, number>();
+    for (const t of trechosInseridos ?? []) {
+      const chave = (t as any).rotulo_chave as string;
+      const cand = chaveCandidata(chave);
+      shpChaveCount.set(chave, (shpChaveCount.get(chave) ?? 0) + 1);
+      shpCandCount.set(cand, (shpCandCount.get(cand) ?? 0) + 1);
     }
 
     const vinculos: any[] = [];
     const divergencias: any[] = [];
-    const linhasComMatch = new Set<string>(); // rotulo_chave
-    const colisoes = new Set<string>();
+    const chavesReconhecidas = new Set<string>(); // qualquer chave/candidato coberto por trecho SHP
 
-    // detectar colisões: mais de um trecho com mesma chave normalizada
-    const contagemTrechos = new Map<string, number>();
-    for (const t of trechosInseridos ?? []) {
-      contagemTrechos.set((t as any).rotulo_chave, (contagemTrechos.get((t as any).rotulo_chave) ?? 0) + 1);
-    }
+    const nosCompativeis = (t: any, ns: any): { ok: boolean; detalhe: string | null } => {
+      const ti = normalizarRotulo(t.no_inicial);
+      const tf = normalizarRotulo(t.no_final);
+      const nm = normalizarRotulo(ns.pv_montante);
+      const nj = normalizarRotulo(ns.pv_jusante);
+      if (!nm && !nj) return { ok: true, detalhe: null }; // NS sem PVs cadastrados
+      if (!ti && !tf) return { ok: true, detalhe: null }; // SHP sem nós
+      // aceita mesma orientação ou invertida
+      const same = (ti === nm && tf === nj);
+      const flipped = (ti === nj && tf === nm);
+      if (same || flipped) return { ok: true, detalhe: null };
+      return { ok: false, detalhe: `SHP(${ti}→${tf}) vs NS(${nm}→${nj})` };
+    };
 
     for (const t of trechosInseridos ?? []) {
       const chave = (t as any).rotulo_chave as string;
       const rotulo = (t as any).rotulo_original as string;
+      const cand = chaveCandidata(chave);
 
-      // pendência conhecida — não vincular automaticamente
+      // pendência conhecida
       if (PENDENCIA_CHAVES.has(chave)) {
         divergencias.push({
           base_id: baseId,
@@ -248,49 +269,111 @@ export async function importarBaseSS08(
         });
         continue;
       }
-      // colisão entre trechos da própria REDE
-      if ((contagemTrechos.get(chave) ?? 0) > 1) {
-        colisoes.add(chave);
+      // colisão dentro da própria REDE (mesma chave exata)
+      if ((shpChaveCount.get(chave) ?? 0) > 1) {
         divergencias.push({
           base_id: baseId, tipo: 'COLISAO', rotulo,
-          detalhes: { trecho_id: (t as any).id, motivo: 'Rótulo duplicado dentro da própria REDE' },
+          detalhes: { trecho_id: (t as any).id, motivo: 'Rótulo duplicado dentro da REDE (chave exata)' },
         });
         continue;
       }
-      const candidatas = nsPorChave.get(chave) ?? [];
-      if (candidatas.length === 0) {
-        divergencias.push({
-          base_id: baseId, tipo: 'SEM_NS', rotulo,
-          detalhes: { trecho_id: (t as any).id },
+
+      // 1) match EXATO
+      const exatas = nsByChave.get(chave) ?? [];
+      if (exatas.length === 1) {
+        const conf = nosCompativeis(t, exatas[0]);
+        vinculos.push({
+          trecho_id: (t as any).id,
+          os_id: exatas[0].id,
+          origem: 'AUTO',
+          criado_por: userId,
+          motivo: `Match exato por rótulo${conf.ok ? '' : ' (nós divergentes — revisar)'}`,
         });
+        if (!conf.ok) {
+          divergencias.push({
+            base_id: baseId, tipo: 'AMBIGUO', rotulo,
+            detalhes: { trecho_id: (t as any).id, os_id: exatas[0].id, nos: conf.detalhe, aviso: 'Match aceito, mas nós montante/jusante não coincidem' },
+          });
+        }
+        chavesReconhecidas.add(chave);
+        chavesReconhecidas.add(cand);
         continue;
       }
-      if (candidatas.length > 1) {
+      if (exatas.length > 1) {
         divergencias.push({
           base_id: baseId, tipo: 'AMBIGUO', rotulo,
-          detalhes: { trecho_id: (t as any).id, candidatas_os_ids: candidatas.map((c) => c.id) },
+          detalhes: { trecho_id: (t as any).id, motivo: 'Múltiplas N.S. com o mesmo rótulo exato', candidatas_os_ids: exatas.map((c) => c.id) },
         });
         continue;
       }
-      // match único
+
+      // 2) match por CANDIDATA — só se única dos dois lados
+      if ((shpCandCount.get(cand) ?? 0) > 1) {
+        divergencias.push({
+          base_id: baseId, tipo: 'COLISAO', rotulo,
+          detalhes: { trecho_id: (t as any).id, motivo: `Candidato "${cand}" colide com outro trecho da REDE`, chave_candidata: cand },
+        });
+        continue;
+      }
+      // NS que casam pelo candidato (por chave OU por candidato, deduplicando)
+      const nsCandMatchMap = new Map<string, any>();
+      for (const n of (nsByChave.get(cand) ?? [])) nsCandMatchMap.set(n.id, n);
+      for (const n of (nsByCand.get(cand) ?? [])) nsCandMatchMap.set(n.id, n);
+      const nsCandMatch = Array.from(nsCandMatchMap.values());
+
+      if (nsCandMatch.length === 0) {
+        divergencias.push({
+          base_id: baseId, tipo: 'SEM_NS', rotulo,
+          detalhes: { trecho_id: (t as any).id, chave_candidata: cand },
+        });
+        continue;
+      }
+      if (nsCandMatch.length > 1) {
+        divergencias.push({
+          base_id: baseId, tipo: 'AMBIGUO', rotulo,
+          detalhes: {
+            trecho_id: (t as any).id,
+            motivo: 'Múltiplas N.S. reconhecidas pela chave candidata',
+            chave_candidata: cand,
+            candidatas_os_ids: nsCandMatch.map((c) => c.id),
+          },
+        });
+        continue;
+      }
+
+      const ns = nsCandMatch[0];
+      const conf = nosCompativeis(t, ns);
       vinculos.push({
         trecho_id: (t as any).id,
-        os_id: candidatas[0].id,
+        os_id: ns.id,
         origem: 'AUTO',
         criado_por: userId,
-        motivo: 'Match automático por rótulo normalizado',
+        motivo: `Match por chave candidata (${chave} ↔ ${normalizarRotulo(ns.trecho)})${conf.ok ? '' : ' — nós divergentes'}`,
       });
-      linhasComMatch.add(chave);
+      if (!conf.ok) {
+        divergencias.push({
+          base_id: baseId, tipo: 'AMBIGUO', rotulo,
+          detalhes: { trecho_id: (t as any).id, os_id: ns.id, nos: conf.detalhe, aviso: 'Match por candidato com nós divergentes' },
+        });
+      }
+      chavesReconhecidas.add(chave);
+      chavesReconhecidas.add(cand);
     }
 
-    // N.S. sem linha (SS-08 apenas): heurística por bacia contendo "SS-08"
-    const chavesTrecho = new Set((trechosInseridos ?? []).map((t: any) => t.rotulo_chave));
+    // N.S. sem linha (SS-08): a chave OU candidato da N.S. não aparece no SHP
+    const shpAll = new Set<string>();
+    for (const t of trechosInseridos ?? []) {
+      const chv = (t as any).rotulo_chave as string;
+      shpAll.add(chv);
+      shpAll.add(chaveCandidata(chv));
+    }
     let nsSemLinha = 0;
     for (const n of nsAtivas) {
       const bacia = normalizarRotulo((n as any).bacia);
       if (!/SS[\-\s]?08/.test(bacia)) continue;
-      const k = normalizarRotulo((n as any).trecho);
-      if (!chavesTrecho.has(k)) {
+      const chv = normalizarRotulo((n as any).trecho);
+      const cnd = chaveCandidata(chv);
+      if (!shpAll.has(chv) && !shpAll.has(cnd)) {
         nsSemLinha++;
         divergencias.push({
           base_id: baseId, tipo: 'SEM_LINHA', rotulo: (n as any).trecho,
@@ -298,6 +381,7 @@ export async function importarBaseSS08(
         });
       }
     }
+
 
     // insere vínculos e divergências
     for (let i = 0; i < vinculos.length; i += CHUNK) {

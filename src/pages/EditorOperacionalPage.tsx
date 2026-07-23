@@ -42,6 +42,9 @@ type ToolMode =
   | { kind: 'manual-pv2'; pv1Id: string }
   | { kind: 'manual-draw'; pv1Id: string; pv2Id: string; vertices: Coord[] };
 
+type OSVinc = { id: string; trecho: string; bacia: string; status: OSStatus; pv_final_assentado: boolean };
+type DestinoDivisao = 'A' | 'B' | 'AMBOS' | 'NENHUM';
+
 const EditorOperacionalPage = () => {
   const { user } = useAuth();
   const isSalaTecnica = user?.role === 'sala_tecnica';
@@ -63,11 +66,12 @@ const EditorOperacionalPage = () => {
 
   // Dialog states
   const [vincularOpen, setVincularOpen] = useState(false);
-  const [dividirOpen, setDividirOpen] = useState<null | { trechoId: string; latlng: L.LatLng }>(null);
+  const [dividirOpen, setDividirOpen] = useState<null | { trechoId: string; latlng: L.LatLng; vinculosAtivos: OSVinc[] }>(null);
   const [moverConfirm, setMoverConfirm] = useState<null | {
     pvId: string; from: Coord; to: Coord; deltaM: number;
     trechosAfetados: string[];
   }>(null);
+  const [dragPreview, setDragPreview] = useState<null | { pvId: string; from: Coord; to: Coord; deltaM: number }>(null);
   const [suprimirTrechoOpen, setSuprimirTrechoOpen] = useState(false);
   const [suprimirPvOpen, setSuprimirPvOpen] = useState<null | {
     pvId: string; trechosConectados: string[];
@@ -136,7 +140,8 @@ const EditorOperacionalPage = () => {
       line.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         if (tool.kind === 'add-pv' && tool.trechoId === t.id) {
-          setDividirOpen({ trechoId: t.id, latlng: (e as any).latlng });
+          const vincAtivos = (statusPorTrecho.get(t.id)?.osList ?? []) as OSVinc[];
+          setDividirOpen({ trechoId: t.id, latlng: (e as any).latlng, vinculosAtivos: vincAtivos });
           setTool({ kind: 'none' });
           return;
         }
@@ -158,13 +163,47 @@ const EditorOperacionalPage = () => {
       if (p.tipo === 'suprimido' && !showSuprimidos) continue;
       const selected = p.id === selectedPvId;
       const isOp = p.tipo !== 'original';
+      const inDragMode = tool.kind === 'move-pv' && tool.pvId === p.id;
+      const fill = p.tipo === 'suprimido' ? '#dc2626'
+          : p.tipo === 'manual' ? '#7c3aed'
+          : p.tipo === 'movido' ? '#f59e0b'
+          : '#0C447C';
+
+      if (inDragMode) {
+        // Draggable HTML marker for move-mode
+        const size = 20;
+        const icon = L.divIcon({
+          className: '',
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+          html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${fill};border:3px solid #fff;box-shadow:0 0 0 2px ${fill},0 0 8px rgba(0,0,0,.35);cursor:grab"></div>`,
+        });
+        const marker = L.marker([p.lat, p.lon], { icon, draggable: true, autoPan: true });
+        marker.on('dragstart', () => {
+          setDragPreview({ pvId: p.id, from: [p.lon, p.lat], to: [p.lon, p.lat], deltaM: 0 });
+        });
+        marker.on('drag', (ev: any) => {
+          const ll = ev.target.getLatLng();
+          const to: Coord = [ll.lng, ll.lat];
+          const from: Coord = [p.lon, p.lat];
+          const d = turf.distance(turf.point(from), turf.point(to), { units: 'meters' });
+          setDragPreview({ pvId: p.id, from, to, deltaM: d });
+        });
+        marker.on('dragend', (ev: any) => {
+          const ll = ev.target.getLatLng();
+          const to: Coord = [ll.lng, ll.lat];
+          setDragPreview(null);
+          acaoMoverPvIniciar(p.id, to);
+          setTool({ kind: 'none' });
+        });
+        marker.addTo(g);
+        continue;
+      }
+
       const marker = L.circleMarker([p.lat, p.lon], {
         radius: selected ? 8 : (isOp ? 6 : 4),
         color: '#fff', weight: 1.5,
-        fillColor: p.tipo === 'suprimido' ? '#dc2626'
-          : p.tipo === 'manual' ? '#7c3aed'
-          : p.tipo === 'movido' ? '#f59e0b'
-          : '#0C447C',
+        fillColor: fill,
         fillOpacity: p.tipo === 'suprimido' ? 0.4 : 0.95,
       });
       marker.on('click', (e) => {
@@ -280,10 +319,17 @@ const EditorOperacionalPage = () => {
 
   // ============ Ações ============
 
-  async function acaoDividirTrecho(rotuloA: string, rotuloB: string, novoPvRotulo: string, cota: string, prof: string) {
+  async function acaoDividirTrecho(
+    rotuloA: string, rotuloB: string, novoPvRotulo: string, cota: string, prof: string,
+    destinos: Record<string, DestinoDivisao>,
+  ) {
     if (!dividirOpen || !base || !user) return;
     try {
-      const { trechoId, latlng } = dividirOpen;
+      const { trechoId, latlng, vinculosAtivos } = dividirOpen;
+      // exige decisão explícita para cada vínculo ativo
+      for (const v of vinculosAtivos) {
+        if (!destinos[v.id]) throw new Error(`Defina o destino da N.S. ${v.trecho}`);
+      }
       const { opId, pvIniId, pvFimId, coords } = await ensureTrechoOperacional(trechoId);
       const line = turf.lineString(coords);
       const snap = turf.nearestPointOnLine(line, turf.point([latlng.lng, latlng.lat]), { units: 'meters' });
@@ -311,7 +357,7 @@ const EditorOperacionalPage = () => {
       await supabase.from('mapa_trecho_operacional' as any)
         .update({ tipo: 'suprimido', motivo: 'Substituído por divisão', updated_by: user.id })
         .eq('id', opId);
-      // Desativar vínculos do trecho original operacional (usuário vinculará N.S. aos segmentos)
+      // Desativar vínculos do trecho original operacional
       await supabase.from('mapa_trecho_os' as any)
         .update({ ativo: false })
         .eq('trecho_operacional_id', opId)
@@ -319,13 +365,12 @@ const EditorOperacionalPage = () => {
 
       // Criar dois derivados
       const orig = trechosEfetivos.find((t) => t.id === trechoId);
-      const insertPayload = [
+      const { data: inseridos, error: e2 } = await supabase.from('mapa_trecho_operacional' as any).insert([
         {
           base_id: base.id, trecho_origem_id: orig?.origem_id ?? null,
           rotulo: rotuloA, tipo: 'derivado',
           pv_inicial_id: pvIniId, pv_final_id: novoPvId,
-          geom: { type: 'LineString', coordinates: coordsA },
-          extensao_m: lineLength(coordsA),
+          geom: { type: 'LineString', coordinates: coordsA }, extensao_m: lineLength(coordsA),
           dn: orig?.dn ?? null, material: orig?.material ?? null,
           motivo: 'Divisão de trecho', updated_by: user.id,
         },
@@ -333,15 +378,37 @@ const EditorOperacionalPage = () => {
           base_id: base.id, trecho_origem_id: orig?.origem_id ?? null,
           rotulo: rotuloB, tipo: 'derivado',
           pv_inicial_id: novoPvId, pv_final_id: pvFimId,
-          geom: { type: 'LineString', coordinates: coordsB },
-          extensao_m: lineLength(coordsB),
+          geom: { type: 'LineString', coordinates: coordsB }, extensao_m: lineLength(coordsB),
           dn: orig?.dn ?? null, material: orig?.material ?? null,
           motivo: 'Divisão de trecho', updated_by: user.id,
         },
-      ];
-      const { error: e2 } = await supabase.from('mapa_trecho_operacional' as any).insert(insertPayload);
+      ]).select('id, rotulo');
       if (e2) throw e2;
-      toast.success('Trecho dividido em 2 segmentos');
+
+      const arrInseridos = ((inseridos ?? []) as unknown) as Array<{ id: string; rotulo: string }>;
+      const opA = arrInseridos.find((x) => x.rotulo === rotuloA)?.id;
+      const opB = arrInseridos.find((x) => x.rotulo === rotuloB)?.id;
+
+      // Reaplicar vínculos conforme destino escolhido pela Sala Técnica
+      const novosVinc: any[] = [];
+      for (const v of vinculosAtivos) {
+        const d = destinos[v.id];
+        if (d === 'A' || d === 'AMBOS') novosVinc.push({
+          trecho_id: orig?.origem_id ?? null, trecho_operacional_id: opA,
+          os_id: v.id, origem: 'MANUAL', ativo: true, motivo: 'Divisão — destino A',
+        });
+        if (d === 'B' || d === 'AMBOS') novosVinc.push({
+          trecho_id: orig?.origem_id ?? null, trecho_operacional_id: opB,
+          os_id: v.id, origem: 'MANUAL', ativo: true, motivo: 'Divisão — destino B',
+        });
+        // NENHUM: não recria vínculo (Sala Técnica vincula depois)
+      }
+      if (novosVinc.length) {
+        const { error: eV } = await supabase.from('mapa_trecho_os' as any).insert(novosVinc);
+        if (eV) throw eV;
+      }
+
+      toast.success('Trecho dividido' + (novosVinc.length ? ` — ${novosVinc.length} vínculo(s) transferido(s)` : ''));
       setDividirOpen(null); setSelectedTrechoId(null);
       await reload();
     } catch (e: any) {
@@ -353,11 +420,11 @@ const EditorOperacionalPage = () => {
     const p = pvsEfetivos.find((x) => x.id === pvId); if (!p) return;
     const from: Coord = [p.lon, p.lat];
     const delta = turf.distance(turf.point(from), turf.point(to), { units: 'meters' });
+    if (delta < 0.01) return; // arraste desprezível
     // Trechos afetados
     const opTrechosAfetados = trechosEfetivos.filter((t) =>
       t.op_id && (t.pv_inicial_id === p.op_id || t.pv_final_id === p.op_id)
     ).map((t) => t.rotulo);
-    // Trechos originais que serão puxados ao operacional
     const origTrechosAfetados = trechosEfetivos.filter((t) =>
       !t.op_id && p.original && (t.original?.no_inicial === p.original.rotulo_original || t.original?.no_final === p.original.rotulo_original)
     ).map((t) => t.rotulo);
@@ -659,21 +726,39 @@ const EditorOperacionalPage = () => {
                 </div>
                 <div className="text-xs">Lat/Lon: {selectedPv.lat.toFixed(6)}, {selectedPv.lon.toFixed(6)}</div>
                 <div className="mt-3 flex flex-col gap-2">
-                  <Button size="sm" variant="outline" onClick={() => {
-                    const newLatStr = prompt('Nova latitude:', String(selectedPv.lat)); if (!newLatStr) return;
-                    const newLonStr = prompt('Nova longitude:', String(selectedPv.lon)); if (!newLonStr) return;
-                    const to: Coord = [Number(newLonStr), Number(newLatStr)];
-                    acaoMoverPvIniciar(selectedPv.id, to);
-                  }}><Move className="h-3 w-3 mr-1" /> Mover PV (por coordenadas)</Button>
+                  <Button
+                    size="sm"
+                    variant={tool.kind === 'move-pv' && tool.pvId === selectedPv.id ? 'default' : 'outline'}
+                    onClick={() => {
+                      if (tool.kind === 'move-pv' && tool.pvId === selectedPv.id) {
+                        setTool({ kind: 'none' });
+                        toast.info('Movimentação cancelada');
+                      } else {
+                        setTool({ kind: 'move-pv', pvId: selectedPv.id });
+                        toast.info('Arraste o PV no mapa para a nova posição');
+                      }
+                    }}
+                  ><Move className="h-3 w-3 mr-1" /> Mover PV (arraste no mapa)</Button>
                   <Button size="sm" variant="outline" onClick={acaoSuprimirPvSimples}><Trash2 className="h-3 w-3 mr-1" /> Suprimir PV</Button>
                 </div>
-                <div className="mt-2 text-[11px] text-muted-foreground">
-                  Dica: para mover por arraste no mapa, use a ação acima e ajuste; futuras versões trarão arraste direto.
-                </div>
+                {tool.kind === 'move-pv' && tool.pvId === selectedPv.id && (
+                  <div className="mt-2 text-[11px] p-2 bg-amber-50 text-amber-800 rounded">
+                    Modo Mover PV ativo. Arraste o marcador destacado. Deslocamentos acima de 10 m exigem justificativa.
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
+
+        {/* Preview de deslocamento durante o arraste */}
+        {dragPreview && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-card border shadow-lg rounded px-3 py-2 text-xs z-[500] pointer-events-none">
+            <div className="font-semibold">Deslocamento: {dragPreview.deltaM.toFixed(2)} m {dragPreview.deltaM > 10 && <span className="text-destructive ml-1">⚠ &gt; 10 m</span>}</div>
+            <div className="text-muted-foreground">De: {dragPreview.from[1].toFixed(6)}, {dragPreview.from[0].toFixed(6)}</div>
+            <div className="text-muted-foreground">Para: {dragPreview.to[1].toFixed(6)}, {dragPreview.to[0].toFixed(6)}</div>
+          </div>
+        )}
       </div>
 
       {/* Vincular N.S. modal */}
@@ -690,6 +775,7 @@ const EditorOperacionalPage = () => {
       <DividirDialog
         open={!!dividirOpen}
         rotuloBase={selectedTrecho?.rotulo ?? ''}
+        vinculosAtivos={dividirOpen?.vinculosAtivos ?? []}
         onClose={() => setDividirOpen(null)}
         onConfirm={acaoDividirTrecho}
       />
@@ -801,16 +887,26 @@ const VincularNSDialog = ({ open, onClose, onConfirm, allOs, currentIds, bacia }
   );
 };
 
-const DividirDialog = ({ open, rotuloBase, onClose, onConfirm }: {
-  open: boolean; rotuloBase: string; onClose: () => void;
-  onConfirm: (a: string, b: string, novoPv: string, cota: string, prof: string) => void;
+const DividirDialog = ({ open, rotuloBase, vinculosAtivos, onClose, onConfirm }: {
+  open: boolean; rotuloBase: string;
+  vinculosAtivos: OSVinc[];
+  onClose: () => void;
+  onConfirm: (a: string, b: string, novoPv: string, cota: string, prof: string, destinos: Record<string, DestinoDivisao>) => void;
 }) => {
   const [a, setA] = useState(''); const [b, setB] = useState(''); const [pv, setPv] = useState('');
   const [cota, setCota] = useState(''); const [prof, setProf] = useState('');
-  useEffect(() => { if (open) { setA(`${rotuloBase}.1`); setB(`${rotuloBase}.2`); setPv(''); setCota(''); setProf(''); } }, [open, rotuloBase]);
+  const [destinos, setDestinos] = useState<Record<string, DestinoDivisao>>({});
+  useEffect(() => {
+    if (open) {
+      setA(`${rotuloBase}.1`); setB(`${rotuloBase}.2`); setPv('');
+      setCota(''); setProf(''); setDestinos({});
+    }
+  }, [open, rotuloBase]);
+  const todosDecididos = vinculosAtivos.every((v) => !!destinos[v.id]);
+  const podeSalvar = !!pv && !!a && !!b && todosDecididos;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Dividir trecho — adicionar PV</DialogTitle>
           <DialogDescription>Novo PV será snapado sobre a linha. Extensões serão recalculadas.</DialogDescription>
@@ -822,9 +918,46 @@ const DividirDialog = ({ open, rotuloBase, onClose, onConfirm }: {
           <div><Label>Cota (opc.)</Label><Input value={cota} onChange={(e) => setCota(e.target.value)} /></div>
           <div><Label>Profundidade (opc.)</Label><Input value={prof} onChange={(e) => setProf(e.target.value)} /></div>
         </div>
+
+        {vinculosAtivos.length > 0 && (
+          <div className="mt-2 border-t pt-3">
+            <div className="flex items-center gap-2 mb-2 text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <div className="text-sm font-semibold">Este trecho possui N.S. vinculadas</div>
+            </div>
+            <div className="text-xs text-muted-foreground mb-2">
+              Os vínculos do trecho atual serão desativados. Escolha o destino de cada N.S. abaixo.
+              Sem uma decisão explícita a divisão não será salva.
+            </div>
+            <div className="space-y-2 max-h-56 overflow-auto">
+              {vinculosAtivos.map((v) => {
+                const d = destinos[v.id];
+                const setD = (val: DestinoDivisao) => setDestinos((prev) => ({ ...prev, [v.id]: val }));
+                return (
+                  <div key={v.id} className="border rounded p-2">
+                    <div className="text-sm font-medium">{v.trecho} <span className="text-xs text-muted-foreground">({v.bacia}) — {v.status}</span></div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {(['A','B','AMBOS','NENHUM'] as DestinoDivisao[]).map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setD(opt)}
+                          className={`px-2 py-0.5 text-xs rounded border ${d === opt ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
+                        >
+                          {opt === 'A' ? 'Segmento A' : opt === 'B' ? 'Segmento B' : opt === 'AMBOS' ? 'Ambos' : 'Nenhum (vinculo depois)'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button disabled={!pv || !a || !b} onClick={() => onConfirm(a, b, pv, cota, prof)}>Dividir</Button>
+          <Button disabled={!podeSalvar} onClick={() => onConfirm(a, b, pv, cota, prof, destinos)}>Dividir</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

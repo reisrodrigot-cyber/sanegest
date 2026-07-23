@@ -1578,6 +1578,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_mapa_publico: { Args: { _ss: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

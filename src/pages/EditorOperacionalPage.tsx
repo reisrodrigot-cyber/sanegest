@@ -42,6 +42,9 @@ type ToolMode =
   | { kind: 'manual-pv2'; pv1Id: string }
   | { kind: 'manual-draw'; pv1Id: string; pv2Id: string; vertices: Coord[] };
 
+type OSVinc = { id: string; trecho: string; bacia: string; status: OSStatus; pv_final_assentado: boolean };
+type DestinoDivisao = 'A' | 'B' | 'AMBOS' | 'NENHUM';
+
 const EditorOperacionalPage = () => {
   const { user } = useAuth();
   const isSalaTecnica = user?.role === 'sala_tecnica';

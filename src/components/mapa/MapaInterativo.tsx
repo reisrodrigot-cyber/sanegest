@@ -116,6 +116,15 @@ interface MapaInterativoProps {
 export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
+  const canViewPreviewBase = effectiveRole === 'admin' || effectiveRole === 'sala_tecnica' || effectiveRole === 'gerencia';
+  const previewBase = useMapaBasePreview(canViewPreviewBase);
+  const [previewVisible, setPreviewVisible] = useState<boolean>(() => {
+    try { return localStorage.getItem('sanegest_map_preview_ss08') !== '0'; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('sanegest_map_preview_ss08', previewVisible ? '1' : '0'); } catch {}
+  }, [previewVisible]);
+
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);

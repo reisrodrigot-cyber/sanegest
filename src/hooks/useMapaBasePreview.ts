@@ -51,7 +51,11 @@ export function statusAgregado(statuses: OSStatus[]): OSStatus {
   return 'CINZA';
 }
 
-/** Carrega a base preview mais recente da SS-08. Nesta fase, apenas SS-08. */
+/**
+ * Carrega a base preview mais recente da SS-08 através da RPC segura `get_mapa_publico`.
+ * Essa RPC devolve apenas dados sanitizados (sem motivos, justificativas, vínculos inativos
+ * ou trechos suprimidos), unificando geometria original + camada operacional efetiva.
+ */
 export function useMapaBasePreview(canView: boolean) {
   const [base, setBase] = useState<MapaBasePreview | null>(null);
   const [trechos, setTrechos] = useState<MapaTrechoPreview[]>([]);
@@ -62,101 +66,47 @@ export function useMapaBasePreview(canView: boolean) {
   const load = async () => {
     setLoading(true); setErro(null);
     try {
-      const { data: b } = await supabase
-        .from('mapa_bases' as any)
-        .select('id, ss, versao, status, bbox, feicoes_rede, feicoes_pv')
-        .eq('ss', 'SS-08')
-        .in('status', ['preview', 'ativa'])
-        .order('versao', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!b) { setBase(null); setTrechos([]); setPontos([]); return; }
-      const baseRow = b as any as MapaBasePreview;
-      setBase(baseRow);
+      const { data, error } = await supabase.rpc('get_mapa_publico' as any, { _ss: 'SS-08' });
+      if (error) throw error;
+      const payload: any = data ?? {};
+      if (!payload.base) { setBase(null); setTrechos([]); setPontos([]); return; }
+      setBase(payload.base as MapaBasePreview);
 
-      const [{ data: tData }, { data: pData }, { data: vinc }, { data: divs }] = await Promise.all([
-        supabase.from('mapa_trechos' as any)
-          .select('id, rotulo_original, no_inicial, no_final, dn, material, l_escala, geometry')
-          .eq('base_id', baseRow.id),
-        supabase.from('mapa_pontos' as any)
-          .select('id, rotulo_original, tipo_no, cota_marg, cota_inv, prof, lon, lat')
-          .eq('base_id', baseRow.id)
-          .not('lon', 'is', null),
-        supabase.from('mapa_trecho_os' as any)
-          .select('trecho_id, os_id, origem')
-          .eq('ativo', true),
-        supabase.from('mapa_divergencias' as any)
-          .select('tipo, detalhes')
-          .eq('base_id', baseRow.id)
-          .eq('status', 'aberta'),
-      ]);
-
-      const trechosArr = (tData ?? []) as any[];
-      const vincArr = (vinc ?? []) as any[];
-      const trechoIds = new Set(trechosArr.map((t) => t.id));
-      const vincDoBase = vincArr.filter((v) => trechoIds.has(v.trecho_id));
-      const osIds = [...new Set(vincDoBase.map((v) => v.os_id))];
-
-      let osMap = new Map<string, any>();
-      const pvFinalSet = new Set<string>();
-      if (osIds.length) {
-        const [{ data: osData }, { data: regs }] = await Promise.all([
-          supabase.from('ordens_servico')
-            .select('id, trecho, bacia, status')
-            .in('id', osIds),
-          supabase.from('registros_producao')
-            .select('os_id')
-            .in('os_id', osIds)
-            .eq('pv_final_assentado', true),
-        ]);
-        osMap = new Map((osData ?? []).map((o) => [o.id, o]));
-        for (const r of (regs ?? []) as any[]) pvFinalSet.add(r.os_id);
-      }
-
-
-      // divergências por trecho
-      const divPorTrecho = new Map<string, Array<{ tipo: string; detalhes: any }>>();
-      for (const d of (divs ?? []) as any[]) {
-        const tid = d.detalhes?.trecho_id;
-        if (!tid) continue;
-        const arr = divPorTrecho.get(tid) ?? [];
-        arr.push({ tipo: d.tipo, detalhes: d.detalhes });
-        divPorTrecho.set(tid, arr);
-      }
-
-      const trechosFinal: MapaTrechoPreview[] = trechosArr.map((t) => {
-        const vs = vincDoBase
-          .filter((v) => v.trecho_id === t.id)
-          .map((v) => {
-            const os = osMap.get(v.os_id);
-            return os ? {
-              os_id: os.id,
-              trecho: os.trecho,
-              bacia: os.bacia,
-              status: os.status as OSStatus,
-              origem: v.origem as 'AUTO' | 'MANUAL',
-              pv_final_assentado: pvFinalSet.has(os.id),
-            } : null;
-
-          })
-          .filter(Boolean) as MapaTrechoPreview['vinculos'];
-        return {
-          id: t.id,
-          rotulo_original: t.rotulo_original,
-          no_inicial: t.no_inicial,
-          no_final: t.no_final,
-          dn: t.dn,
-          material: t.material,
-          l_escala: t.l_escala,
-          geometry: t.geometry,
-          vinculos: vs,
-          divergencias: divPorTrecho.get(t.id) ?? [],
-        };
-      });
+      const trArr: any[] = payload.trechos ?? [];
+      const trechosFinal: MapaTrechoPreview[] = trArr.map((t) => ({
+        id: t.id,
+        rotulo_original: t.rotulo,
+        no_inicial: null,
+        no_final: null,
+        dn: t.dn,
+        material: t.material,
+        l_escala: t.extensao_m,
+        geometry: t.geometry,
+        vinculos: (t.vinculos ?? []).map((v: any) => ({
+          os_id: v.os_id,
+          trecho: v.trecho,
+          bacia: v.bacia,
+          status: v.status as OSStatus,
+          origem: 'AUTO',
+          pv_final_assentado: !!v.pv_final_assentado,
+        })),
+        divergencias: [],
+      }));
       setTrechos(trechosFinal);
-      setPontos((pData ?? []) as any);
+
+      const pArr: any[] = payload.pontos ?? [];
+      setPontos(pArr.map((p) => ({
+        id: p.id,
+        rotulo_original: p.rotulo,
+        tipo_no: p.tipo_no ?? '',
+        cota_marg: p.cota,
+        cota_inv: null,
+        prof: p.prof,
+        lon: Number(p.lon),
+        lat: Number(p.lat),
+      })));
     } catch (e: any) {
-      setErro(e?.message ?? 'Erro ao carregar base preview');
+      setErro(e?.message ?? 'Erro ao carregar mapa');
     } finally {
       setLoading(false);
     }
@@ -165,10 +115,10 @@ export function useMapaBasePreview(canView: boolean) {
   useEffect(() => {
     if (!canView) { setBase(null); setTrechos([]); setPontos([]); return; }
     load();
+    // Recarrega quando N.S. mudarem (status/pv_final) — não escutamos mapa_trecho_os
+    // porque a RPC já reflete o estado atual e essa tabela é restrita à Sala Técnica.
     const ch = supabase
       .channel('mapa-base-preview')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_bases' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mapa_trecho_os' }, load)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ordens_servico' }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };

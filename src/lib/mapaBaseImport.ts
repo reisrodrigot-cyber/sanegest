@@ -304,8 +304,6 @@ export async function importarBaseSS08(
         chavesReconhecidas.add(cand);
         continue;
       }
-        continue;
-      }
       if (exatas.length > 1) {
         divergencias.push({
           base_id: baseId, tipo: 'AMBIGUO', rotulo,

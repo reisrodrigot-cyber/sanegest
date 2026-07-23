@@ -140,7 +140,8 @@ const EditorOperacionalPage = () => {
       line.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         if (tool.kind === 'add-pv' && tool.trechoId === t.id) {
-          setDividirOpen({ trechoId: t.id, latlng: (e as any).latlng });
+          const vincAtivos = (statusPorTrecho.get(t.id)?.osList ?? []) as OSVinc[];
+          setDividirOpen({ trechoId: t.id, latlng: (e as any).latlng, vinculosAtivos: vincAtivos });
           setTool({ kind: 'none' });
           return;
         }
@@ -162,13 +163,47 @@ const EditorOperacionalPage = () => {
       if (p.tipo === 'suprimido' && !showSuprimidos) continue;
       const selected = p.id === selectedPvId;
       const isOp = p.tipo !== 'original';
+      const inDragMode = tool.kind === 'move-pv' && tool.pvId === p.id;
+      const fill = p.tipo === 'suprimido' ? '#dc2626'
+          : p.tipo === 'manual' ? '#7c3aed'
+          : p.tipo === 'movido' ? '#f59e0b'
+          : '#0C447C';
+
+      if (inDragMode) {
+        // Draggable HTML marker for move-mode
+        const size = 20;
+        const icon = L.divIcon({
+          className: '',
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+          html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${fill};border:3px solid #fff;box-shadow:0 0 0 2px ${fill},0 0 8px rgba(0,0,0,.35);cursor:grab"></div>`,
+        });
+        const marker = L.marker([p.lat, p.lon], { icon, draggable: true, autoPan: true });
+        marker.on('dragstart', () => {
+          setDragPreview({ pvId: p.id, from: [p.lon, p.lat], to: [p.lon, p.lat], deltaM: 0 });
+        });
+        marker.on('drag', (ev: any) => {
+          const ll = ev.target.getLatLng();
+          const to: Coord = [ll.lng, ll.lat];
+          const from: Coord = [p.lon, p.lat];
+          const d = turf.distance(turf.point(from), turf.point(to), { units: 'meters' });
+          setDragPreview({ pvId: p.id, from, to, deltaM: d });
+        });
+        marker.on('dragend', (ev: any) => {
+          const ll = ev.target.getLatLng();
+          const to: Coord = [ll.lng, ll.lat];
+          setDragPreview(null);
+          acaoMoverPvIniciar(p.id, to);
+          setTool({ kind: 'none' });
+        });
+        marker.addTo(g);
+        continue;
+      }
+
       const marker = L.circleMarker([p.lat, p.lon], {
         radius: selected ? 8 : (isOp ? 6 : 4),
         color: '#fff', weight: 1.5,
-        fillColor: p.tipo === 'suprimido' ? '#dc2626'
-          : p.tipo === 'manual' ? '#7c3aed'
-          : p.tipo === 'movido' ? '#f59e0b'
-          : '#0C447C',
+        fillColor: fill,
         fillOpacity: p.tipo === 'suprimido' ? 0.4 : 0.95,
       });
       marker.on('click', (e) => {

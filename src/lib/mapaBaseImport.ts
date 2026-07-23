@@ -298,14 +298,12 @@ export async function importarBaseSS08(
           criado_por: userId,
           motivo: `Match exato por rótulo${conf.ok ? '' : ' (nós divergentes — revisar)'}`,
         });
-        if (!conf.ok) {
-          divergencias.push({
-            base_id: baseId, tipo: 'AMBIGUO', rotulo,
-            detalhes: { trecho_id: (t as any).id, os_id: exatas[0].id, nos: conf.detalhe, aviso: 'Match aceito, mas nós montante/jusante não coincidem' },
-          });
-        }
+        // Divergência de nós é apenas uma observação registrada no motivo do vínculo
+        // (não conta como ambiguidade; o vínculo AUTO segue válido).
         chavesReconhecidas.add(chave);
         chavesReconhecidas.add(cand);
+        continue;
+      }
         continue;
       }
       if (exatas.length > 1) {

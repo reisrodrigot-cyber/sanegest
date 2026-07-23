@@ -1091,6 +1091,17 @@ ${placemarks.join('\n')}
     <div className={`relative ${className}`} style={{ height }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 200, borderRadius: '0.75rem', overflow: 'hidden' }} />
 
+      {/* Camada Preview SS-08 — não afeta o KMZ */}
+      {canViewPreviewBase && (
+        <MapaBasePreviewLayer
+          map={mapRef.current}
+          trechos={previewBase.trechos}
+          pontos={previewBase.pontos}
+          visible={previewVisible && !!previewBase.base}
+        />
+      )}
+
+
 
 
       {/* Controle flutuante: camadas + minha localização */}

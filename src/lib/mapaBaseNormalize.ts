@@ -9,6 +9,27 @@ export function normalizarRotulo(raw: unknown): string {
   return String(raw).trim().toUpperCase().replace(/\s+/g, ' ');
 }
 
+// Chave candidata NÃO destrutiva para SUGESTÃO de match padded↔unpadded:
+// remove apenas zeros à esquerda do último segmento após '.', preservando
+// múltiplos dígitos. Assim TR-8.01 → TR-8.1, mas TR-8.40 permanece TR-8.40
+// e TR-8.4 permanece TR-8.4 (nunca gera colisão entre 8.4 e 8.40).
+// A chave candidata só é usada quando não há match exato e ela é única dos
+// dois lados (REDE e N.S.). O rótulo bruto e a chave normalizada continuam
+// preservados para exibição e auditoria.
+export function chaveCandidata(chave: string): string {
+  const c = chave || '';
+  const dot = c.lastIndexOf('.');
+  if (dot < 0) return c;
+  const head = c.slice(0, dot);
+  const tail = c.slice(dot + 1);
+  if (tail.length > 1 && /^0\d+$/.test(tail)) {
+    const stripped = tail.replace(/^0+/, '') || '0';
+    return `${head}.${stripped}`;
+  }
+  return c;
+}
+
+
 export type TipoNo = 'PV' | 'TL' | 'TQ' | 'OUTRO';
 
 export function classificarTipoNo(rotulo: string): TipoNo {
@@ -20,9 +41,9 @@ export function classificarTipoNo(rotulo: string): TipoNo {
 }
 
 // Casos conhecidos da SS-08 que devem entrar como pendência (sem vínculo automático).
+// Observação: TR-8.4 e TR-8.40 NÃO são mais pendência — a chave candidata
+// não os funde, e ambos existem literalmente em REDE e N.S. → match exato.
 export const PENDENCIAS_CONHECIDAS_SS08 = [
-  { rotulo: 'TR-8.4',        motivo: 'Colisão de rótulo com TR-8.40 — revisar cadastro' },
-  { rotulo: 'TR-8.40',       motivo: 'Colisão de rótulo com TR-8.4 — revisar cadastro' },
   { rotulo: 'TR-8.42',       motivo: 'Trecho sem N.S. correspondente' },
   { rotulo: 'TR-8.18 1-A',   motivo: 'N.S. sem geometria própria' },
   { rotulo: 'LINHA DE RECALQUE', motivo: 'Sem geometria — importar separadamente' },
@@ -32,6 +53,7 @@ export const PENDENCIAS_CONHECIDAS_SS08 = [
   { rotulo: 'TQ-8.40', motivo: 'TQ sem linha correspondente' },
   { rotulo: 'TQ-8.41', motivo: 'TQ sem linha correspondente' },
 ];
+
 
 export const PENDENCIA_CHAVES = new Set(
   PENDENCIAS_CONHECIDAS_SS08.map((p) => normalizarRotulo(p.rotulo))

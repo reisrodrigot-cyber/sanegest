@@ -775,6 +775,7 @@ const EditorOperacionalPage = () => {
       <DividirDialog
         open={!!dividirOpen}
         rotuloBase={selectedTrecho?.rotulo ?? ''}
+        vinculosAtivos={dividirOpen?.vinculosAtivos ?? []}
         onClose={() => setDividirOpen(null)}
         onConfirm={acaoDividirTrecho}
       />

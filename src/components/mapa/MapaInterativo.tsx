@@ -1162,7 +1162,36 @@ ${placemarks.join('\n')}
                     <Pencil size={12} />
                   </button>
                 )}
+            </div>
+
+            {canViewPreviewBase && (
+              <div className="mb-3 border border-amber-200 bg-amber-50/60 rounded p-2">
+                <div className="text-[10px] uppercase tracking-wide text-amber-800 font-semibold mb-1">Base geográfica (Preview)</div>
+                <div className="flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => setPreviewVisible((v) => !v)}
+                    className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                    disabled={!previewBase.base}
+                  >
+                    {previewVisible ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
+                    <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0 bg-status-red" />
+                    <span className="flex-1 truncate">
+                      {previewBase.base ? `SS-08 · v${previewBase.base.versao}` : 'SS-08 (sem base preview)'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {previewBase.trechos.length}L · {previewBase.pontos.length}P
+                    </span>
+                  </button>
+                  {(effectiveRole === 'admin' || effectiveRole === 'sala_tecnica') && (
+                    <Link to="/mapa/bases" onClick={() => setLayersOpen(false)} className="text-[11px] text-primary hover:underline whitespace-nowrap">Gerenciar</Link>
+                  )}
+                </div>
+                {previewBase.loading && (
+                  <div className="text-[11px] text-muted-foreground mt-1">Carregando base preview...</div>
+                )}
               </div>
+            )}
+
               <div className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
                 <button
                   onClick={() => toggleVis('__ligacoes')}

@@ -135,8 +135,9 @@ export function useMapaBasePreview(canView: boolean) {
               bacia: os.bacia,
               status: os.status as OSStatus,
               origem: v.origem as 'AUTO' | 'MANUAL',
-              pv_final_assentado: (os as any).pv_final_assentado ?? null,
+              pv_final_assentado: pvFinalSet.has(os.id),
             } : null;
+
           })
           .filter(Boolean) as MapaTrechoPreview['vinculos'];
         return {

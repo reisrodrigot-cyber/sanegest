@@ -353,14 +353,9 @@ export async function importarBaseSS08(
         os_id: ns.id,
         origem: 'AUTO',
         criado_por: userId,
-        motivo: `Match por chave candidata (${chave} ↔ ${normalizarRotulo(ns.trecho)})${conf.ok ? '' : ' — nós divergentes'}`,
+        motivo: `Match por chave candidata (${chave} ↔ ${normalizarRotulo(ns.trecho)})${conf.ok ? '' : ' — nós divergentes (revisar)'}`,
       });
-      if (!conf.ok) {
-        divergencias.push({
-          base_id: baseId, tipo: 'AMBIGUO', rotulo,
-          detalhes: { trecho_id: (t as any).id, os_id: ns.id, nos: conf.detalhe, aviso: 'Match por candidato com nós divergentes' },
-        });
-      }
+      // Nós divergentes ficam apenas anotados no motivo do vínculo — não geram divergência.
       chavesReconhecidas.add(chave);
       chavesReconhecidas.add(cand);
     }

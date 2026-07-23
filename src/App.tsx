@@ -18,6 +18,8 @@ import MateriaisPage from "./pages/MateriaisPage";
 import TopografiaPage from "./pages/TopografiaPage";
 import MeuPerfilPage from "./pages/MeuPerfilPage";
 import MapaPage from "./pages/MapaPage";
+import MapaBasesPage from "./pages/MapaBasesPage";
+
 
 import UsuariosPage from "./pages/UsuariosPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -34,8 +36,10 @@ const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/producao': ['admin', 'encarregado'],
   '/materiais': ['admin', 'almoxarifado'],
   '/topografia': ['admin', 'topografo'],
-  '/mapa': ['admin', 'encarregado', 'topografo', 'almoxarifado'],
+  '/mapa/bases': ['admin', 'sala_tecnica'],
+  '/mapa': ['admin', 'sala_tecnica', 'gerencia', 'encarregado', 'topografo', 'almoxarifado'],
   '/usuarios': ['admin'],
+
   '/perfil': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'],
 };
 
@@ -107,7 +111,9 @@ const AppRoutes = () => {
       <Route path="/producao" element={<ProtectedRoute><ProducaoPage /></ProtectedRoute>} />
       <Route path="/materiais" element={<ProtectedRoute><MateriaisPage /></ProtectedRoute>} />
       <Route path="/topografia" element={<ProtectedRoute><TopografiaPage /></ProtectedRoute>} />
+      <Route path="/mapa/bases" element={<ProtectedRoute><MapaBasesPage /></ProtectedRoute>} />
       <Route path="/mapa" element={<ProtectedRoute><MapaPage /></ProtectedRoute>} />
+
       <Route path="/usuarios" element={<ProtectedRoute><UsuariosPage /></ProtectedRoute>} />
       <Route path="/perfil" element={<ProtectedRoute><MeuPerfilPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

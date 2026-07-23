@@ -1,0 +1,349 @@
+import { supabase } from '@/integrations/supabase/client';
+import {
+  normalizarRotulo,
+  classificarTipoNo,
+  bboxFromCoords,
+  sha256Hex,
+  PENDENCIAS_CONHECIDAS_SS08,
+  PENDENCIA_CHAVES,
+} from './mapaBaseNormalize';
+import type { ImportPayload, ImportError } from '@/workers/shpImport.worker';
+
+const CHUNK = 200;
+
+export type ImportProgress = (msg: string) => void;
+
+export type ImportResumo = {
+  base_id: string;
+  ss: string;
+  versao: number;
+  feicoes_rede: number;
+  feicoes_pv: number;
+  vinculos_auto: number;
+  divergencias: number;
+  ns_sem_linha: number;
+  linhas_sem_ns: number;
+  colisoes: number;
+};
+
+function parseZipInWorker(buffer: ArrayBuffer): Promise<ImportPayload> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL('../workers/shpImport.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    worker.onmessage = (e: MessageEvent<ImportPayload | ImportError>) => {
+      worker.terminate();
+      if ((e.data as any).ok) resolve(e.data as ImportPayload);
+      else reject(new Error((e.data as ImportError).error));
+    };
+    worker.onerror = (e) => {
+      worker.terminate();
+      reject(new Error(e.message || 'Erro no worker de importação'));
+    };
+    worker.postMessage({ buffer }, [buffer]);
+  });
+}
+
+function extractLine(geom: any): Array<[number, number]> {
+  if (!geom) return [];
+  if (geom.type === 'LineString') return geom.coordinates;
+  if (geom.type === 'MultiLineString') {
+    return (geom.coordinates as number[][][]).flat() as Array<[number, number]>;
+  }
+  return [];
+}
+
+function extractPoint(geom: any): [number, number] | null {
+  if (!geom) return null;
+  if (geom.type === 'Point') return geom.coordinates as [number, number];
+  if (geom.type === 'MultiPoint' && geom.coordinates?.length) return geom.coordinates[0];
+  return null;
+}
+
+// —— Fluxo principal ——
+export async function importarBaseSS08(
+  file: File,
+  userId: string | null,
+  onProgress: ImportProgress
+): Promise<ImportResumo> {
+  const ss = 'SS-08';
+  onProgress('Calculando hash do arquivo...');
+  const buf = await file.arrayBuffer();
+  const bufCopy = buf.slice(0); // worker consome via transfer
+  const hash = await sha256Hex(bufCopy);
+
+  // Descobre próxima versão
+  const { data: last } = await supabase
+    .from('mapa_bases' as any)
+    .select('versao')
+    .eq('ss', ss)
+    .order('versao', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const versao = ((last as any)?.versao ?? 0) + 1;
+
+  onProgress(`Enviando arquivo para storage (versão ${versao})...`);
+  const arquivoPath = `${ss.toLowerCase()}/v${versao}/${hash}.zip`;
+  const { error: upErr } = await supabase.storage
+    .from('mapa-base')
+    .upload(arquivoPath, file, { contentType: 'application/zip', upsert: false });
+  if (upErr && !/exists|Duplicate/i.test(upErr.message)) throw upErr;
+
+  onProgress('Criando registro da base (status: processando)...');
+  const { data: baseIns, error: baseErr } = await supabase
+    .from('mapa_bases' as any)
+    .insert({
+      ss,
+      versao,
+      status: 'processando',
+      arquivo_path: arquivoPath,
+      arquivo_hash: hash,
+      arquivo_bytes: file.size,
+      importado_por: userId,
+    } as any)
+    .select('id')
+    .single();
+  if (baseErr) throw baseErr;
+  const baseId = (baseIns as any).id as string;
+
+  const finalizarComFalha = async (motivo: string) => {
+    await supabase.from('mapa_bases' as any)
+      .update({ status: 'falha', motivo_falha: motivo } as any)
+      .eq('id', baseId);
+    // dados parciais serão removidos por ON DELETE CASCADE ao apagar a base,
+    // mas mantemos a base para auditoria; removemos filhos:
+    await supabase.from('mapa_trechos' as any).delete().eq('base_id', baseId);
+    await supabase.from('mapa_pontos' as any).delete().eq('base_id', baseId);
+    await supabase.from('mapa_camadas_geo' as any).delete().eq('base_id', baseId);
+  };
+
+  try {
+    onProgress('Analisando shapefile no Web Worker...');
+    const payload = await parseZipInWorker(buf);
+
+    // Identifica camadas oficiais
+    const rede = payload.camadas.find(
+      (c) => c.tipo === 'LINESTRING' && /REDE/i.test(c.nome_camada)
+    ) ?? payload.camadas.find((c) => c.tipo === 'LINESTRING');
+    const pv = payload.camadas.find(
+      (c) => c.tipo === 'POINT' && /(PV|PONTO|NOD)/i.test(c.nome_camada)
+    ) ?? payload.camadas.find((c) => c.tipo === 'POINT');
+
+    if (!rede) throw new Error('Nenhuma camada LINESTRING encontrada no ZIP.');
+    if (!pv) throw new Error('Nenhuma camada POINT encontrada no ZIP.');
+
+    onProgress(`Camada REDE: ${rede.nome_camada} (${rede.features.length} feições)`);
+    onProgress(`Camada PV:   ${pv.nome_camada} (${pv.features.length} feições)`);
+
+    // Registrar camadas
+    await supabase.from('mapa_camadas_geo' as any).insert([
+      { base_id: baseId, tipo: 'LINESTRING', nome_camada: rede.nome_camada, campos_originais: rede.campos, feicoes: rede.features.length },
+      { base_id: baseId, tipo: 'POINT', nome_camada: pv.nome_camada, campos_originais: pv.campos, feicoes: pv.features.length },
+    ]);
+
+    // ---- Trechos ----
+    onProgress('Persistindo trechos...');
+    const trechoRows = rede.features.map((f) => {
+      const p = f.properties || {};
+      const rotulo = String(p['RÓTULO'] ?? p['ROTULO'] ?? p['rotulo'] ?? '').trim();
+      const coords = extractLine(f.geometry);
+      const bbox = bboxFromCoords(coords);
+      return {
+        base_id: baseId,
+        rotulo_original: rotulo,
+        rotulo_chave: normalizarRotulo(rotulo),
+        no_inicial: p['NO_INICIAL'] ?? p['NO_INI'] ?? null,
+        no_final: p['NO_FINAL'] ?? p['NO_FIM'] ?? null,
+        no_iniid: p['NO_INIID'] != null ? String(p['NO_INIID']) : null,
+        no_finid: p['NO_FINID'] != null ? String(p['NO_FINID']) : null,
+        dn: p['D'] != null ? Number(p['D']) : null,
+        material: p['MATERIAL'] ?? null,
+        l_escala: p['L_ESCALA'] != null ? Number(p['L_ESCALA']) : null,
+        inv_inic: p['INV_INIC'] != null ? Number(p['INV_INIC']) : null,
+        inv_fim: p['INV_FIM'] != null ? Number(p['INV_FIM']) : null,
+        declividade: p['S'] != null ? Number(p['S']) : null,
+        geometry: f.geometry as any,
+        min_lon: bbox?.min_lon ?? null,
+        min_lat: bbox?.min_lat ?? null,
+        max_lon: bbox?.max_lon ?? null,
+        max_lat: bbox?.max_lat ?? null,
+        atributos_extra: p,
+      };
+    });
+    for (let i = 0; i < trechoRows.length; i += CHUNK) {
+      const { error } = await supabase.from('mapa_trechos' as any).insert(trechoRows.slice(i, i + CHUNK) as any);
+      if (error) throw error;
+    }
+
+    // ---- Pontos ----
+    onProgress('Persistindo PV/TL/TQ...');
+    const pontoRows = pv.features.map((f) => {
+      const p = f.properties || {};
+      const rotulo = String(p['RÓTULO'] ?? p['ROTULO'] ?? p['rotulo'] ?? '').trim();
+      const c = extractPoint(f.geometry);
+      return {
+        base_id: baseId,
+        rotulo_original: rotulo,
+        rotulo_chave: normalizarRotulo(rotulo),
+        tipo_no: classificarTipoNo(rotulo),
+        cota_marg: p['COTA_MARG'] != null ? Number(p['COTA_MARG']) : null,
+        cota_inv: p['COTA_INV'] != null ? Number(p['COTA_INV']) : null,
+        prof: p['PROF_C'] != null ? Number(p['PROF_C']) : (p['PROF'] != null ? Number(p['PROF']) : null),
+        geometry: f.geometry as any,
+        lon: c?.[0] ?? null,
+        lat: c?.[1] ?? null,
+        atributos_extra: p,
+      };
+    });
+    for (let i = 0; i < pontoRows.length; i += CHUNK) {
+      const { error } = await supabase.from('mapa_pontos' as any).insert(pontoRows.slice(i, i + CHUNK) as any);
+      if (error) throw error;
+    }
+
+    // ---- Reconciliação ----
+    onProgress('Reconciliando trechos com N.S...');
+    const { data: trechosInseridos } = await supabase
+      .from('mapa_trechos' as any)
+      .select('id, rotulo_original, rotulo_chave')
+      .eq('base_id', baseId);
+    // Busca N.S. ativas
+    const { data: nsAll } = await supabase
+      .from('ordens_servico')
+      .select('id, trecho, bacia, status_vigencia');
+    const nsAtivas = (nsAll ?? []).filter((n) => (n as any).status_vigencia !== 'SUPRIMIDO');
+    const nsPorChave = new Map<string, any[]>();
+    for (const n of nsAtivas) {
+      const k = normalizarRotulo((n as any).trecho);
+      const arr = nsPorChave.get(k) ?? [];
+      arr.push(n);
+      nsPorChave.set(k, arr);
+    }
+
+    const vinculos: any[] = [];
+    const divergencias: any[] = [];
+    const linhasComMatch = new Set<string>(); // rotulo_chave
+    const colisoes = new Set<string>();
+
+    // detectar colisões: mais de um trecho com mesma chave normalizada
+    const contagemTrechos = new Map<string, number>();
+    for (const t of trechosInseridos ?? []) {
+      contagemTrechos.set((t as any).rotulo_chave, (contagemTrechos.get((t as any).rotulo_chave) ?? 0) + 1);
+    }
+
+    for (const t of trechosInseridos ?? []) {
+      const chave = (t as any).rotulo_chave as string;
+      const rotulo = (t as any).rotulo_original as string;
+
+      // pendência conhecida — não vincular automaticamente
+      if (PENDENCIA_CHAVES.has(chave)) {
+        divergencias.push({
+          base_id: baseId,
+          tipo: 'AMBIGUO',
+          rotulo,
+          detalhes: {
+            trecho_id: (t as any).id,
+            motivo: PENDENCIAS_CONHECIDAS_SS08.find((p) => normalizarRotulo(p.rotulo) === chave)?.motivo,
+          },
+        });
+        continue;
+      }
+      // colisão entre trechos da própria REDE
+      if ((contagemTrechos.get(chave) ?? 0) > 1) {
+        colisoes.add(chave);
+        divergencias.push({
+          base_id: baseId, tipo: 'COLISAO', rotulo,
+          detalhes: { trecho_id: (t as any).id, motivo: 'Rótulo duplicado dentro da própria REDE' },
+        });
+        continue;
+      }
+      const candidatas = nsPorChave.get(chave) ?? [];
+      if (candidatas.length === 0) {
+        divergencias.push({
+          base_id: baseId, tipo: 'SEM_NS', rotulo,
+          detalhes: { trecho_id: (t as any).id },
+        });
+        continue;
+      }
+      if (candidatas.length > 1) {
+        divergencias.push({
+          base_id: baseId, tipo: 'AMBIGUO', rotulo,
+          detalhes: { trecho_id: (t as any).id, candidatas_os_ids: candidatas.map((c) => c.id) },
+        });
+        continue;
+      }
+      // match único
+      vinculos.push({
+        trecho_id: (t as any).id,
+        os_id: candidatas[0].id,
+        origem: 'AUTO',
+        criado_por: userId,
+        motivo: 'Match automático por rótulo normalizado',
+      });
+      linhasComMatch.add(chave);
+    }
+
+    // N.S. sem linha (SS-08 apenas): heurística por bacia contendo "SS-08"
+    const chavesTrecho = new Set((trechosInseridos ?? []).map((t: any) => t.rotulo_chave));
+    let nsSemLinha = 0;
+    for (const n of nsAtivas) {
+      const bacia = normalizarRotulo((n as any).bacia);
+      if (!/SS[\-\s]?08/.test(bacia)) continue;
+      const k = normalizarRotulo((n as any).trecho);
+      if (!chavesTrecho.has(k)) {
+        nsSemLinha++;
+        divergencias.push({
+          base_id: baseId, tipo: 'SEM_LINHA', rotulo: (n as any).trecho,
+          detalhes: { os_id: (n as any).id, bacia: (n as any).bacia },
+        });
+      }
+    }
+
+    // insere vínculos e divergências
+    for (let i = 0; i < vinculos.length; i += CHUNK) {
+      const { error } = await supabase.from('mapa_trecho_os' as any).insert(vinculos.slice(i, i + CHUNK) as any);
+      if (error) throw error;
+    }
+    for (let i = 0; i < divergencias.length; i += CHUNK) {
+      const { error } = await supabase.from('mapa_divergencias' as any).insert(divergencias.slice(i, i + CHUNK) as any);
+      if (error) throw error;
+    }
+
+    const linhasSemNs = divergencias.filter((d) => d.tipo === 'SEM_NS').length;
+    const colisoesCount = divergencias.filter((d) => d.tipo === 'COLISAO').length;
+
+    onProgress('Finalizando (status: preview)...');
+    await supabase.from('mapa_bases' as any).update({
+      status: 'preview',
+      feicoes_rede: rede.features.length,
+      feicoes_pv: pv.features.length,
+      bbox: { min_lon: payload.bbox[0], min_lat: payload.bbox[1], max_lon: payload.bbox[2], max_lat: payload.bbox[3] },
+      relatorio_validacao: {
+        camada_rede: rede.nome_camada,
+        camada_pv: pv.nome_camada,
+        vinculos_auto: vinculos.length,
+        divergencias: divergencias.length,
+        ns_sem_linha: nsSemLinha,
+        linhas_sem_ns: linhasSemNs,
+        colisoes: colisoesCount,
+        campos_rede: rede.campos,
+        campos_pv: pv.campos,
+      },
+    } as any).eq('id', baseId);
+
+    return {
+      base_id: baseId,
+      ss, versao,
+      feicoes_rede: rede.features.length,
+      feicoes_pv: pv.features.length,
+      vinculos_auto: vinculos.length,
+      divergencias: divergencias.length,
+      ns_sem_linha: nsSemLinha,
+      linhas_sem_ns: linhasSemNs,
+      colisoes: colisoesCount,
+    };
+  } catch (err: any) {
+    await finalizarComFalha(err?.message ?? String(err));
+    throw err;
+  }
+}

@@ -309,6 +309,66 @@ export type Database = {
         }
         Relationships: []
       }
+      mapa_bases: {
+        Row: {
+          arquivo_bytes: number | null
+          arquivo_hash: string | null
+          arquivo_path: string | null
+          bbox: Json | null
+          created_at: string
+          feicoes_pv: number | null
+          feicoes_rede: number | null
+          id: string
+          importado_por: string | null
+          motivo_falha: string | null
+          promovido_em: string | null
+          promovido_por: string | null
+          relatorio_validacao: Json | null
+          ss: string
+          status: Database["public"]["Enums"]["mapa_base_status"]
+          updated_at: string
+          versao: number
+        }
+        Insert: {
+          arquivo_bytes?: number | null
+          arquivo_hash?: string | null
+          arquivo_path?: string | null
+          bbox?: Json | null
+          created_at?: string
+          feicoes_pv?: number | null
+          feicoes_rede?: number | null
+          id?: string
+          importado_por?: string | null
+          motivo_falha?: string | null
+          promovido_em?: string | null
+          promovido_por?: string | null
+          relatorio_validacao?: Json | null
+          ss: string
+          status?: Database["public"]["Enums"]["mapa_base_status"]
+          updated_at?: string
+          versao: number
+        }
+        Update: {
+          arquivo_bytes?: number | null
+          arquivo_hash?: string | null
+          arquivo_path?: string | null
+          bbox?: Json | null
+          created_at?: string
+          feicoes_pv?: number | null
+          feicoes_rede?: number | null
+          id?: string
+          importado_por?: string | null
+          motivo_falha?: string | null
+          promovido_em?: string | null
+          promovido_por?: string | null
+          relatorio_validacao?: Json | null
+          ss?: string
+          status?: Database["public"]["Enums"]["mapa_base_status"]
+          updated_at?: string
+          versao?: number
+        }
+        Relationships: []
+      }
       mapa_camadas: {
         Row: {
           arquivo_nome: string
@@ -364,6 +424,333 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mapa_camadas_geo: {
+        Row: {
+          base_id: string
+          campos_originais: Json | null
+          created_at: string
+          feicoes: number | null
+          id: string
+          nome_camada: string
+          tipo: Database["public"]["Enums"]["mapa_camada_tipo"]
+        }
+        Insert: {
+          base_id: string
+          campos_originais?: Json | null
+          created_at?: string
+          feicoes?: number | null
+          id?: string
+          nome_camada: string
+          tipo: Database["public"]["Enums"]["mapa_camada_tipo"]
+        }
+        Update: {
+          base_id?: string
+          campos_originais?: Json | null
+          created_at?: string
+          feicoes?: number | null
+          id?: string
+          nome_camada?: string
+          tipo?: Database["public"]["Enums"]["mapa_camada_tipo"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mapa_camadas_geo_base_id_fkey"
+            columns: ["base_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_bases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mapa_divergencias: {
+        Row: {
+          base_id: string
+          created_at: string
+          detalhes: Json | null
+          id: string
+          resolucao: string | null
+          resolvido_em: string | null
+          resolvido_por: string | null
+          rotulo: string | null
+          status: Database["public"]["Enums"]["mapa_divergencia_status"]
+          tipo: Database["public"]["Enums"]["mapa_divergencia_tipo"]
+          updated_at: string
+        }
+        Insert: {
+          base_id: string
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          resolucao?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          rotulo?: string | null
+          status?: Database["public"]["Enums"]["mapa_divergencia_status"]
+          tipo: Database["public"]["Enums"]["mapa_divergencia_tipo"]
+          updated_at?: string
+        }
+        Update: {
+          base_id?: string
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          resolucao?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          rotulo?: string | null
+          status?: Database["public"]["Enums"]["mapa_divergencia_status"]
+          tipo?: Database["public"]["Enums"]["mapa_divergencia_tipo"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mapa_divergencias_base_id_fkey"
+            columns: ["base_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_bases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mapa_pontos: {
+        Row: {
+          atributos_extra: Json | null
+          base_id: string
+          cota_inv: number | null
+          cota_marg: number | null
+          created_at: string
+          geometry: Json
+          id: string
+          lat: number | null
+          lon: number | null
+          prof: number | null
+          rotulo_chave: string
+          rotulo_original: string
+          tipo_no: Database["public"]["Enums"]["mapa_ponto_tipo"]
+        }
+        Insert: {
+          atributos_extra?: Json | null
+          base_id: string
+          cota_inv?: number | null
+          cota_marg?: number | null
+          created_at?: string
+          geometry: Json
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          prof?: number | null
+          rotulo_chave: string
+          rotulo_original: string
+          tipo_no?: Database["public"]["Enums"]["mapa_ponto_tipo"]
+        }
+        Update: {
+          atributos_extra?: Json | null
+          base_id?: string
+          cota_inv?: number | null
+          cota_marg?: number | null
+          created_at?: string
+          geometry?: Json
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          prof?: number | null
+          rotulo_chave?: string
+          rotulo_original?: string
+          tipo_no?: Database["public"]["Enums"]["mapa_ponto_tipo"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mapa_pontos_base_id_fkey"
+            columns: ["base_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_bases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mapa_trecho_os: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          criado_por: string | null
+          desativado_em: string | null
+          desativado_por: string | null
+          fracao: number
+          id: string
+          motivo: string | null
+          origem: Database["public"]["Enums"]["mapa_vinculo_origem"]
+          os_id: string
+          trecho_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          criado_por?: string | null
+          desativado_em?: string | null
+          desativado_por?: string | null
+          fracao?: number
+          id?: string
+          motivo?: string | null
+          origem?: Database["public"]["Enums"]["mapa_vinculo_origem"]
+          os_id: string
+          trecho_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          criado_por?: string | null
+          desativado_em?: string | null
+          desativado_por?: string | null
+          fracao?: number
+          id?: string
+          motivo?: string | null
+          origem?: Database["public"]["Enums"]["mapa_vinculo_origem"]
+          os_id?: string
+          trecho_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mapa_trecho_os_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mapa_trecho_os_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
+          {
+            foreignKeyName: "mapa_trecho_os_trecho_id_fkey"
+            columns: ["trecho_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_trechos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mapa_trechos: {
+        Row: {
+          atributos_extra: Json | null
+          base_id: string
+          created_at: string
+          declividade: number | null
+          dn: number | null
+          geometry: Json
+          id: string
+          inv_fim: number | null
+          inv_inic: number | null
+          l_escala: number | null
+          material: string | null
+          max_lat: number | null
+          max_lon: number | null
+          min_lat: number | null
+          min_lon: number | null
+          no_final: string | null
+          no_finid: string | null
+          no_inicial: string | null
+          no_iniid: string | null
+          rotulo_chave: string
+          rotulo_original: string
+        }
+        Insert: {
+          atributos_extra?: Json | null
+          base_id: string
+          created_at?: string
+          declividade?: number | null
+          dn?: number | null
+          geometry: Json
+          id?: string
+          inv_fim?: number | null
+          inv_inic?: number | null
+          l_escala?: number | null
+          material?: string | null
+          max_lat?: number | null
+          max_lon?: number | null
+          min_lat?: number | null
+          min_lon?: number | null
+          no_final?: string | null
+          no_finid?: string | null
+          no_inicial?: string | null
+          no_iniid?: string | null
+          rotulo_chave: string
+          rotulo_original: string
+        }
+        Update: {
+          atributos_extra?: Json | null
+          base_id?: string
+          created_at?: string
+          declividade?: number | null
+          dn?: number | null
+          geometry?: Json
+          id?: string
+          inv_fim?: number | null
+          inv_inic?: number | null
+          l_escala?: number | null
+          material?: string | null
+          max_lat?: number | null
+          max_lon?: number | null
+          min_lat?: number | null
+          min_lon?: number | null
+          no_final?: string | null
+          no_finid?: string | null
+          no_inicial?: string | null
+          no_iniid?: string | null
+          rotulo_chave?: string
+          rotulo_original?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mapa_trechos_base_id_fkey"
+            columns: ["base_id"]
+            isOneToOne: false
+            referencedRelation: "mapa_bases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mapa_vinculos_auditoria: {
+        Row: {
+          acao: string
+          antes: Json | null
+          created_at: string
+          depois: Json | null
+          id: string
+          os_id: string | null
+          trecho_id: string | null
+          user_id: string | null
+          vinculo_id: string | null
+        }
+        Insert: {
+          acao: string
+          antes?: Json | null
+          created_at?: string
+          depois?: Json | null
+          id?: string
+          os_id?: string | null
+          trecho_id?: string | null
+          user_id?: string | null
+          vinculo_id?: string | null
+        }
+        Update: {
+          acao?: string
+          antes?: Json | null
+          created_at?: string
+          depois?: Json | null
+          id?: string
+          os_id?: string | null
+          trecho_id?: string | null
+          user_id?: string | null
+          vinculo_id?: string | null
+        }
+        Relationships: []
       }
       materiais_entrega: {
         Row: {
@@ -1036,6 +1423,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      pode_gerenciar_mapa_base: { Args: { _user_id: string }; Returns: boolean }
+      pode_ver_mapa_base_preview: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       recompute_os_real_from_registros: {
         Args: { _os_id: string }
         Returns: undefined
@@ -1049,6 +1441,23 @@ export type Database = {
         | "encarregado"
         | "topografo"
         | "admin"
+      mapa_base_status:
+        | "processando"
+        | "preview"
+        | "falha"
+        | "ativa"
+        | "arquivada"
+      mapa_camada_tipo: "LINESTRING" | "POINT"
+      mapa_divergencia_status: "aberta" | "resolvida" | "ignorada"
+      mapa_divergencia_tipo:
+        | "COLISAO"
+        | "SEM_NS"
+        | "SEM_LINHA"
+        | "AMBIGUO"
+        | "SEM_GEOMETRIA"
+        | "OUTRO"
+      mapa_ponto_tipo: "PV" | "TL" | "TQ" | "OUTRO"
+      mapa_vinculo_origem: "AUTO" | "MANUAL"
       os_status: "VERMELHO" | "AMARELO" | "VERDE" | "CINZA" | "LARANJA"
       pv_tipo: "PV" | "TIL" | "TL"
     }
@@ -1186,6 +1595,25 @@ export const Constants = {
         "topografo",
         "admin",
       ],
+      mapa_base_status: [
+        "processando",
+        "preview",
+        "falha",
+        "ativa",
+        "arquivada",
+      ],
+      mapa_camada_tipo: ["LINESTRING", "POINT"],
+      mapa_divergencia_status: ["aberta", "resolvida", "ignorada"],
+      mapa_divergencia_tipo: [
+        "COLISAO",
+        "SEM_NS",
+        "SEM_LINHA",
+        "AMBIGUO",
+        "SEM_GEOMETRIA",
+        "OUTRO",
+      ],
+      mapa_ponto_tipo: ["PV", "TL", "TQ", "OUTRO"],
+      mapa_vinculo_origem: ["AUTO", "MANUAL"],
       os_status: ["VERMELHO", "AMARELO", "VERDE", "CINZA", "LARANJA"],
       pv_tipo: ["PV", "TIL", "TL"],
     },

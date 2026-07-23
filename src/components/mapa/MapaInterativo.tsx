@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import L from 'leaflet';
+
 import JSZip from 'jszip';
 import { kml as kmlToGeoJson } from '@tmcw/togeojson';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +14,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
 import { AsBuiltConfigModal } from './AsBuiltConfigModal';
+import { MapaBasePreviewLayer } from './MapaBasePreviewLayer';
+import { useMapaBasePreview } from '@/hooks/useMapaBasePreview';
+
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';
 
@@ -113,6 +118,15 @@ interface MapaInterativoProps {
 export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
+  const canViewPreviewBase = effectiveRole === 'admin' || effectiveRole === 'sala_tecnica' || effectiveRole === 'gerencia';
+  const previewBase = useMapaBasePreview(canViewPreviewBase);
+  const [previewVisible, setPreviewVisible] = useState<boolean>(() => {
+    try { return localStorage.getItem('sanegest_map_preview_ss08') !== '0'; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('sanegest_map_preview_ss08', previewVisible ? '1' : '0'); } catch {}
+  }, [previewVisible]);
+
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -1079,6 +1093,17 @@ ${placemarks.join('\n')}
     <div className={`relative ${className}`} style={{ height }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 200, borderRadius: '0.75rem', overflow: 'hidden' }} />
 
+      {/* Camada Preview SS-08 — não afeta o KMZ */}
+      {canViewPreviewBase && (
+        <MapaBasePreviewLayer
+          map={mapRef.current}
+          trechos={previewBase.trechos}
+          pontos={previewBase.pontos}
+          visible={previewVisible && !!previewBase.base}
+        />
+      )}
+
+
 
 
       {/* Controle flutuante: camadas + minha localização */}
@@ -1139,7 +1164,36 @@ ${placemarks.join('\n')}
                     <Pencil size={12} />
                   </button>
                 )}
+            </div>
+
+            {canViewPreviewBase && (
+              <div className="mb-3 border border-amber-200 bg-amber-50/60 rounded p-2">
+                <div className="text-[10px] uppercase tracking-wide text-amber-800 font-semibold mb-1">Base geográfica (Preview)</div>
+                <div className="flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => setPreviewVisible((v) => !v)}
+                    className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                    disabled={!previewBase.base}
+                  >
+                    {previewVisible ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
+                    <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0 bg-status-red" />
+                    <span className="flex-1 truncate">
+                      {previewBase.base ? `SS-08 · v${previewBase.base.versao}` : 'SS-08 (sem base preview)'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {previewBase.trechos.length}L · {previewBase.pontos.length}P
+                    </span>
+                  </button>
+                  {(effectiveRole === 'admin' || effectiveRole === 'sala_tecnica') && (
+                    <Link to="/mapa/bases" onClick={() => setLayersOpen(false)} className="text-[11px] text-primary hover:underline whitespace-nowrap">Gerenciar</Link>
+                  )}
+                </div>
+                {previewBase.loading && (
+                  <div className="text-[11px] text-muted-foreground mt-1">Carregando base preview...</div>
+                )}
               </div>
+            )}
+
               <div className="group flex items-center gap-1 px-2 py-1.5 rounded hover:bg-accent text-sm">
                 <button
                   onClick={() => toggleVis('__ligacoes')}

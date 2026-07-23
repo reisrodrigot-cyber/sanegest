@@ -12,6 +12,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
 import { AsBuiltConfigModal } from './AsBuiltConfigModal';
+import { MapaBasePreviewLayer } from './MapaBasePreviewLayer';
+import { useMapaBasePreview } from '@/hooks/useMapaBasePreview';
+
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';
 

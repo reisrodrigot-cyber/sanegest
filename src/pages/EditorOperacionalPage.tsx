@@ -385,7 +385,7 @@ const EditorOperacionalPage = () => {
       ]).select('id, rotulo');
       if (e2) throw e2;
 
-      const arrInseridos = (inseridos ?? []) as Array<{ id: string; rotulo: string }>;
+      const arrInseridos = ((inseridos ?? []) as unknown) as Array<{ id: string; rotulo: string }>;
       const opA = arrInseridos.find((x) => x.rotulo === rotuloA)?.id;
       const opB = arrInseridos.find((x) => x.rotulo === rotuloB)?.id;
 

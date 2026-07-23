@@ -209,11 +209,20 @@ export async function importarBaseSS08(
       .from('mapa_trechos' as any)
       .select('id, rotulo_original, rotulo_chave, no_inicial, no_final')
       .eq('base_id', baseId);
-    // Busca N.S. ativas
-    const { data: nsAll } = await supabase
-      .from('ordens_servico')
-      .select('id, trecho, bacia, status_vigencia, pv_montante, pv_jusante');
-    const nsAtivas = (nsAll ?? []).filter((n) => (n as any).status_vigencia !== 'SUPRIMIDO');
+    // Busca N.S. ativas (com paginação — pode haver > 1000 no total)
+    const PAGE = 1000;
+    const nsAll: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('ordens_servico')
+        .select('id, trecho, bacia, status_vigencia, pv_montante, pv_jusante')
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      const rows = (data ?? []) as any[];
+      nsAll.push(...rows);
+      if (rows.length < PAGE) break;
+    }
+    const nsAtivas = nsAll.filter((n) => (n as any).status_vigencia !== 'SUPRIMIDO');
 
     // Índices dos dois lados por chave EXATA e por chave CANDIDATA
     const nsByChave = new Map<string, any[]>();
@@ -289,12 +298,8 @@ export async function importarBaseSS08(
           criado_por: userId,
           motivo: `Match exato por rótulo${conf.ok ? '' : ' (nós divergentes — revisar)'}`,
         });
-        if (!conf.ok) {
-          divergencias.push({
-            base_id: baseId, tipo: 'AMBIGUO', rotulo,
-            detalhes: { trecho_id: (t as any).id, os_id: exatas[0].id, nos: conf.detalhe, aviso: 'Match aceito, mas nós montante/jusante não coincidem' },
-          });
-        }
+        // Divergência de nós é apenas uma observação registrada no motivo do vínculo
+        // (não conta como ambiguidade; o vínculo AUTO segue válido).
         chavesReconhecidas.add(chave);
         chavesReconhecidas.add(cand);
         continue;
@@ -348,14 +353,9 @@ export async function importarBaseSS08(
         os_id: ns.id,
         origem: 'AUTO',
         criado_por: userId,
-        motivo: `Match por chave candidata (${chave} ↔ ${normalizarRotulo(ns.trecho)})${conf.ok ? '' : ' — nós divergentes'}`,
+        motivo: `Match por chave candidata (${chave} ↔ ${normalizarRotulo(ns.trecho)})${conf.ok ? '' : ' — nós divergentes (revisar)'}`,
       });
-      if (!conf.ok) {
-        divergencias.push({
-          base_id: baseId, tipo: 'AMBIGUO', rotulo,
-          detalhes: { trecho_id: (t as any).id, os_id: ns.id, nos: conf.detalhe, aviso: 'Match por candidato com nós divergentes' },
-        });
-      }
+      // Nós divergentes ficam apenas anotados no motivo do vínculo — não geram divergência.
       chavesReconhecidas.add(chave);
       chavesReconhecidas.add(cand);
     }

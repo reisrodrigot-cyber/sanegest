@@ -1,0 +1,1 @@
+DELETE FROM public.mapa_bases WHERE ss = 'SS-08';

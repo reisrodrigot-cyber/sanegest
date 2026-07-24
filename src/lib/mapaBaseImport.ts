@@ -408,9 +408,13 @@ export async function importarBase(
       shpAll.add(chv);
       shpAll.add(chaveCandidata(chv));
     }
-    // Regex do código da SS (SS-08 → /SS[\-\s]?0?8/) para filtrar N.S. da bacia atual
-    const ssNum = ss.replace(/^SS-/, '');
-    const ssBaciaRegex = new RegExp(`SS[\\-\\s]?0?${Number(ssNum)}`);
+    // Regex do código da SS (SS-08 → /SS[\-\s]?0?8/, SS-13A → /SS[\-\s]?0?13[\-\s]?A/)
+    const ssMatch = ss.match(/^SS-(\d+)([AB])?$/);
+    const ssNum = ssMatch ? Number(ssMatch[1]) : NaN;
+    const ssSuf = ssMatch?.[2] ?? '';
+    const ssBaciaRegex = new RegExp(
+      `SS[\\-\\s]?0?${ssNum}${ssSuf ? `[\\-\\s]?${ssSuf}` : '(?![0-9])'}`
+    );
     let nsSemLinha = 0;
     for (const n of nsAtivas) {
       const bacia = normalizarRotulo((n as any).bacia);

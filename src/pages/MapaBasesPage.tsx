@@ -160,12 +160,12 @@ const MapaBasesPage = () => {
   };
 
   const proximaVersao = useMemo(() => {
-    if (!ssSelecionada) return null;
+    if (!ssDetectada) return null;
     const maior = bases
-      .filter((b) => b.ss === ssSelecionada)
+      .filter((b) => b.ss === ssDetectada)
       .reduce((m, b) => Math.max(m, b.versao), 0);
     return maior + 1;
-  }, [bases, ssSelecionada]);
+  }, [bases, ssDetectada]);
 
   const StatusIcon = ({ status }: { status: string }) => {
     if (status === 'processando') return <Loader2 size={14} className="animate-spin" />;

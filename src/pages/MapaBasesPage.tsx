@@ -3,9 +3,9 @@ import { AppLayout } from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Upload, Loader2, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Clock, Archive, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Upload, Loader2, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Clock, Archive, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { importarBaseSS08, type ImportResumo } from '@/lib/mapaBaseImport';
+import { importarBase, normalizarSS, type ImportResumo } from '@/lib/mapaBaseImport';
 
 interface Base {
   id: string;
@@ -20,9 +20,6 @@ interface Base {
   motivo_falha: string | null;
   relatorio_validacao: any;
   created_at: string;
-  excluida_em: string | null;
-  excluida_por: string | null;
-  motivo_exclusao: string | null;
 }
 
 interface Divergencia {
@@ -43,9 +40,13 @@ const STATUS_STYLE: Record<string, string> = {
   arquivada: 'bg-gray-100 text-gray-700',
 };
 
+// Lista de SSes conhecidas do projeto — pode ser estendida sem migração.
+const SS_OPCOES = [
+  'SS-08','SS-09','SS-10','SS-11','SS-12','SS-13','SS-14','SS-15','SS-16','SS-17','SS-18','SS-19','SS-20'
+];
+
 const MapaBasesPage = () => {
-  const { supabaseUser, user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { supabaseUser } = useAuth();
   const [bases, setBases] = useState<Base[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -54,30 +55,48 @@ const MapaBasesPage = () => {
   const [openBaseId, setOpenBaseId] = useState<string | null>(null);
   const [divs, setDivs] = useState<Divergencia[]>([]);
   const [loadingDivs, setLoadingDivs] = useState(false);
-  const [mostrarExcluidas, setMostrarExcluidas] = useState(false);
-
+  const [ssSelecionada, setSsSelecionada] = useState<string>('');
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [ssDetectada, setSsDetectada] = useState<string | null>(null);
 
   const loadBases = async () => {
     const { data } = await supabase
       .from('mapa_bases' as any)
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('ss', { ascending: true })
+      .order('versao', { ascending: false });
     setBases((data ?? []) as any);
     setLoading(false);
   };
 
   useEffect(() => { loadBases(); }, []);
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+  const handlePickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
     e.target.value = '';
-    if (!f) return;
+    setResumo(null);
+    if (!f) { setArquivo(null); setSsDetectada(null); return; }
     if (!/\.zip$/i.test(f.name)) { toast.error('Envie um ZIP contendo o shapefile.'); return; }
+    setArquivo(f);
+    const det = normalizarSS(f.name);
+    setSsDetectada(det);
+    if (det && !ssSelecionada) setSsSelecionada(det);
+  };
+
+  const iniciarImportacao = async () => {
+    if (!arquivo) { toast.error('Selecione um arquivo ZIP.'); return; }
+    if (!ssSelecionada) { toast.error('Selecione a SS antes de importar.'); return; }
+    if (ssDetectada && ssDetectada !== ssSelecionada) {
+      toast.error(`Divergência: arquivo identificado como ${ssDetectada}, mas a SS selecionada é ${ssSelecionada}. Corrija antes de continuar.`);
+      return;
+    }
     setImporting(true); setResumo(null); setProgress('Iniciando...');
     try {
-      const r = await importarBaseSS08(f, supabaseUser?.id ?? null, (m) => setProgress(m));
+      const r = await importarBase(arquivo, ssSelecionada, supabaseUser?.id ?? null, (m) => setProgress(m));
       setResumo(r);
-      toast.success(`Base SS-08 v${r.versao} importada como Preview`);
+      toast.success(`Base ${r.ss} v${r.versao} importada como Preview`);
+      setArquivo(null);
+      setSsDetectada(null);
       await loadBases();
     } catch (err: any) {
       toast.error(err?.message ?? 'Falha na importação');
@@ -99,13 +118,6 @@ const MapaBasesPage = () => {
     setLoadingDivs(false);
   };
 
-  const arquivarBase = async (b: Base) => {
-    if (!confirm(`Arquivar base ${b.ss} v${b.versao}? Ela deixará de aparecer no mapa.`)) return;
-    const { error } = await supabase.from('mapa_bases' as any).update({ status: 'arquivada' } as any).eq('id', b.id);
-    if (error) toast.error(error.message);
-    else { toast.success('Base arquivada'); loadBases(); }
-  };
-
   const publicarBase = async (b: Base) => {
     if (b.status !== 'preview') { toast.error('Só é possível publicar bases em Preview.'); return; }
     const ativa = bases.find((x) => x.ss === b.ss && x.status === 'ativa');
@@ -125,47 +137,28 @@ const MapaBasesPage = () => {
   };
 
   const excluirBase = async (b: Base) => {
-    if (b.excluida_em) { toast.info('Esta camada já está excluída.'); return; }
-    const reforcada = b.status === 'ativa';
-    const primeiro = reforcada
-      ? `Esta camada está PUBLICADA no mapa (${b.ss} v${b.versao}).\n\nExcluir logicamente? Ela sairá do mapa e da lista padrão, mas o arquivo original e o histórico serão preservados para auditoria.`
-      : `Excluir logicamente a camada ${b.ss} v${b.versao}?\n\nEla deixará de aparecer no mapa e na lista padrão. O arquivo original, geometrias, vínculos e histórico permanecem preservados para auditoria.\n\nO.S., N.S., produção e dados operacionais NÃO são afetados.`;
-    if (!confirm(primeiro)) return;
-    const motivo = prompt('Motivo da exclusão (opcional):') ?? '';
-    const { error } = await supabase.from('mapa_bases' as any).update({
-      status: 'arquivada',
-      excluida_em: new Date().toISOString(),
-      excluida_por: supabaseUser?.id ?? null,
-      motivo_exclusao: motivo.trim() || null,
-    } as any).eq('id', b.id);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`Camada ${b.ss} v${b.versao} excluída (soft-delete). Arquivo e histórico preservados.`);
-    loadBases();
-  };
-
-  const excluirDefinitivo = async (b: Base) => {
-    if (!isAdmin) { toast.error('Somente administradores podem executar a exclusão definitiva.'); return; }
-    const c1 = confirm(`⚠️ EXCLUSÃO DEFINITIVA — ${b.ss} v${b.versao}\n\nEsta ação REMOVE FISICAMENTE:\n• geometrias (trechos, pontos)\n• vínculos com N.S.\n• divergências desta importação\n• opcionalmente o arquivo original\n\nOrdens de Serviço, produção e dados operacionais NÃO são afetados, mas o histórico da camada será PERDIDO.\n\nDeseja prosseguir?`);
-    if (!c1) return;
-    const conf = prompt(`Para confirmar, digite exatamente:\n\nEXCLUIR ${b.ss} v${b.versao}`);
-    if (conf !== `EXCLUIR ${b.ss} v${b.versao}`) { toast.error('Confirmação inválida — nada foi apagado.'); return; }
-    const apagarArquivo = confirm('Apagar também o arquivo original do storage?\n\nOK = apagar arquivo\nCancelar = manter arquivo (recomendado)');
+    const ok = confirm(
+      `Excluir definitivamente a camada ${b.ss} • v${b.versao}?\n\n` +
+      `Esta ação removerá o arquivo, trechos, pontos, vínculos e divergências desta importação.\n\n` +
+      `Ordens de Serviço, N.S., produção e demais dados operacionais NÃO são afetados.`
+    );
+    if (!ok) return;
     const { error } = await supabase.from('mapa_bases' as any).delete().eq('id', b.id);
     if (error) { toast.error(error.message); return; }
-    if (apagarArquivo && b.arquivo_path) {
+    if (b.arquivo_path) {
       await supabase.storage.from('mapa-base').remove([b.arquivo_path]);
     }
-    toast.success(`Camada ${b.ss} v${b.versao} removida definitivamente`);
+    toast.success(`Camada ${b.ss} v${b.versao} excluída`);
     loadBases();
   };
 
-  const basesVisiveis = useMemo(
-    () => mostrarExcluidas ? bases : bases.filter(b => !b.excluida_em),
-    [bases, mostrarExcluidas]
-  );
-  const qtdExcluidas = useMemo(() => bases.filter(b => !!b.excluida_em).length, [bases]);
-
-
+  const proximaVersao = useMemo(() => {
+    if (!ssSelecionada) return null;
+    const maior = bases
+      .filter((b) => b.ss === ssSelecionada)
+      .reduce((m, b) => Math.max(m, b.versao), 0);
+    return maior + 1;
+  }, [bases, ssSelecionada]);
 
   const StatusIcon = ({ status }: { status: string }) => {
     if (status === 'processando') return <Loader2 size={14} className="animate-spin" />;
@@ -175,12 +168,14 @@ const MapaBasesPage = () => {
     return <Archive size={14} />;
   };
 
+  const divergenteAntesImport = !!(ssDetectada && ssSelecionada && ssDetectada !== ssSelecionada);
+
   return (
     <AppLayout>
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Bases geográficas do mapa</h1>
-          <p className="text-sm text-muted-foreground">Fase 1 — Piloto SS-08 (Preview). O KMZ atual continua funcionando normalmente.</p>
+          <p className="text-sm text-muted-foreground">Importação de shapefiles por SS. O KMZ atual continua funcionando normalmente.</p>
         </div>
         <Link to="/mapa" className="inline-flex items-center gap-2 text-sm text-primary hover:underline">
           <ArrowLeft size={16}/> Voltar ao mapa
@@ -192,15 +187,66 @@ const MapaBasesPage = () => {
           <Upload size={18} /> Nova importação (ZIP de shapefile)
         </h2>
         <ul className="text-xs text-muted-foreground list-disc pl-5 mb-4 space-y-1">
-          <li>O ZIP precisa conter os arquivos <code>.shp .shx .dbf .prj .cpg</code> das camadas <code>SS-08-REDE</code> (linhas) e <code>SS-08-PV</code> (pontos).</li>
-          <li>A base entra como <strong>Preview</strong>. Nada é promovido para produção nesta fase.</li>
-          <li>Em caso de falha, nenhum dado parcial aparece no mapa.</li>
+          <li>O ZIP precisa conter os arquivos <code>.shp .shx .dbf .prj .cpg</code> das camadas de REDE (linhas) e PV (pontos).</li>
+          <li>A base entra como <strong>Preview</strong>. Nada é promovido para produção até você publicar.</li>
+          <li>A SS é obrigatória e deve corresponder ao conteúdo do arquivo.</li>
         </ul>
-        <label className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm cursor-pointer hover:opacity-90 ${importing ? 'opacity-60 pointer-events-none' : ''}`}>
-          {importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-          {importing ? progress || 'Processando...' : 'Selecionar ZIP'}
-          <input type="file" accept=".zip" onChange={handleFile} className="hidden" disabled={importing} />
-        </label>
+
+        <div className="grid md:grid-cols-3 gap-3 mb-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">SS do projeto *</label>
+            <select
+              value={ssSelecionada}
+              onChange={(e) => setSsSelecionada(e.target.value)}
+              disabled={importing}
+              className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+            >
+              <option value="">— Selecione a SS —</option>
+              {SS_OPCOES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            {ssSelecionada && proximaVersao != null && (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Será criada como <strong>{ssSelecionada} • v{proximaVersao}</strong>
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Arquivo ZIP *</label>
+            <label className={`mt-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border bg-background text-sm cursor-pointer hover:bg-muted/40 ${importing ? 'opacity-60 pointer-events-none' : ''}`}>
+              <Upload size={14} />
+              <span className="truncate">{arquivo ? arquivo.name : 'Selecionar ZIP...'}</span>
+              <input type="file" accept=".zip" onChange={handlePickFile} className="hidden" disabled={importing} />
+            </label>
+            {ssDetectada && (
+              <p className="text-[11px] text-emerald-700 mt-1">
+                SS identificada no arquivo: <strong>{ssDetectada}</strong>
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-end">
+            <button
+              onClick={iniciarImportacao}
+              disabled={importing || !arquivo || !ssSelecionada || divergenteAntesImport}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50 hover:opacity-90"
+            >
+              {importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+              {importing ? (progress || 'Processando...') : 'Importar'}
+            </button>
+          </div>
+        </div>
+
+        {divergenteAntesImport && (
+          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 flex items-start gap-2">
+            <AlertTriangle size={16} className="mt-0.5"/>
+            <div>
+              <strong>Divergência de SS.</strong> O arquivo foi identificado como <strong>{ssDetectada}</strong>, mas a SS selecionada é <strong>{ssSelecionada}</strong>. Ajuste a seleção ou envie o arquivo correto.
+            </div>
+          </div>
+        )}
 
         {resumo && (
           <div className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-sm">
@@ -221,56 +267,35 @@ const MapaBasesPage = () => {
       <div className="bg-card rounded-xl border border-border shadow-sm">
         <div className="flex items-center justify-between p-4 border-b border-border gap-3 flex-wrap">
           <h2 className="text-lg font-semibold">Histórico de bases</h2>
-          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={mostrarExcluidas}
-              onChange={(e) => setMostrarExcluidas(e.target.checked)}
-              className="accent-primary"
-            />
-            {mostrarExcluidas ? <Eye size={14}/> : <EyeOff size={14}/>}
-            Ver camadas excluídas/arquivadas {qtdExcluidas > 0 && <span className="text-[11px] bg-muted rounded px-1.5 py-0.5">{qtdExcluidas}</span>}
-          </label>
         </div>
         {loading ? (
           <div className="p-6 text-center text-muted-foreground text-sm"><Loader2 className="inline animate-spin mr-2" size={14}/> Carregando...</div>
-        ) : basesVisiveis.length === 0 ? (
-          <div className="p-6 text-center text-muted-foreground text-sm">
-            {bases.length === 0 ? 'Nenhuma base importada ainda.' : 'Nenhuma camada ativa. Marque "Ver camadas excluídas" para consultar o histórico.'}
-          </div>
+        ) : bases.length === 0 ? (
+          <div className="p-6 text-center text-muted-foreground text-sm">Nenhuma base importada ainda.</div>
         ) : (
           <div className="overflow-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
                 <tr>
-                  <th className="text-left p-3">SS</th>
-                  <th className="text-left p-3">Versão</th>
+                  <th className="text-left p-3">Camada</th>
                   <th className="text-left p-3">Status</th>
                   <th className="text-right p-3">REDE</th>
                   <th className="text-right p-3">PV</th>
-                  <th className="text-left p-3">Hash</th>
+                  <th className="text-left p-3">Arquivo</th>
                   <th className="text-left p-3">Importada em</th>
                   <th className="p-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {basesVisiveis.map((b) => (
-                  <tr key={b.id} className={`border-t border-border hover:bg-muted/30 ${b.excluida_em ? 'opacity-60' : ''}`}>
-                    <td className="p-3 font-medium">{b.ss}</td>
-                    <td className="p-3">v{b.versao}</td>
+                {bases.map((b) => (
+                  <tr key={b.id} className="border-t border-border hover:bg-muted/30">
+                    <td className="p-3">
+                      <div className="font-semibold text-foreground whitespace-nowrap">{b.ss} • v{b.versao}</div>
+                    </td>
                     <td className="p-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLE[b.status] ?? ''}`}>
                         <StatusIcon status={b.status} /> {b.status}
                       </span>
-                      {b.excluida_em && (
-                        <div className="text-[11px] text-red-700 mt-1 flex items-start gap-1">
-                          <Trash2 size={12} className="mt-0.5"/>
-                          <span>
-                            Excluída em {new Date(b.excluida_em).toLocaleString('pt-BR')}
-                            {b.motivo_exclusao ? ` — ${b.motivo_exclusao}` : ''}
-                          </span>
-                        </div>
-                      )}
                       {b.motivo_falha && (
                         <div className="text-[11px] text-red-700 mt-1 flex items-start gap-1">
                           <AlertTriangle size={12} className="mt-0.5"/> {b.motivo_falha}
@@ -279,35 +304,27 @@ const MapaBasesPage = () => {
                     </td>
                     <td className="p-3 text-right">{b.feicoes_rede ?? '—'}</td>
                     <td className="p-3 text-right">{b.feicoes_pv ?? '—'}</td>
-                    <td className="p-3 font-mono text-[11px] text-muted-foreground">{b.arquivo_hash?.slice(0, 12) ?? '—'}</td>
-                    <td className="p-3 text-xs">{new Date(b.created_at).toLocaleString('pt-BR')}</td>
+                    <td className="p-3 font-mono text-[11px] text-muted-foreground max-w-[240px] truncate" title={b.arquivo_path ?? ''}>
+                      {b.arquivo_path?.split('/').pop() ?? '—'}
+                    </td>
+                    <td className="p-3 text-xs whitespace-nowrap">{new Date(b.created_at).toLocaleString('pt-BR')}</td>
                     <td className="p-3 text-right space-x-2 whitespace-nowrap">
                       <button onClick={() => loadDivergencias(b.id)} className="text-xs text-primary hover:underline">Divergências</button>
-                      {!b.excluida_em && b.status === 'preview' && (
+                      {b.status === 'preview' && (
                         <button onClick={() => publicarBase(b)} className="text-xs font-medium text-emerald-700 hover:underline">Publicar versão</button>
                       )}
-                      {!b.excluida_em && b.status !== 'arquivada' && b.status !== 'ativa' && (
-                        <button onClick={() => arquivarBase(b)} className="text-xs text-muted-foreground hover:text-foreground">Arquivar</button>
-                      )}
-                      {!b.excluida_em && (
-                        <button onClick={() => excluirBase(b)} className="text-xs text-destructive hover:underline">Excluir camada</button>
-                      )}
-                      {b.excluida_em && isAdmin && (
-                        <button
-                          onClick={() => excluirDefinitivo(b)}
-                          className="text-xs text-red-700 hover:underline inline-flex items-center gap-1"
-                          title="Somente admin — remove fisicamente geometrias, vínculos e (opcionalmente) o arquivo"
-                        >
-                          <Trash2 size={12}/> Excluir definitivamente
-                        </button>
-                      )}
+                      <button
+                        onClick={() => excluirBase(b)}
+                        className="text-xs text-destructive hover:underline inline-flex items-center gap-1"
+                      >
+                        <Trash2 size={12}/> Excluir camada
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-
         )}
       </div>
 
@@ -355,8 +372,8 @@ const MapaBasesPage = () => {
 
 const Stat = ({ label, value }: { label: string; value: number }) => (
   <div>
-    <div className="text-[11px] uppercase tracking-wide opacity-70">{label}</div>
-    <div className="text-xl font-bold">{value}</div>
+    <div className="text-[11px] uppercase tracking-wide text-emerald-800/70">{label}</div>
+    <div className="text-lg font-semibold">{value}</div>
   </div>
 );
 

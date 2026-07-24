@@ -64,11 +64,14 @@ function extractPoint(geom: any): [number, number] | null {
 }
 
 // Normaliza identificações equivalentes: "ss10", "SS 10", "ss-10" → "SS-10"
+// Também reconhece sufixos: "ss13a", "SS 13 A", "SS-13B" → "SS-13A" / "SS-13B"
 export function normalizarSS(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  const m = String(raw).toUpperCase().match(/SS[\s\-_]*0*(\d{1,3})/);
+  const m = String(raw).toUpperCase().match(/SS[\s\-_]*0*(\d{1,3})[\s\-_]*([AB])?(?![0-9])/);
   if (!m) return null;
-  return `SS-${m[1].padStart(2, '0')}`;
+  const num = m[1].padStart(2, '0');
+  const suf = m[2] ?? '';
+  return `SS-${num}${suf}`;
 }
 
 // Detecta a SS analisando nome do arquivo e nomes de camadas do shapefile
@@ -405,9 +408,13 @@ export async function importarBase(
       shpAll.add(chv);
       shpAll.add(chaveCandidata(chv));
     }
-    // Regex do código da SS (SS-08 → /SS[\-\s]?0?8/) para filtrar N.S. da bacia atual
-    const ssNum = ss.replace(/^SS-/, '');
-    const ssBaciaRegex = new RegExp(`SS[\\-\\s]?0?${Number(ssNum)}`);
+    // Regex do código da SS (SS-08 → /SS[\-\s]?0?8/, SS-13A → /SS[\-\s]?0?13[\-\s]?A/)
+    const ssMatch = ss.match(/^SS-(\d+)([AB])?$/);
+    const ssNum = ssMatch ? Number(ssMatch[1]) : NaN;
+    const ssSuf = ssMatch?.[2] ?? '';
+    const ssBaciaRegex = new RegExp(
+      `SS[\\-\\s]?0?${ssNum}${ssSuf ? `[\\-\\s]?${ssSuf}` : '(?![0-9])'}`
+    );
     let nsSemLinha = 0;
     for (const n of nsAtivas) {
       const bacia = normalizarRotulo((n as any).bacia);

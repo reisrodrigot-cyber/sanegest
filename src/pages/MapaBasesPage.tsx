@@ -40,9 +40,9 @@ const STATUS_STYLE: Record<string, string> = {
   arquivada: 'bg-gray-100 text-gray-700',
 };
 
-// Lista de SSes conhecidas do projeto — pode ser estendida sem migração.
+// Lista oficial de SSes do projeto (cada uma é uma base independente).
 const SS_OPCOES = [
-  'SS-08','SS-09','SS-10','SS-11','SS-12','SS-13','SS-14','SS-15','SS-16','SS-17','SS-18','SS-19','SS-20'
+  'SS-08','SS-09','SS-10','SS-11','SS-12','SS-13A','SS-13B','SS-14A','SS-14B'
 ];
 
 const MapaBasesPage = () => {
@@ -75,28 +75,35 @@ const MapaBasesPage = () => {
     const f = e.target.files?.[0] ?? null;
     e.target.value = '';
     setResumo(null);
-    if (!f) { setArquivo(null); setSsDetectada(null); return; }
+    setArquivo(null);
+    setSsDetectada(null);
+    setSsSelecionada('');
+    if (!f) return;
     if (!/\.zip$/i.test(f.name)) { toast.error('Envie um ZIP contendo o shapefile.'); return; }
-    setArquivo(f);
     const det = normalizarSS(f.name);
+    if (!det) {
+      toast.error('Não foi possível identificar a SS pelo nome do arquivo. Renomeie o arquivo no padrão SS-XX.zip ou SS-XXA.zip.');
+      return;
+    }
+    if (!SS_OPCOES.includes(det)) {
+      toast.error(`SS "${det}" não está na lista oficial de projetos. Verifique o nome do arquivo.`);
+      return;
+    }
+    setArquivo(f);
     setSsDetectada(det);
-    if (det && !ssSelecionada) setSsSelecionada(det);
+    setSsSelecionada(det);
   };
 
   const iniciarImportacao = async () => {
-    if (!arquivo) { toast.error('Selecione um arquivo ZIP.'); return; }
-    if (!ssSelecionada) { toast.error('Selecione a SS antes de importar.'); return; }
-    if (ssDetectada && ssDetectada !== ssSelecionada) {
-      toast.error(`Divergência: arquivo identificado como ${ssDetectada}, mas a SS selecionada é ${ssSelecionada}. Corrija antes de continuar.`);
-      return;
-    }
+    if (!arquivo || !ssDetectada) { toast.error('Selecione um arquivo ZIP com SS identificável.'); return; }
     setImporting(true); setResumo(null); setProgress('Iniciando...');
     try {
-      const r = await importarBase(arquivo, ssSelecionada, supabaseUser?.id ?? null, (m) => setProgress(m));
+      const r = await importarBase(arquivo, ssDetectada, supabaseUser?.id ?? null, (m) => setProgress(m));
       setResumo(r);
       toast.success(`Base ${r.ss} v${r.versao} importada como Preview`);
       setArquivo(null);
       setSsDetectada(null);
+      setSsSelecionada('');
       await loadBases();
     } catch (err: any) {
       toast.error(err?.message ?? 'Falha na importação');
@@ -153,12 +160,12 @@ const MapaBasesPage = () => {
   };
 
   const proximaVersao = useMemo(() => {
-    if (!ssSelecionada) return null;
+    if (!ssDetectada) return null;
     const maior = bases
-      .filter((b) => b.ss === ssSelecionada)
+      .filter((b) => b.ss === ssDetectada)
       .reduce((m, b) => Math.max(m, b.versao), 0);
     return maior + 1;
-  }, [bases, ssSelecionada]);
+  }, [bases, ssDetectada]);
 
   const StatusIcon = ({ status }: { status: string }) => {
     if (status === 'processando') return <Loader2 size={14} className="animate-spin" />;
@@ -168,7 +175,7 @@ const MapaBasesPage = () => {
     return <Archive size={14} />;
   };
 
-  const divergenteAntesImport = !!(ssDetectada && ssSelecionada && ssDetectada !== ssSelecionada);
+  const podeImportar = !!arquivo && !!ssDetectada && !importing;
 
   return (
     <AppLayout>
@@ -189,30 +196,10 @@ const MapaBasesPage = () => {
         <ul className="text-xs text-muted-foreground list-disc pl-5 mb-4 space-y-1">
           <li>O ZIP precisa conter os arquivos <code>.shp .shx .dbf .prj .cpg</code> das camadas de REDE (linhas) e PV (pontos).</li>
           <li>A base entra como <strong>Preview</strong>. Nada é promovido para produção até você publicar.</li>
-          <li>A SS é obrigatória e deve corresponder ao conteúdo do arquivo.</li>
+          <li>A <strong>SS é identificada automaticamente</strong> pelo nome do arquivo (ex: <code>SS-13A.zip</code>). Se o nome não seguir o padrão, renomeie antes de enviar.</li>
         </ul>
 
         <div className="grid md:grid-cols-3 gap-3 mb-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">SS do projeto *</label>
-            <select
-              value={ssSelecionada}
-              onChange={(e) => setSsSelecionada(e.target.value)}
-              disabled={importing}
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
-            >
-              <option value="">— Selecione a SS —</option>
-              {SS_OPCOES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            {ssSelecionada && proximaVersao != null && (
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Será criada como <strong>{ssSelecionada} • v{proximaVersao}</strong>
-              </p>
-            )}
-          </div>
-
           <div>
             <label className="text-xs font-medium text-muted-foreground">Arquivo ZIP *</label>
             <label className={`mt-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border bg-background text-sm cursor-pointer hover:bg-muted/40 ${importing ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -220,9 +207,23 @@ const MapaBasesPage = () => {
               <span className="truncate">{arquivo ? arquivo.name : 'Selecionar ZIP...'}</span>
               <input type="file" accept=".zip" onChange={handlePickFile} className="hidden" disabled={importing} />
             </label>
-            {ssDetectada && (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Padrão aceito: <code>SS-08.zip</code>, <code>SS08.zip</code>, <code>SS-13A.zip</code>...
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">SS identificada</label>
+            <input
+              type="text"
+              value={ssDetectada ?? ''}
+              readOnly
+              placeholder="— aguardando arquivo —"
+              className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-muted/40 text-sm font-semibold text-foreground cursor-not-allowed"
+            />
+            {ssDetectada && proximaVersao != null && (
               <p className="text-[11px] text-emerald-700 mt-1">
-                SS identificada no arquivo: <strong>{ssDetectada}</strong>
+                SS identificada automaticamente: <strong>{ssDetectada}</strong>
               </p>
             )}
           </div>
@@ -230,7 +231,7 @@ const MapaBasesPage = () => {
           <div className="flex items-end">
             <button
               onClick={iniciarImportacao}
-              disabled={importing || !arquivo || !ssSelecionada || divergenteAntesImport}
+              disabled={!podeImportar}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50 hover:opacity-90"
             >
               {importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
@@ -239,14 +240,28 @@ const MapaBasesPage = () => {
           </div>
         </div>
 
-        {divergenteAntesImport && (
+        {arquivo && !ssDetectada && (
           <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 flex items-start gap-2">
             <AlertTriangle size={16} className="mt-0.5"/>
             <div>
-              <strong>Divergência de SS.</strong> O arquivo foi identificado como <strong>{ssDetectada}</strong>, mas a SS selecionada é <strong>{ssSelecionada}</strong>. Ajuste a seleção ou envie o arquivo correto.
+              <strong>Não foi possível identificar a SS pelo nome do arquivo.</strong> Renomeie o arquivo no padrão <code>SS-XX.zip</code> ou <code>SS-XXA.zip</code> (ex: <code>SS-13A.zip</code>).
             </div>
           </div>
         )}
+
+        {arquivo && ssDetectada && proximaVersao != null && !resumo && (
+          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-900">
+            <div className="font-semibold mb-1 flex items-center gap-2">
+              <CheckCircle2 size={14} /> Pronto para importar
+            </div>
+            <ul className="text-xs space-y-0.5 pl-1">
+              <li>Arquivo: <strong>{arquivo.name}</strong></li>
+              <li>SS identificada: <strong>{ssDetectada}</strong></li>
+              <li>Versão a criar: <strong>v{proximaVersao}</strong></li>
+            </ul>
+          </div>
+        )}
+
 
         {resumo && (
           <div className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-sm">

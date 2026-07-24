@@ -4,6 +4,7 @@ import type { OSStatus } from '@/types/sanegest';
 
 export type MapaTrechoPreview = {
   id: string;
+  ss: string;
   rotulo_original: string;
   no_inicial: string | null;
   no_final: string | null;
@@ -24,6 +25,7 @@ export type MapaTrechoPreview = {
 
 export type MapaPontoPreview = {
   id: string;
+  ss: string;
   rotulo_original: string;
   tipo_no: string;
   cota_marg: number | null;
@@ -52,12 +54,11 @@ export function statusAgregado(statuses: OSStatus[]): OSStatus {
 }
 
 /**
- * Carrega a base preview mais recente da SS-08 através da RPC segura `get_mapa_publico`.
- * Essa RPC devolve apenas dados sanitizados (sem motivos, justificativas, vínculos inativos
- * ou trechos suprimidos), unificando geometria original + camada operacional efetiva.
+ * Carrega TODAS as bases ativas (uma por SS) via `get_mapa_publico`, agregando
+ * trechos e pontos com marcação da SS de origem para permitir toggle individual.
  */
 export function useMapaBasePreview(canView: boolean) {
-  const [base, setBase] = useState<MapaBasePreview | null>(null);
+  const [bases, setBases] = useState<MapaBasePreview[]>([]);
   const [trechos, setTrechos] = useState<MapaTrechoPreview[]>([]);
   const [pontos, setPontos] = useState<MapaPontoPreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,45 +67,74 @@ export function useMapaBasePreview(canView: boolean) {
   const load = async () => {
     setLoading(true); setErro(null);
     try {
-      const { data, error } = await supabase.rpc('get_mapa_publico' as any, { _ss: 'SS-08' });
-      if (error) throw error;
-      const payload: any = data ?? {};
-      if (!payload.base) { setBase(null); setTrechos([]); setPontos([]); return; }
-      setBase(payload.base as MapaBasePreview);
+      const { data: basesRows, error: basesErr } = await supabase
+        .from('mapa_bases' as any)
+        .select('ss')
+        .in('status', ['ativa', 'preview'])
+        .order('ss', { ascending: true });
+      if (basesErr) throw basesErr;
+      const sses = Array.from(new Set(((basesRows ?? []) as any[]).map((r) => r.ss as string)));
+      if (!sses.length) { setBases([]); setTrechos([]); setPontos([]); return; }
 
-      const trArr: any[] = payload.trechos ?? [];
-      const trechosFinal: MapaTrechoPreview[] = trArr.map((t) => ({
-        id: t.id,
-        rotulo_original: t.rotulo,
-        no_inicial: null,
-        no_final: null,
-        dn: t.dn,
-        material: t.material,
-        l_escala: t.extensao_m,
-        geometry: t.geometry,
-        vinculos: (t.vinculos ?? []).map((v: any) => ({
-          os_id: v.os_id,
-          trecho: v.trecho,
-          bacia: v.bacia,
-          status: v.status as OSStatus,
-          origem: 'AUTO',
-          pv_final_assentado: !!v.pv_final_assentado,
-        })),
-        divergencias: [],
-      }));
-      setTrechos(trechosFinal);
+      const results = await Promise.all(
+        sses.map(async (ss) => {
+          const { data, error } = await supabase.rpc('get_mapa_publico' as any, { _ss: ss });
+          if (error) throw error;
+          return { ss, payload: (data ?? {}) as any };
+        })
+      );
 
-      const pArr: any[] = payload.pontos ?? [];
-      setPontos(pArr.map((p) => ({
-        id: p.id,
-        rotulo_original: p.rotulo,
-        tipo_no: p.tipo_no ?? '',
-        cota_marg: p.cota,
-        cota_inv: null,
-        prof: p.prof,
-        lon: Number(p.lon),
-        lat: Number(p.lat),
-      })));
+      const allBases: MapaBasePreview[] = [];
+      const allTrechos: MapaTrechoPreview[] = [];
+      const allPontos: MapaPontoPreview[] = [];
+
+      for (const { ss, payload } of results) {
+        if (!payload.base) continue;
+        allBases.push(payload.base as MapaBasePreview);
+
+        const trArr: any[] = payload.trechos ?? [];
+        for (const t of trArr) {
+          allTrechos.push({
+            id: t.id,
+            ss,
+            rotulo_original: t.rotulo,
+            no_inicial: null,
+            no_final: null,
+            dn: t.dn,
+            material: t.material,
+            l_escala: t.extensao_m,
+            geometry: t.geometry,
+            vinculos: (t.vinculos ?? []).map((v: any) => ({
+              os_id: v.os_id,
+              trecho: v.trecho,
+              bacia: v.bacia,
+              status: v.status as OSStatus,
+              origem: 'AUTO',
+              pv_final_assentado: !!v.pv_final_assentado,
+            })),
+            divergencias: [],
+          });
+        }
+
+        const pArr: any[] = payload.pontos ?? [];
+        for (const p of pArr) {
+          allPontos.push({
+            id: p.id,
+            ss,
+            rotulo_original: p.rotulo,
+            tipo_no: p.tipo_no ?? '',
+            cota_marg: p.cota,
+            cota_inv: null,
+            prof: p.prof,
+            lon: Number(p.lon),
+            lat: Number(p.lat),
+          });
+        }
+      }
+
+      setBases(allBases);
+      setTrechos(allTrechos);
+      setPontos(allPontos);
     } catch (e: any) {
       setErro(e?.message ?? 'Erro ao carregar mapa');
     } finally {
@@ -113,10 +143,8 @@ export function useMapaBasePreview(canView: boolean) {
   };
 
   useEffect(() => {
-    if (!canView) { setBase(null); setTrechos([]); setPontos([]); return; }
+    if (!canView) { setBases([]); setTrechos([]); setPontos([]); return; }
     load();
-    // Recarrega quando N.S. mudarem (status/pv_final) — não escutamos mapa_trecho_os
-    // porque a RPC já reflete o estado atual e essa tabela é restrita à Sala Técnica.
     const ch = supabase
       .channel('mapa-base-preview')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ordens_servico' }, load)
@@ -125,5 +153,5 @@ export function useMapaBasePreview(canView: boolean) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canView]);
 
-  return { base, trechos, pontos, loading, erro, reload: load };
+  return { bases, trechos, pontos, loading, erro, reload: load };
 }

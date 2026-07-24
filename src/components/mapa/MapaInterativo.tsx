@@ -120,12 +120,41 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
   const canManage = permissions.canEditOS(effectiveRole);
   const canViewPreviewBase = effectiveRole === 'admin' || effectiveRole === 'sala_tecnica' || effectiveRole === 'gerencia';
   const previewBase = useMapaBasePreview(canViewPreviewBase);
-  const [previewVisible, setPreviewVisible] = useState<boolean>(() => {
-    try { return localStorage.getItem('sanegest_map_preview_ss08') !== '0'; } catch { return true; }
+  const PREVIEW_VIS_KEY = 'sanegest_map_preview_vis_by_ss';
+  const [previewVisByS, setPreviewVisByS] = useState<Record<string, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem(PREVIEW_VIS_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+    } catch { return {}; }
   });
   useEffect(() => {
-    try { localStorage.setItem('sanegest_map_preview_ss08', previewVisible ? '1' : '0'); } catch {}
-  }, [previewVisible]);
+    try { localStorage.setItem(PREVIEW_VIS_KEY, JSON.stringify(previewVisByS)); } catch {}
+  }, [previewVisByS]);
+  const isSsVisible = (ss: string) => previewVisByS[ss] !== false; // default true
+  const toggleSs = (ss: string) => setPreviewVisByS((m) => ({ ...m, [ss]: !isSsVisible(ss) }));
+  const visibleTrechos = previewBase.trechos.filter((t) => isSsVisible(t.ss));
+  const visiblePontos = previewBase.pontos.filter((p) => isSsVisible(p.ss));
+
+  // Fit inicial nas geometrias das bases ativas assim que carregarem
+  const didFitPreviewRef = useRef(false);
+  useEffect(() => {
+    if (didFitPreviewRef.current) return;
+    if (!mapRef.current || !previewBase.bases.length) return;
+    const pts: [number, number][] = [];
+    for (const t of previewBase.trechos) {
+      const g: any = t.geometry;
+      if (!g) continue;
+      if (g.type === 'LineString') for (const [lon, lat] of g.coordinates as [number, number][]) pts.push([lat, lon]);
+      else if (g.type === 'MultiLineString') for (const seg of g.coordinates as [number, number][][]) for (const [lon, lat] of seg) pts.push([lat, lon]);
+    }
+    for (const p of previewBase.pontos) pts.push([p.lat, p.lon]);
+    if (!pts.length) return;
+    try {
+      const b = L.latLngBounds(pts);
+      if (b.isValid()) mapRef.current.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
+      didFitPreviewRef.current = true;
+    } catch {}
+  }, [previewBase.bases, previewBase.trechos, previewBase.pontos]);
 
 
   const containerRef = useRef<HTMLDivElement>(null);

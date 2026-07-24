@@ -120,12 +120,41 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
   const canManage = permissions.canEditOS(effectiveRole);
   const canViewPreviewBase = effectiveRole === 'admin' || effectiveRole === 'sala_tecnica' || effectiveRole === 'gerencia';
   const previewBase = useMapaBasePreview(canViewPreviewBase);
-  const [previewVisible, setPreviewVisible] = useState<boolean>(() => {
-    try { return localStorage.getItem('sanegest_map_preview_ss08') !== '0'; } catch { return true; }
+  const PREVIEW_VIS_KEY = 'sanegest_map_preview_vis_by_ss';
+  const [previewVisByS, setPreviewVisByS] = useState<Record<string, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem(PREVIEW_VIS_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+    } catch { return {}; }
   });
   useEffect(() => {
-    try { localStorage.setItem('sanegest_map_preview_ss08', previewVisible ? '1' : '0'); } catch {}
-  }, [previewVisible]);
+    try { localStorage.setItem(PREVIEW_VIS_KEY, JSON.stringify(previewVisByS)); } catch {}
+  }, [previewVisByS]);
+  const isSsVisible = (ss: string) => previewVisByS[ss] !== false; // default true
+  const toggleSs = (ss: string) => setPreviewVisByS((m) => ({ ...m, [ss]: !isSsVisible(ss) }));
+  const visibleTrechos = previewBase.trechos.filter((t) => isSsVisible(t.ss));
+  const visiblePontos = previewBase.pontos.filter((p) => isSsVisible(p.ss));
+
+  // Fit inicial nas geometrias das bases ativas assim que carregarem
+  const didFitPreviewRef = useRef(false);
+  useEffect(() => {
+    if (didFitPreviewRef.current) return;
+    if (!mapRef.current || !previewBase.bases.length) return;
+    const pts: [number, number][] = [];
+    for (const t of previewBase.trechos) {
+      const g: any = t.geometry;
+      if (!g) continue;
+      if (g.type === 'LineString') for (const [lon, lat] of g.coordinates as [number, number][]) pts.push([lat, lon]);
+      else if (g.type === 'MultiLineString') for (const seg of g.coordinates as [number, number][][]) for (const [lon, lat] of seg) pts.push([lat, lon]);
+    }
+    for (const p of previewBase.pontos) pts.push([p.lat, p.lon]);
+    if (!pts.length) return;
+    try {
+      const b = L.latLngBounds(pts);
+      if (b.isValid()) mapRef.current.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
+      didFitPreviewRef.current = true;
+    } catch {}
+  }, [previewBase.bases, previewBase.trechos, previewBase.pontos]);
 
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1093,13 +1122,13 @@ ${placemarks.join('\n')}
     <div className={`relative ${className}`} style={{ height }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 200, borderRadius: '0.75rem', overflow: 'hidden' }} />
 
-      {/* Camada Preview SS-08 — não afeta o KMZ */}
+      {/* Camadas Preview (bases geográficas ativas) — não afeta o KMZ */}
       {canViewPreviewBase && (
         <MapaBasePreviewLayer
           map={mapRef.current}
-          trechos={previewBase.trechos}
-          pontos={previewBase.pontos}
-          visible={previewVisible && !!previewBase.base}
+          trechos={visibleTrechos}
+          pontos={visiblePontos}
+          visible={previewBase.bases.length > 0}
         />
       )}
 
@@ -1168,28 +1197,36 @@ ${placemarks.join('\n')}
 
             {canViewPreviewBase && (
               <div className="mb-3 border border-amber-200 bg-amber-50/60 rounded p-2">
-                <div className="text-[10px] uppercase tracking-wide text-amber-800 font-semibold mb-1">Base geográfica (Preview)</div>
-                <div className="flex items-center gap-2 text-sm">
-                  <button
-                    onClick={() => setPreviewVisible((v) => !v)}
-                    className="flex items-center gap-2 flex-1 min-w-0 text-left"
-                    disabled={!previewBase.base}
-                  >
-                    {previewVisible ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
-                    <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0 bg-status-red" />
-                    <span className="flex-1 truncate">
-                      {previewBase.base ? `SS-08 · v${previewBase.base.versao}` : 'SS-08 (sem base preview)'}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {previewBase.trechos.length}L · {previewBase.pontos.length}P
-                    </span>
-                  </button>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[10px] uppercase tracking-wide text-amber-800 font-semibold">Bases geográficas</div>
                   {(effectiveRole === 'admin' || effectiveRole === 'sala_tecnica') && (
                     <Link to="/mapa/bases" onClick={() => setLayersOpen(false)} className="text-[11px] text-primary hover:underline whitespace-nowrap">Gerenciar</Link>
                   )}
                 </div>
-                {previewBase.loading && (
-                  <div className="text-[11px] text-muted-foreground mt-1">Carregando base preview...</div>
+                {previewBase.loading && previewBase.bases.length === 0 ? (
+                  <div className="text-[11px] text-muted-foreground">Carregando bases...</div>
+                ) : previewBase.bases.length === 0 ? (
+                  <div className="text-[11px] text-muted-foreground">Nenhuma base ativa.</div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {previewBase.bases.map((b) => {
+                      const trCount = previewBase.trechos.filter((t) => t.ss === b.ss).length;
+                      const pvCount = previewBase.pontos.filter((p) => p.ss === b.ss).length;
+                      const on = isSsVisible(b.ss);
+                      return (
+                        <button
+                          key={b.id}
+                          onClick={() => toggleSs(b.ss)}
+                          className="w-full flex items-center gap-2 text-sm px-1 py-0.5 rounded hover:bg-amber-100/60 text-left"
+                        >
+                          {on ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
+                          <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0 bg-status-red" />
+                          <span className="flex-1 truncate">{b.ss} · v{b.versao}</span>
+                          <span className="text-[10px] text-muted-foreground">{trCount}L · {pvCount}P</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             )}
@@ -1431,10 +1468,10 @@ ${placemarks.join('\n')}
         </Popover>
       </div>
 
-      {!loading && redePoints.length === 0 && ligacoesPoints.length === 0 && camadas.length === 0 && (
+      {!loading && redePoints.length === 0 && ligacoesPoints.length === 0 && camadas.length === 0 && previewBase.bases.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400]">
           <div className="bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border text-sm text-muted-foreground">
-            Nenhum dado ainda. {canManage && 'Adicione uma camada KMZ para começar.'}
+            Nenhum dado ainda. {canManage && 'Adicione uma camada KMZ ou importe uma base geográfica para começar.'}
           </div>
         </div>
       )}

@@ -303,8 +303,8 @@ export async function importarBase(
       const rotulo = (t as any).rotulo_original as string;
       const cand = chaveCandidata(chave);
 
-      // pendência conhecida
-      if (PENDENCIA_CHAVES.has(chave)) {
+      // pendência conhecida (aplica-se apenas à SS-08)
+      if (ss === 'SS-08' && PENDENCIA_CHAVES.has(chave)) {
         divergencias.push({
           base_id: baseId,
           tipo: 'AMBIGUO',

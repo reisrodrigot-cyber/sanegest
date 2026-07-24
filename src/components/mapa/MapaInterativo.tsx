@@ -1468,10 +1468,10 @@ ${placemarks.join('\n')}
         </Popover>
       </div>
 
-      {!loading && redePoints.length === 0 && ligacoesPoints.length === 0 && camadas.length === 0 && (
+      {!loading && redePoints.length === 0 && ligacoesPoints.length === 0 && camadas.length === 0 && previewBase.bases.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400]">
           <div className="bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border text-sm text-muted-foreground">
-            Nenhum dado ainda. {canManage && 'Adicione uma camada KMZ para começar.'}
+            Nenhum dado ainda. {canManage && 'Adicione uma camada KMZ ou importe uma base geográfica para começar.'}
           </div>
         </div>
       )}

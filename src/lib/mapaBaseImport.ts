@@ -154,6 +154,15 @@ export async function importarBase(
     onProgress('Analisando shapefile no Web Worker...');
     const payload = await parseZipInWorker(buf);
 
+    // Valida SS detectada no conteúdo (nomes de camadas) contra a selecionada
+    const nomesCamadas = payload.camadas.map((c) => c.nome_camada);
+    const ssConteudo = detectarSSDoConteudo(file.name, nomesCamadas);
+    if (ssConteudo && ssConteudo !== ss) {
+      throw new Error(
+        `Divergência: conteúdo identificado como ${ssConteudo}, mas a importação está configurada como ${ss}. Corrija antes de continuar.`
+      );
+    }
+
     // Identifica camadas oficiais
     const rede = payload.camadas.find(
       (c) => c.tipo === 'LINESTRING' && /REDE/i.test(c.nome_camada)
@@ -165,8 +174,7 @@ export async function importarBase(
     if (!rede) throw new Error('Nenhuma camada LINESTRING encontrada no ZIP.');
     if (!pv) throw new Error('Nenhuma camada POINT encontrada no ZIP.');
 
-    onProgress(`Camada REDE: ${rede.nome_camada} (${rede.features.length} feições)`);
-    onProgress(`Camada PV:   ${pv.nome_camada} (${pv.features.length} feições)`);
+    onProgress(`SS identificada: ${ssConteudo ?? ss} — REDE: ${rede.nome_camada} (${rede.features.length}), PV: ${pv.nome_camada} (${pv.features.length})`);
 
     // Registrar camadas
     await supabase.from('mapa_camadas_geo' as any).insert([

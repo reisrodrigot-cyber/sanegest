@@ -40,9 +40,9 @@ const STATUS_STYLE: Record<string, string> = {
   arquivada: 'bg-gray-100 text-gray-700',
 };
 
-// Lista de SSes conhecidas do projeto — pode ser estendida sem migração.
+// Lista oficial de SSes do projeto (cada uma é uma base independente).
 const SS_OPCOES = [
-  'SS-08','SS-09','SS-10','SS-11','SS-12','SS-13','SS-14','SS-15','SS-16','SS-17','SS-18','SS-19','SS-20'
+  'SS-08','SS-09','SS-10','SS-11','SS-12','SS-13A','SS-13B','SS-14A','SS-14B'
 ];
 
 const MapaBasesPage = () => {

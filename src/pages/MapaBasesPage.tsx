@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Upload, Loader2, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Clock, Archive } from 'lucide-react';
+import { Upload, Loader2, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Clock, Archive, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { importarBaseSS08, type ImportResumo } from '@/lib/mapaBaseImport';
 
@@ -12,6 +12,7 @@ interface Base {
   ss: string;
   versao: number;
   status: string;
+  arquivo_path: string | null;
   arquivo_bytes: number | null;
   arquivo_hash: string | null;
   feicoes_rede: number | null;
@@ -19,6 +20,9 @@ interface Base {
   motivo_falha: string | null;
   relatorio_validacao: any;
   created_at: string;
+  excluida_em: string | null;
+  excluida_por: string | null;
+  motivo_exclusao: string | null;
 }
 
 interface Divergencia {
@@ -40,7 +44,8 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 const MapaBasesPage = () => {
-  const { supabaseUser } = useAuth();
+  const { supabaseUser, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [bases, setBases] = useState<Base[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -49,6 +54,8 @@ const MapaBasesPage = () => {
   const [openBaseId, setOpenBaseId] = useState<string | null>(null);
   const [divs, setDivs] = useState<Divergencia[]>([]);
   const [loadingDivs, setLoadingDivs] = useState(false);
+  const [mostrarExcluidas, setMostrarExcluidas] = useState(false);
+
 
   const loadBases = async () => {
     const { data } = await supabase

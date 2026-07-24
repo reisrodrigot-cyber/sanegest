@@ -125,21 +125,47 @@ const MapaBasesPage = () => {
   };
 
   const excluirBase = async (b: Base) => {
+    if (b.excluida_em) { toast.info('Esta camada já está excluída.'); return; }
     const reforcada = b.status === 'ativa';
     const primeiro = reforcada
-      ? `Esta camada está PUBLICADA no mapa (${b.ss} v${b.versao}). Confirma a exclusão?`
-      : `Excluir a camada ${b.ss} v${b.versao} (arquivo ${b.arquivo_hash?.slice(0,12) ?? ''})?\n\nSerão removidos: trechos, pontos, vínculos e divergências desta importação.\nOrdens de Serviço, produção e dados operacionais NÃO serão afetados.`;
+      ? `Esta camada está PUBLICADA no mapa (${b.ss} v${b.versao}).\n\nExcluir logicamente? Ela sairá do mapa e da lista padrão, mas o arquivo original e o histórico serão preservados para auditoria.`
+      : `Excluir logicamente a camada ${b.ss} v${b.versao}?\n\nEla deixará de aparecer no mapa e na lista padrão. O arquivo original, geometrias, vínculos e histórico permanecem preservados para auditoria.\n\nO.S., N.S., produção e dados operacionais NÃO são afetados.`;
     if (!confirm(primeiro)) return;
-    if (reforcada && !confirm(`Tem certeza absoluta? A camada publicada ${b.ss} v${b.versao} sairá do mapa imediatamente.`)) return;
-    const apagarArquivo = confirm('Apagar também o arquivo original do storage?\n\nOK = apagar arquivo original\nCancelar = manter arquivo (recomendado, para auditoria)');
-    const { error } = await supabase.from('mapa_bases' as any).delete().eq('id', b.id);
+    const motivo = prompt('Motivo da exclusão (opcional):') ?? '';
+    const { error } = await supabase.from('mapa_bases' as any).update({
+      status: 'arquivada',
+      excluida_em: new Date().toISOString(),
+      excluida_por: supabaseUser?.id ?? null,
+      motivo_exclusao: motivo.trim() || null,
+    } as any).eq('id', b.id);
     if (error) { toast.error(error.message); return; }
-    if (apagarArquivo && (b as any).arquivo_path) {
-      await supabase.storage.from('mapa-base').remove([(b as any).arquivo_path]);
-    }
-    toast.success(`Camada ${b.ss} v${b.versao} removida`);
+    toast.success(`Camada ${b.ss} v${b.versao} excluída (soft-delete). Arquivo e histórico preservados.`);
     loadBases();
   };
+
+  const excluirDefinitivo = async (b: Base) => {
+    if (!isAdmin) { toast.error('Somente administradores podem executar a exclusão definitiva.'); return; }
+    const c1 = confirm(`⚠️ EXCLUSÃO DEFINITIVA — ${b.ss} v${b.versao}\n\nEsta ação REMOVE FISICAMENTE:\n• geometrias (trechos, pontos)\n• vínculos com N.S.\n• divergências desta importação\n• opcionalmente o arquivo original\n\nOrdens de Serviço, produção e dados operacionais NÃO são afetados, mas o histórico da camada será PERDIDO.\n\nDeseja prosseguir?`);
+    if (!c1) return;
+    const conf = prompt(`Para confirmar, digite exatamente:\n\nEXCLUIR ${b.ss} v${b.versao}`);
+    if (conf !== `EXCLUIR ${b.ss} v${b.versao}`) { toast.error('Confirmação inválida — nada foi apagado.'); return; }
+    const apagarArquivo = confirm('Apagar também o arquivo original do storage?\n\nOK = apagar arquivo\nCancelar = manter arquivo (recomendado)');
+    const { error } = await supabase.from('mapa_bases' as any).delete().eq('id', b.id);
+    if (error) { toast.error(error.message); return; }
+    if (apagarArquivo && b.arquivo_path) {
+      await supabase.storage.from('mapa-base').remove([b.arquivo_path]);
+    }
+    toast.success(`Camada ${b.ss} v${b.versao} removida definitivamente`);
+    loadBases();
+  };
+
+  const basesVisiveis = useMemo(
+    () => mostrarExcluidas ? bases : bases.filter(b => !b.excluida_em),
+    [bases, mostrarExcluidas]
+  );
+  const qtdExcluidas = useMemo(() => bases.filter(b => !!b.excluida_em).length, [bases]);
+
+
 
   const StatusIcon = ({ status }: { status: string }) => {
     if (status === 'processando') return <Loader2 size={14} className="animate-spin" />;

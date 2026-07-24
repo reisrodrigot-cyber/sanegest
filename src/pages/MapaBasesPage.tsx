@@ -99,6 +99,41 @@ const MapaBasesPage = () => {
     else { toast.success('Base arquivada'); loadBases(); }
   };
 
+  const publicarBase = async (b: Base) => {
+    if (b.status !== 'preview') { toast.error('Só é possível publicar bases em Preview.'); return; }
+    const ativa = bases.find((x) => x.ss === b.ss && x.status === 'ativa');
+    const msg = ativa
+      ? `Publicar ${b.ss} v${b.versao} como a versão ATIVA do mapa?\n\nA versão atual (v${ativa.versao}) será ARQUIVADA e mantida para consulta.`
+      : `Publicar ${b.ss} v${b.versao} como a versão ATIVA do mapa?`;
+    if (!confirm(msg)) return;
+    if (ativa) {
+      const { error: e1 } = await supabase.from('mapa_bases' as any)
+        .update({ status: 'arquivada' } as any).eq('id', ativa.id);
+      if (e1) { toast.error(e1.message); return; }
+    }
+    const { error } = await supabase.from('mapa_bases' as any)
+      .update({ status: 'ativa' } as any).eq('id', b.id);
+    if (error) toast.error(error.message);
+    else { toast.success(`Base ${b.ss} v${b.versao} publicada`); loadBases(); }
+  };
+
+  const excluirBase = async (b: Base) => {
+    const reforcada = b.status === 'ativa';
+    const primeiro = reforcada
+      ? `Esta camada está PUBLICADA no mapa (${b.ss} v${b.versao}). Confirma a exclusão?`
+      : `Excluir a camada ${b.ss} v${b.versao} (arquivo ${b.arquivo_hash?.slice(0,12) ?? ''})?\n\nSerão removidos: trechos, pontos, vínculos e divergências desta importação.\nOrdens de Serviço, produção e dados operacionais NÃO serão afetados.`;
+    if (!confirm(primeiro)) return;
+    if (reforcada && !confirm(`Tem certeza absoluta? A camada publicada ${b.ss} v${b.versao} sairá do mapa imediatamente.`)) return;
+    const apagarArquivo = confirm('Apagar também o arquivo original do storage?\n\nOK = apagar arquivo original\nCancelar = manter arquivo (recomendado, para auditoria)');
+    const { error } = await supabase.from('mapa_bases' as any).delete().eq('id', b.id);
+    if (error) { toast.error(error.message); return; }
+    if (apagarArquivo && (b as any).arquivo_path) {
+      await supabase.storage.from('mapa-base').remove([(b as any).arquivo_path]);
+    }
+    toast.success(`Camada ${b.ss} v${b.versao} removida`);
+    loadBases();
+  };
+
   const StatusIcon = ({ status }: { status: string }) => {
     if (status === 'processando') return <Loader2 size={14} className="animate-spin" />;
     if (status === 'preview') return <Clock size={14} />;

@@ -219,11 +219,25 @@ const MapaBasesPage = () => {
       </div>
 
       <div className="bg-card rounded-xl border border-border shadow-sm">
-        <h2 className="text-lg font-semibold p-4 border-b border-border">Histórico de bases</h2>
+        <div className="flex items-center justify-between p-4 border-b border-border gap-3 flex-wrap">
+          <h2 className="text-lg font-semibold">Histórico de bases</h2>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={mostrarExcluidas}
+              onChange={(e) => setMostrarExcluidas(e.target.checked)}
+              className="accent-primary"
+            />
+            {mostrarExcluidas ? <Eye size={14}/> : <EyeOff size={14}/>}
+            Ver camadas excluídas/arquivadas {qtdExcluidas > 0 && <span className="text-[11px] bg-muted rounded px-1.5 py-0.5">{qtdExcluidas}</span>}
+          </label>
+        </div>
         {loading ? (
           <div className="p-6 text-center text-muted-foreground text-sm"><Loader2 className="inline animate-spin mr-2" size={14}/> Carregando...</div>
-        ) : bases.length === 0 ? (
-          <div className="p-6 text-center text-muted-foreground text-sm">Nenhuma base importada ainda.</div>
+        ) : basesVisiveis.length === 0 ? (
+          <div className="p-6 text-center text-muted-foreground text-sm">
+            {bases.length === 0 ? 'Nenhuma base importada ainda.' : 'Nenhuma camada ativa. Marque "Ver camadas excluídas" para consultar o histórico.'}
+          </div>
         ) : (
           <div className="overflow-auto">
             <table className="w-full text-sm">
@@ -240,14 +254,23 @@ const MapaBasesPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {bases.map((b) => (
-                  <tr key={b.id} className="border-t border-border hover:bg-muted/30">
+                {basesVisiveis.map((b) => (
+                  <tr key={b.id} className={`border-t border-border hover:bg-muted/30 ${b.excluida_em ? 'opacity-60' : ''}`}>
                     <td className="p-3 font-medium">{b.ss}</td>
                     <td className="p-3">v{b.versao}</td>
                     <td className="p-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLE[b.status] ?? ''}`}>
                         <StatusIcon status={b.status} /> {b.status}
                       </span>
+                      {b.excluida_em && (
+                        <div className="text-[11px] text-red-700 mt-1 flex items-start gap-1">
+                          <Trash2 size={12} className="mt-0.5"/>
+                          <span>
+                            Excluída em {new Date(b.excluida_em).toLocaleString('pt-BR')}
+                            {b.motivo_exclusao ? ` — ${b.motivo_exclusao}` : ''}
+                          </span>
+                        </div>
+                      )}
                       {b.motivo_falha && (
                         <div className="text-[11px] text-red-700 mt-1 flex items-start gap-1">
                           <AlertTriangle size={12} className="mt-0.5"/> {b.motivo_falha}
@@ -260,19 +283,31 @@ const MapaBasesPage = () => {
                     <td className="p-3 text-xs">{new Date(b.created_at).toLocaleString('pt-BR')}</td>
                     <td className="p-3 text-right space-x-2 whitespace-nowrap">
                       <button onClick={() => loadDivergencias(b.id)} className="text-xs text-primary hover:underline">Divergências</button>
-                      {b.status === 'preview' && (
+                      {!b.excluida_em && b.status === 'preview' && (
                         <button onClick={() => publicarBase(b)} className="text-xs font-medium text-emerald-700 hover:underline">Publicar versão</button>
                       )}
-                      {b.status !== 'arquivada' && b.status !== 'ativa' && (
+                      {!b.excluida_em && b.status !== 'arquivada' && b.status !== 'ativa' && (
                         <button onClick={() => arquivarBase(b)} className="text-xs text-muted-foreground hover:text-foreground">Arquivar</button>
                       )}
-                      <button onClick={() => excluirBase(b)} className="text-xs text-destructive hover:underline">Excluir camada</button>
+                      {!b.excluida_em && (
+                        <button onClick={() => excluirBase(b)} className="text-xs text-destructive hover:underline">Excluir camada</button>
+                      )}
+                      {b.excluida_em && isAdmin && (
+                        <button
+                          onClick={() => excluirDefinitivo(b)}
+                          className="text-xs text-red-700 hover:underline inline-flex items-center gap-1"
+                          title="Somente admin — remove fisicamente geometrias, vínculos e (opcionalmente) o arquivo"
+                        >
+                          <Trash2 size={12}/> Excluir definitivamente
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
         )}
       </div>
 

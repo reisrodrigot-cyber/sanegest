@@ -398,17 +398,20 @@ export async function importarBase(
       chavesReconhecidas.add(cand);
     }
 
-    // N.S. sem linha (SS-08): a chave OU candidato da N.S. não aparece no SHP
+    // N.S. sem linha: a chave OU candidato da N.S. (da bacia importada) não aparece no SHP
     const shpAll = new Set<string>();
     for (const t of trechosInseridos ?? []) {
       const chv = (t as any).rotulo_chave as string;
       shpAll.add(chv);
       shpAll.add(chaveCandidata(chv));
     }
+    // Regex do código da SS (SS-08 → /SS[\-\s]?0?8/) para filtrar N.S. da bacia atual
+    const ssNum = ss.replace(/^SS-/, '');
+    const ssBaciaRegex = new RegExp(`SS[\\-\\s]?0?${Number(ssNum)}`);
     let nsSemLinha = 0;
     for (const n of nsAtivas) {
       const bacia = normalizarRotulo((n as any).bacia);
-      if (!/SS[\-\s]?08/.test(bacia)) continue;
+      if (!ssBaciaRegex.test(bacia)) continue;
       const chv = normalizarRotulo((n as any).trecho);
       const cnd = chaveCandidata(chv);
       if (!shpAll.has(chv) && !shpAll.has(cnd)) {

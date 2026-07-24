@@ -316,10 +316,13 @@ export type Database = {
           arquivo_path: string | null
           bbox: Json | null
           created_at: string
+          excluida_em: string | null
+          excluida_por: string | null
           feicoes_pv: number | null
           feicoes_rede: number | null
           id: string
           importado_por: string | null
+          motivo_exclusao: string | null
           motivo_falha: string | null
           promovido_em: string | null
           promovido_por: string | null
@@ -335,10 +338,13 @@ export type Database = {
           arquivo_path?: string | null
           bbox?: Json | null
           created_at?: string
+          excluida_em?: string | null
+          excluida_por?: string | null
           feicoes_pv?: number | null
           feicoes_rede?: number | null
           id?: string
           importado_por?: string | null
+          motivo_exclusao?: string | null
           motivo_falha?: string | null
           promovido_em?: string | null
           promovido_por?: string | null
@@ -354,10 +360,13 @@ export type Database = {
           arquivo_path?: string | null
           bbox?: Json | null
           created_at?: string
+          excluida_em?: string | null
+          excluida_por?: string | null
           feicoes_pv?: number | null
           feicoes_rede?: number | null
           id?: string
           importado_por?: string | null
+          motivo_exclusao?: string | null
           motivo_falha?: string | null
           promovido_em?: string | null
           promovido_por?: string | null

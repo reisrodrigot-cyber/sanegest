@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Upload, Loader2, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Clock, Archive } from 'lucide-react';
+import { Upload, Loader2, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Clock, Archive, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { importarBaseSS08, type ImportResumo } from '@/lib/mapaBaseImport';
 
@@ -12,6 +12,7 @@ interface Base {
   ss: string;
   versao: number;
   status: string;
+  arquivo_path: string | null;
   arquivo_bytes: number | null;
   arquivo_hash: string | null;
   feicoes_rede: number | null;
@@ -19,6 +20,9 @@ interface Base {
   motivo_falha: string | null;
   relatorio_validacao: any;
   created_at: string;
+  excluida_em: string | null;
+  excluida_por: string | null;
+  motivo_exclusao: string | null;
 }
 
 interface Divergencia {
@@ -40,7 +44,8 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 const MapaBasesPage = () => {
-  const { supabaseUser } = useAuth();
+  const { supabaseUser, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [bases, setBases] = useState<Base[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -49,6 +54,8 @@ const MapaBasesPage = () => {
   const [openBaseId, setOpenBaseId] = useState<string | null>(null);
   const [divs, setDivs] = useState<Divergencia[]>([]);
   const [loadingDivs, setLoadingDivs] = useState(false);
+  const [mostrarExcluidas, setMostrarExcluidas] = useState(false);
+
 
   const loadBases = async () => {
     const { data } = await supabase
@@ -118,21 +125,47 @@ const MapaBasesPage = () => {
   };
 
   const excluirBase = async (b: Base) => {
+    if (b.excluida_em) { toast.info('Esta camada já está excluída.'); return; }
     const reforcada = b.status === 'ativa';
     const primeiro = reforcada
-      ? `Esta camada está PUBLICADA no mapa (${b.ss} v${b.versao}). Confirma a exclusão?`
-      : `Excluir a camada ${b.ss} v${b.versao} (arquivo ${b.arquivo_hash?.slice(0,12) ?? ''})?\n\nSerão removidos: trechos, pontos, vínculos e divergências desta importação.\nOrdens de Serviço, produção e dados operacionais NÃO serão afetados.`;
+      ? `Esta camada está PUBLICADA no mapa (${b.ss} v${b.versao}).\n\nExcluir logicamente? Ela sairá do mapa e da lista padrão, mas o arquivo original e o histórico serão preservados para auditoria.`
+      : `Excluir logicamente a camada ${b.ss} v${b.versao}?\n\nEla deixará de aparecer no mapa e na lista padrão. O arquivo original, geometrias, vínculos e histórico permanecem preservados para auditoria.\n\nO.S., N.S., produção e dados operacionais NÃO são afetados.`;
     if (!confirm(primeiro)) return;
-    if (reforcada && !confirm(`Tem certeza absoluta? A camada publicada ${b.ss} v${b.versao} sairá do mapa imediatamente.`)) return;
-    const apagarArquivo = confirm('Apagar também o arquivo original do storage?\n\nOK = apagar arquivo original\nCancelar = manter arquivo (recomendado, para auditoria)');
-    const { error } = await supabase.from('mapa_bases' as any).delete().eq('id', b.id);
+    const motivo = prompt('Motivo da exclusão (opcional):') ?? '';
+    const { error } = await supabase.from('mapa_bases' as any).update({
+      status: 'arquivada',
+      excluida_em: new Date().toISOString(),
+      excluida_por: supabaseUser?.id ?? null,
+      motivo_exclusao: motivo.trim() || null,
+    } as any).eq('id', b.id);
     if (error) { toast.error(error.message); return; }
-    if (apagarArquivo && (b as any).arquivo_path) {
-      await supabase.storage.from('mapa-base').remove([(b as any).arquivo_path]);
-    }
-    toast.success(`Camada ${b.ss} v${b.versao} removida`);
+    toast.success(`Camada ${b.ss} v${b.versao} excluída (soft-delete). Arquivo e histórico preservados.`);
     loadBases();
   };
+
+  const excluirDefinitivo = async (b: Base) => {
+    if (!isAdmin) { toast.error('Somente administradores podem executar a exclusão definitiva.'); return; }
+    const c1 = confirm(`⚠️ EXCLUSÃO DEFINITIVA — ${b.ss} v${b.versao}\n\nEsta ação REMOVE FISICAMENTE:\n• geometrias (trechos, pontos)\n• vínculos com N.S.\n• divergências desta importação\n• opcionalmente o arquivo original\n\nOrdens de Serviço, produção e dados operacionais NÃO são afetados, mas o histórico da camada será PERDIDO.\n\nDeseja prosseguir?`);
+    if (!c1) return;
+    const conf = prompt(`Para confirmar, digite exatamente:\n\nEXCLUIR ${b.ss} v${b.versao}`);
+    if (conf !== `EXCLUIR ${b.ss} v${b.versao}`) { toast.error('Confirmação inválida — nada foi apagado.'); return; }
+    const apagarArquivo = confirm('Apagar também o arquivo original do storage?\n\nOK = apagar arquivo\nCancelar = manter arquivo (recomendado)');
+    const { error } = await supabase.from('mapa_bases' as any).delete().eq('id', b.id);
+    if (error) { toast.error(error.message); return; }
+    if (apagarArquivo && b.arquivo_path) {
+      await supabase.storage.from('mapa-base').remove([b.arquivo_path]);
+    }
+    toast.success(`Camada ${b.ss} v${b.versao} removida definitivamente`);
+    loadBases();
+  };
+
+  const basesVisiveis = useMemo(
+    () => mostrarExcluidas ? bases : bases.filter(b => !b.excluida_em),
+    [bases, mostrarExcluidas]
+  );
+  const qtdExcluidas = useMemo(() => bases.filter(b => !!b.excluida_em).length, [bases]);
+
+
 
   const StatusIcon = ({ status }: { status: string }) => {
     if (status === 'processando') return <Loader2 size={14} className="animate-spin" />;
@@ -186,11 +219,25 @@ const MapaBasesPage = () => {
       </div>
 
       <div className="bg-card rounded-xl border border-border shadow-sm">
-        <h2 className="text-lg font-semibold p-4 border-b border-border">Histórico de bases</h2>
+        <div className="flex items-center justify-between p-4 border-b border-border gap-3 flex-wrap">
+          <h2 className="text-lg font-semibold">Histórico de bases</h2>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={mostrarExcluidas}
+              onChange={(e) => setMostrarExcluidas(e.target.checked)}
+              className="accent-primary"
+            />
+            {mostrarExcluidas ? <Eye size={14}/> : <EyeOff size={14}/>}
+            Ver camadas excluídas/arquivadas {qtdExcluidas > 0 && <span className="text-[11px] bg-muted rounded px-1.5 py-0.5">{qtdExcluidas}</span>}
+          </label>
+        </div>
         {loading ? (
           <div className="p-6 text-center text-muted-foreground text-sm"><Loader2 className="inline animate-spin mr-2" size={14}/> Carregando...</div>
-        ) : bases.length === 0 ? (
-          <div className="p-6 text-center text-muted-foreground text-sm">Nenhuma base importada ainda.</div>
+        ) : basesVisiveis.length === 0 ? (
+          <div className="p-6 text-center text-muted-foreground text-sm">
+            {bases.length === 0 ? 'Nenhuma base importada ainda.' : 'Nenhuma camada ativa. Marque "Ver camadas excluídas" para consultar o histórico.'}
+          </div>
         ) : (
           <div className="overflow-auto">
             <table className="w-full text-sm">
@@ -207,14 +254,23 @@ const MapaBasesPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {bases.map((b) => (
-                  <tr key={b.id} className="border-t border-border hover:bg-muted/30">
+                {basesVisiveis.map((b) => (
+                  <tr key={b.id} className={`border-t border-border hover:bg-muted/30 ${b.excluida_em ? 'opacity-60' : ''}`}>
                     <td className="p-3 font-medium">{b.ss}</td>
                     <td className="p-3">v{b.versao}</td>
                     <td className="p-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLE[b.status] ?? ''}`}>
                         <StatusIcon status={b.status} /> {b.status}
                       </span>
+                      {b.excluida_em && (
+                        <div className="text-[11px] text-red-700 mt-1 flex items-start gap-1">
+                          <Trash2 size={12} className="mt-0.5"/>
+                          <span>
+                            Excluída em {new Date(b.excluida_em).toLocaleString('pt-BR')}
+                            {b.motivo_exclusao ? ` — ${b.motivo_exclusao}` : ''}
+                          </span>
+                        </div>
+                      )}
                       {b.motivo_falha && (
                         <div className="text-[11px] text-red-700 mt-1 flex items-start gap-1">
                           <AlertTriangle size={12} className="mt-0.5"/> {b.motivo_falha}
@@ -227,19 +283,31 @@ const MapaBasesPage = () => {
                     <td className="p-3 text-xs">{new Date(b.created_at).toLocaleString('pt-BR')}</td>
                     <td className="p-3 text-right space-x-2 whitespace-nowrap">
                       <button onClick={() => loadDivergencias(b.id)} className="text-xs text-primary hover:underline">Divergências</button>
-                      {b.status === 'preview' && (
+                      {!b.excluida_em && b.status === 'preview' && (
                         <button onClick={() => publicarBase(b)} className="text-xs font-medium text-emerald-700 hover:underline">Publicar versão</button>
                       )}
-                      {b.status !== 'arquivada' && b.status !== 'ativa' && (
+                      {!b.excluida_em && b.status !== 'arquivada' && b.status !== 'ativa' && (
                         <button onClick={() => arquivarBase(b)} className="text-xs text-muted-foreground hover:text-foreground">Arquivar</button>
                       )}
-                      <button onClick={() => excluirBase(b)} className="text-xs text-destructive hover:underline">Excluir camada</button>
+                      {!b.excluida_em && (
+                        <button onClick={() => excluirBase(b)} className="text-xs text-destructive hover:underline">Excluir camada</button>
+                      )}
+                      {b.excluida_em && isAdmin && (
+                        <button
+                          onClick={() => excluirDefinitivo(b)}
+                          className="text-xs text-red-700 hover:underline inline-flex items-center gap-1"
+                          title="Somente admin — remove fisicamente geometrias, vínculos e (opcionalmente) o arquivo"
+                        >
+                          <Trash2 size={12}/> Excluir definitivamente
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
         )}
       </div>
 

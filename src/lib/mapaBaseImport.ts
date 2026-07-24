@@ -64,11 +64,14 @@ function extractPoint(geom: any): [number, number] | null {
 }
 
 // Normaliza identificações equivalentes: "ss10", "SS 10", "ss-10" → "SS-10"
+// Também reconhece sufixos: "ss13a", "SS 13 A", "SS-13B" → "SS-13A" / "SS-13B"
 export function normalizarSS(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  const m = String(raw).toUpperCase().match(/SS[\s\-_]*0*(\d{1,3})/);
+  const m = String(raw).toUpperCase().match(/SS[\s\-_]*0*(\d{1,3})[\s\-_]*([AB])?(?![0-9])/);
   if (!m) return null;
-  return `SS-${m[1].padStart(2, '0')}`;
+  const num = m[1].padStart(2, '0');
+  const suf = m[2] ?? '';
+  return `SS-${num}${suf}`;
 }
 
 // Detecta a SS analisando nome do arquivo e nomes de camadas do shapefile

@@ -20,6 +20,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Trash2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 // Natural sort comparator: "1.2" < "1.10"
 function naturalCompare(a: string, b: string) {
@@ -33,6 +45,7 @@ const OrdensPage = () => {
   const role = effectiveRole || user?.role;
   const canImport = role === 'admin' || role === 'sala_tecnica';
   const canLiberar = role === 'admin' || role === 'sala_tecnica' || role === 'gerencia';
+  const canDelete = role === 'admin' || role === 'sala_tecnica';
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [responsavelFilter, setResponsavelFilter] = useState('TODOS');
@@ -40,6 +53,8 @@ const OrdensPage = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showLiberarModal, setShowLiberarModal] = useState(false);
   const [desatribuirOS, setDesatribuirOS] = useState<typeof ordens>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<'liberadas' | 'nao-liberadas' | 'executadas'>('liberadas');
 
   // Aggregated produção (sum comprimento_dia) per OS
@@ -181,6 +196,42 @@ const OrdensPage = () => {
       throw e;
     }
   };
+
+  const handleDeleteSelecionadas = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setDeleting(true);
+    try {
+      const { error, data } = await supabase
+        .from('ordens_servico')
+        .delete()
+        .in('id', ids)
+        .select('id');
+      if (error) throw error;
+      const excluidas = (data || []).length;
+      const naoExcluidas = ids.length - excluidas;
+      if (naoExcluidas > 0) {
+        const faltantes = ids.filter(id => !(data || []).some((d: any) => d.id === id));
+        const trechos = ordens.filter(o => faltantes.includes(o.id)).map(o => o.trecho).join(', ');
+        toast({
+          title: `${excluidas} N.S. excluídas, ${naoExcluidas} não puderam ser excluídas`,
+          description: trechos ? `Não excluídas: ${trechos}` : undefined,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: `${excluidas} N.S. excluídas com sucesso` });
+      }
+      setSelected(new Set());
+      setShowDeleteConfirm(false);
+      refetch();
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir N.S.', description: String(e?.message || e), variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+
 
 
   const toggleOne = (id: string) => {
@@ -472,6 +523,15 @@ const OrdensPage = () => {
               <UserMinus size={14} /> Desatribuir
             </button>
           )}
+          {canDelete && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90"
+              title="Excluir N.S. selecionadas"
+            >
+              <Trash2 size={14} /> Excluir {selected.size} N.S. selecionada{selected.size > 1 ? 's' : ''}
+            </button>
+          )}
           <button
             onClick={() => setSelected(new Set())}
             className="inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-muted text-muted-foreground"
@@ -495,6 +555,29 @@ const OrdensPage = () => {
         selectedOS={desatribuirOS}
         onDone={() => { setSelected(new Set()); refetch(); }}
       />
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir definitivamente {selected.size} N.S. selecionada{selected.size > 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não poderá ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeleteSelecionadas(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Excluindo...' : 'Excluir selecionadas'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };

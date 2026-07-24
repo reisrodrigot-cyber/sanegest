@@ -63,19 +63,49 @@ function extractPoint(geom: any): [number, number] | null {
   return null;
 }
 
+// Normaliza identificações equivalentes: "ss10", "SS 10", "ss-10" → "SS-10"
+export function normalizarSS(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const m = String(raw).toUpperCase().match(/SS[\s\-_]*0*(\d{1,3})/);
+  if (!m) return null;
+  return `SS-${m[1].padStart(2, '0')}`;
+}
+
+// Detecta a SS analisando nome do arquivo e nomes de camadas do shapefile
+export function detectarSSDoConteudo(fileName: string, nomesCamadas: string[]): string | null {
+  const fromFile = normalizarSS(fileName);
+  if (fromFile) return fromFile;
+  for (const nc of nomesCamadas) {
+    const s = normalizarSS(nc);
+    if (s) return s;
+  }
+  return null;
+}
+
 // —— Fluxo principal ——
-export async function importarBaseSS08(
+export async function importarBase(
   file: File,
+  ssSelecionada: string,
   userId: string | null,
   onProgress: ImportProgress
 ): Promise<ImportResumo> {
-  const ss = 'SS-08';
+  const ss = normalizarSS(ssSelecionada);
+  if (!ss) throw new Error('SS inválida. Selecione a SS antes de importar.');
+
   onProgress('Calculando hash do arquivo...');
   const buf = await file.arrayBuffer();
   const bufCopy = buf.slice(0); // worker consome via transfer
   const hash = await sha256Hex(bufCopy);
 
-  // Descobre próxima versão
+  // Valida SS identificada no nome do arquivo (se detectável) contra a selecionada
+  const ssArquivo = normalizarSS(file.name);
+  if (ssArquivo && ssArquivo !== ss) {
+    throw new Error(
+      `Divergência: arquivo identificado como ${ssArquivo}, mas a importação está configurada como ${ss}. Corrija antes de continuar.`
+    );
+  }
+
+  // Descobre próxima versão APENAS dentro da SS atual
   const { data: last } = await supabase
     .from('mapa_bases' as any)
     .select('versao')

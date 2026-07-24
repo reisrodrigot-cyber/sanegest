@@ -63,19 +63,49 @@ function extractPoint(geom: any): [number, number] | null {
   return null;
 }
 
+// Normaliza identificações equivalentes: "ss10", "SS 10", "ss-10" → "SS-10"
+export function normalizarSS(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const m = String(raw).toUpperCase().match(/SS[\s\-_]*0*(\d{1,3})/);
+  if (!m) return null;
+  return `SS-${m[1].padStart(2, '0')}`;
+}
+
+// Detecta a SS analisando nome do arquivo e nomes de camadas do shapefile
+export function detectarSSDoConteudo(fileName: string, nomesCamadas: string[]): string | null {
+  const fromFile = normalizarSS(fileName);
+  if (fromFile) return fromFile;
+  for (const nc of nomesCamadas) {
+    const s = normalizarSS(nc);
+    if (s) return s;
+  }
+  return null;
+}
+
 // —— Fluxo principal ——
-export async function importarBaseSS08(
+export async function importarBase(
   file: File,
+  ssSelecionada: string,
   userId: string | null,
   onProgress: ImportProgress
 ): Promise<ImportResumo> {
-  const ss = 'SS-08';
+  const ss = normalizarSS(ssSelecionada);
+  if (!ss) throw new Error('SS inválida. Selecione a SS antes de importar.');
+
   onProgress('Calculando hash do arquivo...');
   const buf = await file.arrayBuffer();
   const bufCopy = buf.slice(0); // worker consome via transfer
   const hash = await sha256Hex(bufCopy);
 
-  // Descobre próxima versão
+  // Valida SS identificada no nome do arquivo (se detectável) contra a selecionada
+  const ssArquivo = normalizarSS(file.name);
+  if (ssArquivo && ssArquivo !== ss) {
+    throw new Error(
+      `Divergência: arquivo identificado como ${ssArquivo}, mas a importação está configurada como ${ss}. Corrija antes de continuar.`
+    );
+  }
+
+  // Descobre próxima versão APENAS dentro da SS atual
   const { data: last } = await supabase
     .from('mapa_bases' as any)
     .select('versao')
@@ -124,6 +154,15 @@ export async function importarBaseSS08(
     onProgress('Analisando shapefile no Web Worker...');
     const payload = await parseZipInWorker(buf);
 
+    // Valida SS detectada no conteúdo (nomes de camadas) contra a selecionada
+    const nomesCamadas = payload.camadas.map((c) => c.nome_camada);
+    const ssConteudo = detectarSSDoConteudo(file.name, nomesCamadas);
+    if (ssConteudo && ssConteudo !== ss) {
+      throw new Error(
+        `Divergência: conteúdo identificado como ${ssConteudo}, mas a importação está configurada como ${ss}. Corrija antes de continuar.`
+      );
+    }
+
     // Identifica camadas oficiais
     const rede = payload.camadas.find(
       (c) => c.tipo === 'LINESTRING' && /REDE/i.test(c.nome_camada)
@@ -135,8 +174,7 @@ export async function importarBaseSS08(
     if (!rede) throw new Error('Nenhuma camada LINESTRING encontrada no ZIP.');
     if (!pv) throw new Error('Nenhuma camada POINT encontrada no ZIP.');
 
-    onProgress(`Camada REDE: ${rede.nome_camada} (${rede.features.length} feições)`);
-    onProgress(`Camada PV:   ${pv.nome_camada} (${pv.features.length} feições)`);
+    onProgress(`SS identificada: ${ssConteudo ?? ss} — REDE: ${rede.nome_camada} (${rede.features.length}), PV: ${pv.nome_camada} (${pv.features.length})`);
 
     // Registrar camadas
     await supabase.from('mapa_camadas_geo' as any).insert([
@@ -265,8 +303,8 @@ export async function importarBaseSS08(
       const rotulo = (t as any).rotulo_original as string;
       const cand = chaveCandidata(chave);
 
-      // pendência conhecida
-      if (PENDENCIA_CHAVES.has(chave)) {
+      // pendência conhecida (aplica-se apenas à SS-08)
+      if (ss === 'SS-08' && PENDENCIA_CHAVES.has(chave)) {
         divergencias.push({
           base_id: baseId,
           tipo: 'AMBIGUO',
@@ -360,17 +398,20 @@ export async function importarBaseSS08(
       chavesReconhecidas.add(cand);
     }
 
-    // N.S. sem linha (SS-08): a chave OU candidato da N.S. não aparece no SHP
+    // N.S. sem linha: a chave OU candidato da N.S. (da bacia importada) não aparece no SHP
     const shpAll = new Set<string>();
     for (const t of trechosInseridos ?? []) {
       const chv = (t as any).rotulo_chave as string;
       shpAll.add(chv);
       shpAll.add(chaveCandidata(chv));
     }
+    // Regex do código da SS (SS-08 → /SS[\-\s]?0?8/) para filtrar N.S. da bacia atual
+    const ssNum = ss.replace(/^SS-/, '');
+    const ssBaciaRegex = new RegExp(`SS[\\-\\s]?0?${Number(ssNum)}`);
     let nsSemLinha = 0;
     for (const n of nsAtivas) {
       const bacia = normalizarRotulo((n as any).bacia);
-      if (!/SS[\-\s]?08/.test(bacia)) continue;
+      if (!ssBaciaRegex.test(bacia)) continue;
       const chv = normalizarRotulo((n as any).trecho);
       const cnd = chaveCandidata(chv);
       if (!shpAll.has(chv) && !shpAll.has(cnd)) {

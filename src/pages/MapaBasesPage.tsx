@@ -225,11 +225,15 @@ const MapaBasesPage = () => {
                     <td className="p-3 text-right">{b.feicoes_pv ?? '—'}</td>
                     <td className="p-3 font-mono text-[11px] text-muted-foreground">{b.arquivo_hash?.slice(0, 12) ?? '—'}</td>
                     <td className="p-3 text-xs">{new Date(b.created_at).toLocaleString('pt-BR')}</td>
-                    <td className="p-3 text-right space-x-2">
+                    <td className="p-3 text-right space-x-2 whitespace-nowrap">
                       <button onClick={() => loadDivergencias(b.id)} className="text-xs text-primary hover:underline">Divergências</button>
-                      {b.status !== 'arquivada' && (
-                        <button onClick={() => arquivarBase(b)} className="text-xs text-muted-foreground hover:text-destructive">Arquivar</button>
+                      {b.status === 'preview' && (
+                        <button onClick={() => publicarBase(b)} className="text-xs font-medium text-emerald-700 hover:underline">Publicar versão</button>
                       )}
+                      {b.status !== 'arquivada' && b.status !== 'ativa' && (
+                        <button onClick={() => arquivarBase(b)} className="text-xs text-muted-foreground hover:text-foreground">Arquivar</button>
+                      )}
+                      <button onClick={() => excluirBase(b)} className="text-xs text-destructive hover:underline">Excluir camada</button>
                     </td>
                   </tr>
                 ))}

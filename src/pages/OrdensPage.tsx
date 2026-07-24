@@ -45,6 +45,7 @@ const OrdensPage = () => {
   const role = effectiveRole || user?.role;
   const canImport = role === 'admin' || role === 'sala_tecnica';
   const canLiberar = role === 'admin' || role === 'sala_tecnica' || role === 'gerencia';
+  const canDelete = role === 'admin' || role === 'sala_tecnica';
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [responsavelFilter, setResponsavelFilter] = useState('TODOS');

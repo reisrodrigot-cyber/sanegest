@@ -197,6 +197,42 @@ const OrdensPage = () => {
     }
   };
 
+  const handleDeleteSelecionadas = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setDeleting(true);
+    try {
+      const { error, data } = await supabase
+        .from('ordens_servico')
+        .delete()
+        .in('id', ids)
+        .select('id');
+      if (error) throw error;
+      const excluidas = (data || []).length;
+      const naoExcluidas = ids.length - excluidas;
+      if (naoExcluidas > 0) {
+        const faltantes = ids.filter(id => !(data || []).some((d: any) => d.id === id));
+        const trechos = ordens.filter(o => faltantes.includes(o.id)).map(o => o.trecho).join(', ');
+        toast({
+          title: `${excluidas} N.S. excluídas, ${naoExcluidas} não puderam ser excluídas`,
+          description: trechos ? `Não excluídas: ${trechos}` : undefined,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: `${excluidas} N.S. excluídas com sucesso` });
+      }
+      setSelected(new Set());
+      setShowDeleteConfirm(false);
+      refetch();
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir N.S.', description: String(e?.message || e), variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+
+
 
   const toggleOne = (id: string) => {
     setSelected(prev => {

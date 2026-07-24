@@ -75,28 +75,35 @@ const MapaBasesPage = () => {
     const f = e.target.files?.[0] ?? null;
     e.target.value = '';
     setResumo(null);
-    if (!f) { setArquivo(null); setSsDetectada(null); return; }
+    setArquivo(null);
+    setSsDetectada(null);
+    setSsSelecionada('');
+    if (!f) return;
     if (!/\.zip$/i.test(f.name)) { toast.error('Envie um ZIP contendo o shapefile.'); return; }
-    setArquivo(f);
     const det = normalizarSS(f.name);
+    if (!det) {
+      toast.error('Não foi possível identificar a SS pelo nome do arquivo. Renomeie o arquivo no padrão SS-XX.zip ou SS-XXA.zip.');
+      return;
+    }
+    if (!SS_OPCOES.includes(det)) {
+      toast.error(`SS "${det}" não está na lista oficial de projetos. Verifique o nome do arquivo.`);
+      return;
+    }
+    setArquivo(f);
     setSsDetectada(det);
-    if (det && !ssSelecionada) setSsSelecionada(det);
+    setSsSelecionada(det);
   };
 
   const iniciarImportacao = async () => {
-    if (!arquivo) { toast.error('Selecione um arquivo ZIP.'); return; }
-    if (!ssSelecionada) { toast.error('Selecione a SS antes de importar.'); return; }
-    if (ssDetectada && ssDetectada !== ssSelecionada) {
-      toast.error(`Divergência: arquivo identificado como ${ssDetectada}, mas a SS selecionada é ${ssSelecionada}. Corrija antes de continuar.`);
-      return;
-    }
+    if (!arquivo || !ssDetectada) { toast.error('Selecione um arquivo ZIP com SS identificável.'); return; }
     setImporting(true); setResumo(null); setProgress('Iniciando...');
     try {
-      const r = await importarBase(arquivo, ssSelecionada, supabaseUser?.id ?? null, (m) => setProgress(m));
+      const r = await importarBase(arquivo, ssDetectada, supabaseUser?.id ?? null, (m) => setProgress(m));
       setResumo(r);
       toast.success(`Base ${r.ss} v${r.versao} importada como Preview`);
       setArquivo(null);
       setSsDetectada(null);
+      setSsSelecionada('');
       await loadBases();
     } catch (err: any) {
       toast.error(err?.message ?? 'Falha na importação');

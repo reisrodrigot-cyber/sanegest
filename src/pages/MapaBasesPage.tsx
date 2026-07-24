@@ -175,7 +175,7 @@ const MapaBasesPage = () => {
     return <Archive size={14} />;
   };
 
-  const divergenteAntesImport = !!(ssDetectada && ssSelecionada && ssDetectada !== ssSelecionada);
+  const podeImportar = !!arquivo && !!ssDetectada && !importing;
 
   return (
     <AppLayout>

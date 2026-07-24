@@ -523,6 +523,15 @@ const OrdensPage = () => {
               <UserMinus size={14} /> Desatribuir
             </button>
           )}
+          {canDelete && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90"
+              title="Excluir N.S. selecionadas"
+            >
+              <Trash2 size={14} /> Excluir {selected.size} N.S. selecionada{selected.size > 1 ? 's' : ''}
+            </button>
+          )}
           <button
             onClick={() => setSelected(new Set())}
             className="inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-muted text-muted-foreground"

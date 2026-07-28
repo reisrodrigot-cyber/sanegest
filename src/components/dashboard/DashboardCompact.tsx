@@ -1478,7 +1478,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                           {filtered.map((b) => (
                             <tr key={b.trecho} className="border-b border-white/5">
                               <td className="py-1 pr-2">{b.trecho}</td>
-                              <td className="py-1 px-2 text-right tabular-nums">{b.executado.toLocaleString('pt-BR')}</td>
+                              <td className="py-1 px-2 text-right tabular-nums">{fmtM(b.executado)}</td>
                               <td className="py-1 px-2 text-right tabular-nums" style={{ color: b.total > 0 ? TEAL : 'rgba(255,255,255,0.4)' }}>
                                 {b.total > 0 ? `${b.pct}%` : '—'}
                               </td>

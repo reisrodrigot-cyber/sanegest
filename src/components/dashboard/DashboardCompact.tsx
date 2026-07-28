@@ -53,6 +53,7 @@ interface OSRow {
 
 interface RelatorioRow {
   os_id: string | null;
+  obra_nome: string | null;
   trecho: string | null;
   encarregado: string | null;
   liberado_para: string | null;
@@ -62,6 +63,12 @@ interface RelatorioRow {
   quantidade_ligacoes_realizadas: number | null;
   comprimento_total_ligacoes: number | null;
 }
+
+const SEM_SUB_BACIA = 'Sem sub-bacia';
+// Formatação canônica de metros (pt-BR, no máximo 2 casas).
+const fmtM = (n: number) =>
+  n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 
 // Normaliza variações de nome de encarregado para nomes canônicos exibidos.
 const normalizarEncarregado = (raw: string | null | undefined): string => {

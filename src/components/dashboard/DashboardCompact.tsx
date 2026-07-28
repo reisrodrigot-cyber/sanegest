@@ -1380,13 +1380,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                             <Tooltip
                               contentStyle={darkTooltipStyle}
                               labelStyle={{ color: '#fff' }}
-                              formatter={(v: number, n: string) => [`${v.toLocaleString('pt-BR')} m`, n === 'executado' ? 'Executado' : 'Pendente']}
+                              formatter={(v: number, n: string) => [`${fmtM(Number(v))} m`, n === 'executado' ? 'Executado' : 'Pendente']}
                             />
                             <Bar dataKey="executado" stackId="a" fill={GREEN_EXEC} name="executado" barSize={14}>
-                              <LabelList dataKey="executado" position="center" formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')} fill="#fff" fontSize={10} />
+                              <LabelList dataKey="executado" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
                             </Bar>
                             <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente" barSize={14}>
-                              <LabelList dataKey="pendente" position="center" formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')} fill="#fff" fontSize={10} />
+                              <LabelList dataKey="pendente" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
                               <LabelList dataKey="pct" position="right" formatter={(v: number) => `${v}%`} fill="#4dd9ac" fontSize={11} offset={8} />
                             </Bar>
                           </BarChart>
@@ -1394,8 +1394,29 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       </ChartFrame>
                     </div>
                   )}
+                  {filteredRede.length > 0 && (
+                    <div className="mt-1 pt-1 border-t border-white/10 flex items-center justify-between text-[11px] text-white/80">
+                      <span>
+                        Total executado
+                        {temSemSubBacia && (
+                          <span className="ml-1 text-[10px]" style={{ color: '#f4a261' }}>
+                            • inclui produção sem sub-bacia
+                          </span>
+                        )}
+                      </span>
+                      <span className="tabular-nums font-semibold" style={{ color: GREEN_EXEC }}>
+                        {fmtM(totalExecRede)} m
+                        {totalPrevRede > 0 && (
+                          <span className="ml-1 font-normal text-white/60">
+                            / {fmtM(totalPrevRede)} m ({Math.round((totalExecRede / totalPrevRede) * 100)}%)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
+
 
               {subBaciaTab === 'ligacoes' && (
                 <>

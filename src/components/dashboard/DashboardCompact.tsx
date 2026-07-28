@@ -580,7 +580,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       prev[c] += Number(o.comprimento_previsto) || 0;
     });
 
+    // Rede executada: usa a regra canônica (execRedePorSubBacia), apenas
+    // reclassificando as sub-bacias em POV/SEDE. Nenhum recálculo paralelo.
     const execRede = { POV: 0, SEDE: 0 };
+    execRedePorSubBacia.porBacia.forEach((metros, bacia) => {
+      const cls = classifyBacia(bacia);
+      if (!cls) return;
+      execRede[cls] += metros;
+    });
+
     // Ligações (m): dedup por O.S. — chave = os_id, com fallback para trecho
     // normalizado quando os_id vier nulo. Nunca compor com encarregado, pois
     // uma mesma O.S. pode aparecer com encarregados diferentes no período e
@@ -595,7 +603,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         ? classByOs.get(row.os_id)
         : (nt ? classByTrecho.get(nt) : undefined);
       if (!cls) continue;
-      execRede[cls] += Number(row.comprimento_trecho_executado) || 0;
+
       const key = row.os_id ? `os:${row.os_id}` : (nt ? `tr:${nt}` : null);
       if (!key) continue;
       const cur = Number(row.comprimento_total_ligacoes) || 0;

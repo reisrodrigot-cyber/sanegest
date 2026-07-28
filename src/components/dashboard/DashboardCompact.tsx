@@ -820,34 +820,43 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return { qtd, comprimento: Math.round(comprimento * 100) / 100 };
   }, [relatorioRows, periodo.inicio, periodo.fim]);
 
-  // Avanço por Sub-bacia (todas as NS, independente de status/liberação)
+  // Avanço por Sub-bacia (todas as NS, independente de status/liberação).
+  // Executado = regra canônica (view relatorio_producao_diaria) — NUNCA
+  // ordens.comprimento_real, que é campo de cadastro e diverge do realizado.
+  // Previsto/pendente continuam vindo do plano (ordens.comprimento_previsto).
   const porTrecho = useMemo(() => {
+    const round2 = (n: number) => Math.round(n * 100) / 100;
     const map = new Map<string, { executado: number; total: number; ligQtd: number; ligComp: number }>();
+    const get = (bacia: string) => {
+      let c = map.get(bacia);
+      if (!c) { c = { executado: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
+      return c;
+    };
     ordens.forEach((o) => {
-      const bacia = o.bacia || 'Sem bacia';
-      const prev = o.comprimento_previsto ?? 0;
-      const exec = Math.min(o.comprimento_real ?? 0, prev);
-      const c = map.get(bacia) ?? { executado: 0, total: 0, ligQtd: 0, ligComp: 0 };
-      if (prev > 0) {
-        c.executado += exec;
-        c.total += prev;
-      }
+      const bacia = o.bacia || SEM_SUB_BACIA;
+      const c = get(bacia);
+      c.total += o.comprimento_previsto ?? 0;
       c.ligQtd += qtdLigacoesPorOs.get(o.id) ?? 0;
       c.ligComp += ligCompExecutadoPorOs.get(o.id) ?? 0;
-      map.set(bacia, c);
+    });
+    // Executado canônico — inclui sub-bacias sem previsto e "Sem sub-bacia".
+    execRedePorSubBacia.porBacia.forEach((metros, bacia) => {
+      get(bacia).executado += metros;
     });
     return Array.from(map.entries())
       .map(([bacia, v]) => ({
         trecho: bacia,
-        executado: Math.round(v.executado),
-        pendente: Math.round(Math.max(v.total - v.executado, 0)),
-        total: Math.round(v.total),
+        executado: round2(v.executado),
+        pendente: round2(Math.max(v.total - v.executado, 0)),
+        total: round2(v.total),
         pct: v.total > 0 ? Math.round((v.executado / v.total) * 100) : 0,
+        semSubBacia: bacia === SEM_SUB_BACIA,
         ligQtd: v.ligQtd,
-        ligComp: Math.round(v.ligComp * 100) / 100,
+        ligComp: round2(v.ligComp),
       }))
       .sort((a, b) => String(a.trecho).localeCompare(String(b.trecho), 'pt-BR', { numeric: true, sensitivity: 'base' }));
-  }, [ordens, qtdLigacoesPorOs, ligCompExecutadoPorOs]);
+  }, [ordens, qtdLigacoesPorOs, ligCompExecutadoPorOs, execRedePorSubBacia]);
+
 
   const accent = {
     blue: '#185FA5',

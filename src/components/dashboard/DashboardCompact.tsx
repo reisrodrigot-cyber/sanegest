@@ -1192,9 +1192,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Média diária</span>
+                  <span
+                    className="text-muted-foreground"
+                    title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
+                  >
+                    Produtividade de rede
+                  </span>
                   <span className="font-semibold text-foreground tabular-nums">
-                    {totaisEnc.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia
+                    {totaisEnc.media == null
+                      ? '—'
+                      : `${totaisEnc.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia`}
                   </span>
                 </div>
               </div>

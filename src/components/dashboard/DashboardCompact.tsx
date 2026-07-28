@@ -53,6 +53,7 @@ interface OSRow {
 
 interface RelatorioRow {
   os_id: string | null;
+  obra_nome: string | null;
   trecho: string | null;
   encarregado: string | null;
   liberado_para: string | null;
@@ -62,6 +63,12 @@ interface RelatorioRow {
   quantidade_ligacoes_realizadas: number | null;
   comprimento_total_ligacoes: number | null;
 }
+
+const SEM_SUB_BACIA = 'Sem sub-bacia';
+// Formatação canônica de metros (pt-BR, no máximo 2 casas).
+const fmtM = (n: number) =>
+  n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 
 // Normaliza variações de nome de encarregado para nomes canônicos exibidos.
 const normalizarEncarregado = (raw: string | null | undefined): string => {
@@ -292,7 +299,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const fetchAllRelatorio = () => fetchAllPaged<RelatorioRow>((from, to) =>
       supabase
         .from('relatorio_producao_diaria')
-        .select('os_id, trecho, encarregado, liberado_para, responsavel_nome, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes')
+        .select('os_id, obra_nome, trecho, encarregado, liberado_para, responsavel_nome, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes')
         .order('data_producao', { ascending: true })
         .range(from, to),
     );
@@ -522,6 +529,41 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return null;
   };
 
+  // ------------------------------------------------------------
+  // REGRA CANÔNICA DE "EXECUTADO" (rede)
+  // Fonte única de verdade: view `relatorio_producao_diaria`.
+  //   - período: data_producao entre periodo.inicio e periodo.fim (inclusivos);
+  //   - valor: soma direta de comprimento_trecho_executado (sem cap, sem
+  //     dedup por os_id/trecho — a mesma N.S. produz em dias diferentes);
+  //   - sub-bacia: obra_nome da view; fallback para a bacia da O.S. quando
+  //     obra_nome vier vazio; caso contrário "Sem sub-bacia".
+  // Todo consumidor de rede executada (gráfico Avanço por Sub-bacia, valores
+  // verdes, total geral, percentuais e cards POV/SEDE) usa este memo.
+  // ------------------------------------------------------------
+  const execRedePorSubBacia = useMemo(() => {
+    const baciaPorOs = new Map<string, string>();
+    ordens.forEach((o) => baciaPorOs.set(o.id, o.bacia || ''));
+    const map = new Map<string, number>();
+    let linhas = 0;
+    for (const row of relatorioRows) {
+      const d = String(row.data_producao ?? '');
+      if (!d || d < periodo.inicio || d > periodo.fim) continue;
+      linhas += 1;
+      const metros = Number(row.comprimento_trecho_executado) || 0;
+      if (metros === 0) continue;
+      const bacia =
+        String(row.obra_nome ?? '').trim() ||
+        (row.os_id ? String(baciaPorOs.get(row.os_id) ?? '').trim() : '') ||
+        SEM_SUB_BACIA;
+      map.set(bacia, (map.get(bacia) ?? 0) + metros);
+    }
+    let total = 0;
+    map.forEach((v) => { total += v; });
+    return { porBacia: map, total, linhas };
+  }, [relatorioRows, ordens, periodo.inicio, periodo.fim]);
+
+
+
   const avancoPovSede = useMemo(() => {
     const classByOs = new Map<string, 'POV' | 'SEDE'>();
     const classByTrecho = new Map<string, 'POV' | 'SEDE'>();
@@ -538,7 +580,15 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       prev[c] += Number(o.comprimento_previsto) || 0;
     });
 
+    // Rede executada: usa a regra canônica (execRedePorSubBacia), apenas
+    // reclassificando as sub-bacias em POV/SEDE. Nenhum recálculo paralelo.
     const execRede = { POV: 0, SEDE: 0 };
+    execRedePorSubBacia.porBacia.forEach((metros, bacia) => {
+      const cls = classifyBacia(bacia);
+      if (!cls) return;
+      execRede[cls] += metros;
+    });
+
     // Ligações (m): dedup por O.S. — chave = os_id, com fallback para trecho
     // normalizado quando os_id vier nulo. Nunca compor com encarregado, pois
     // uma mesma O.S. pode aparecer com encarregados diferentes no período e
@@ -553,7 +603,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         ? classByOs.get(row.os_id)
         : (nt ? classByTrecho.get(nt) : undefined);
       if (!cls) continue;
-      execRede[cls] += Number(row.comprimento_trecho_executado) || 0;
+
       const key = row.os_id ? `os:${row.os_id}` : (nt ? `tr:${nt}` : null);
       if (!key) continue;
       const cur = Number(row.comprimento_total_ligacoes) || 0;
@@ -586,7 +636,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       };
     };
     return { POV: build('POV'), SEDE: build('SEDE') };
-  }, [ordens, relatorioRows, periodo.inicio, periodo.fim, subBaciaTab]);
+  }, [ordens, relatorioRows, execRedePorSubBacia, periodo.inicio, periodo.fim, subBaciaTab]);
 
 
   // Produção diária (30 dias)
@@ -770,34 +820,43 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return { qtd, comprimento: Math.round(comprimento * 100) / 100 };
   }, [relatorioRows, periodo.inicio, periodo.fim]);
 
-  // Avanço por Sub-bacia (todas as NS, independente de status/liberação)
+  // Avanço por Sub-bacia (todas as NS, independente de status/liberação).
+  // Executado = regra canônica (view relatorio_producao_diaria) — NUNCA
+  // ordens.comprimento_real, que é campo de cadastro e diverge do realizado.
+  // Previsto/pendente continuam vindo do plano (ordens.comprimento_previsto).
   const porTrecho = useMemo(() => {
+    const round2 = (n: number) => Math.round(n * 100) / 100;
     const map = new Map<string, { executado: number; total: number; ligQtd: number; ligComp: number }>();
+    const get = (bacia: string) => {
+      let c = map.get(bacia);
+      if (!c) { c = { executado: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
+      return c;
+    };
     ordens.forEach((o) => {
-      const bacia = o.bacia || 'Sem bacia';
-      const prev = o.comprimento_previsto ?? 0;
-      const exec = Math.min(o.comprimento_real ?? 0, prev);
-      const c = map.get(bacia) ?? { executado: 0, total: 0, ligQtd: 0, ligComp: 0 };
-      if (prev > 0) {
-        c.executado += exec;
-        c.total += prev;
-      }
+      const bacia = o.bacia || SEM_SUB_BACIA;
+      const c = get(bacia);
+      c.total += o.comprimento_previsto ?? 0;
       c.ligQtd += qtdLigacoesPorOs.get(o.id) ?? 0;
       c.ligComp += ligCompExecutadoPorOs.get(o.id) ?? 0;
-      map.set(bacia, c);
+    });
+    // Executado canônico — inclui sub-bacias sem previsto e "Sem sub-bacia".
+    execRedePorSubBacia.porBacia.forEach((metros, bacia) => {
+      get(bacia).executado += metros;
     });
     return Array.from(map.entries())
       .map(([bacia, v]) => ({
         trecho: bacia,
-        executado: Math.round(v.executado),
-        pendente: Math.round(Math.max(v.total - v.executado, 0)),
-        total: Math.round(v.total),
+        executado: round2(v.executado),
+        pendente: round2(Math.max(v.total - v.executado, 0)),
+        total: round2(v.total),
         pct: v.total > 0 ? Math.round((v.executado / v.total) * 100) : 0,
+        semSubBacia: bacia === SEM_SUB_BACIA,
         ligQtd: v.ligQtd,
-        ligComp: Math.round(v.ligComp * 100) / 100,
+        ligComp: round2(v.ligComp),
       }))
       .sort((a, b) => String(a.trecho).localeCompare(String(b.trecho), 'pt-BR', { numeric: true, sensitivity: 'base' }));
-  }, [ordens, qtdLigacoesPorOs, ligCompExecutadoPorOs]);
+  }, [ordens, qtdLigacoesPorOs, ligCompExecutadoPorOs, execRedePorSubBacia]);
+
 
   const accent = {
     blue: '#185FA5',
@@ -1247,8 +1306,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             if (baciaFilter && !String(b.trecho).toLowerCase().includes(baciaFilter.toLowerCase())) return false;
             return true;
           });
-          // Aba Rede só considera sub-bacias com previsto > 0
-          const filteredRede = filtered.filter((b) => b.total > 0);
+          // Aba Rede: sub-bacias com previsto OU com execução (inclui "Sem sub-bacia")
+          const filteredRede = filtered.filter((b) => b.total > 0 || b.executado > 0);
+          // Total geral do gráfico = soma exata dos verdes exibidos
+          const totalExecRede = Math.round(filteredRede.reduce((s, b) => s + b.executado, 0) * 100) / 100;
+          const totalPrevRede = Math.round(filteredRede.reduce((s, b) => s + b.total, 0) * 100) / 100;
+          const temSemSubBacia = filteredRede.some((b) => b.semSubBacia && b.executado > 0);
           // Aba Ligações só sub-bacias com alguma ligação executada
           const filteredLig = filtered
             .filter((b) => b.ligQtd > 0 || b.ligComp > 0)
@@ -1317,13 +1380,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                             <Tooltip
                               contentStyle={darkTooltipStyle}
                               labelStyle={{ color: '#fff' }}
-                              formatter={(v: number, n: string) => [`${v.toLocaleString('pt-BR')} m`, n === 'executado' ? 'Executado' : 'Pendente']}
+                              formatter={(v: number, n: string) => [`${fmtM(Number(v))} m`, n === 'executado' ? 'Executado' : 'Pendente']}
                             />
                             <Bar dataKey="executado" stackId="a" fill={GREEN_EXEC} name="executado" barSize={14}>
-                              <LabelList dataKey="executado" position="center" formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')} fill="#fff" fontSize={10} />
+                              <LabelList dataKey="executado" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
                             </Bar>
                             <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente" barSize={14}>
-                              <LabelList dataKey="pendente" position="center" formatter={(v: number) => (v > 0 ? v.toLocaleString('pt-BR') : '')} fill="#fff" fontSize={10} />
+                              <LabelList dataKey="pendente" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
                               <LabelList dataKey="pct" position="right" formatter={(v: number) => `${v}%`} fill="#4dd9ac" fontSize={11} offset={8} />
                             </Bar>
                           </BarChart>
@@ -1331,8 +1394,29 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       </ChartFrame>
                     </div>
                   )}
+                  {filteredRede.length > 0 && (
+                    <div className="mt-1 pt-1 border-t border-white/10 flex items-center justify-between text-[11px] text-white/80">
+                      <span>
+                        Total executado
+                        {temSemSubBacia && (
+                          <span className="ml-1 text-[10px]" style={{ color: '#f4a261' }}>
+                            • inclui produção sem sub-bacia
+                          </span>
+                        )}
+                      </span>
+                      <span className="tabular-nums font-semibold" style={{ color: GREEN_EXEC }}>
+                        {fmtM(totalExecRede)} m
+                        {totalPrevRede > 0 && (
+                          <span className="ml-1 font-normal text-white/60">
+                            / {fmtM(totalPrevRede)} m ({Math.round((totalExecRede / totalPrevRede) * 100)}%)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
+
 
               {subBaciaTab === 'ligacoes' && (
                 <>
@@ -1394,7 +1478,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                           {filtered.map((b) => (
                             <tr key={b.trecho} className="border-b border-white/5">
                               <td className="py-1 pr-2">{b.trecho}</td>
-                              <td className="py-1 px-2 text-right tabular-nums">{b.executado.toLocaleString('pt-BR')}</td>
+                              <td className="py-1 px-2 text-right tabular-nums">{fmtM(b.executado)}</td>
                               <td className="py-1 px-2 text-right tabular-nums" style={{ color: b.total > 0 ? TEAL : 'rgba(255,255,255,0.4)' }}>
                                 {b.total > 0 ? `${b.pct}%` : '—'}
                               </td>

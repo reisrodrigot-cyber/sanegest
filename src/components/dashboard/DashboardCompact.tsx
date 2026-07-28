@@ -398,7 +398,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   //     evita dupla contagem quando a mesma OS aparece em vários dias e o
   //     comprimento acumulado da OS se repete linha a linha.
   //   - Total: rede + ligações (m).
-  //   - Média (m/dia): total / dias distintos COM produção do encarregado.
+  //   - Produtividade de rede (m/dia): rede / dias distintos com rede > 0.
+  //     Ligações NÃO entram neste indicador.
   //   - Normaliza nomes: "nilton*" → Nilton Alexandre, "ailton*" → Ailton Santos.
   const porEncarregado = useMemo(() => {
     interface Agg {
@@ -406,6 +407,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       rede: number;
       ligUn: number;
       days: Set<string>;
+      diasRede: Set<string>;
       ligMaxPorOs: Map<string, number>;
     }
     const map = new Map<string, Agg>();
@@ -432,11 +434,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         rede: 0,
         ligUn: 0,
         days: new Set<string>(),
+        diasRede: new Set<string>(),
         ligMaxPorOs: new Map<string, number>(),
       };
       cur.rede += rede;
       cur.ligUn += ligUn;
       cur.days.add(data);
+      if (rede > 0) cur.diasRede.add(data);
       const prevMax = cur.ligMaxPorOs.get(grupo) ?? 0;
       if (ligTot > prevMax) cur.ligMaxPorOs.set(grupo, ligTot);
       map.set(nome, cur);
@@ -448,6 +452,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         v.ligMaxPorOs.forEach((m) => { ligM += m; });
         const total = v.rede + ligM;
         const dias = v.days.size;
+        const diasRede = v.diasRede.size;
         return {
           nome: v.nome,
           rede: Math.round(v.rede * 100) / 100,
@@ -455,7 +460,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           ligUn: v.ligUn,
           total: Math.round(total * 100) / 100,
           dias,
-          media: dias > 0 ? Math.round((total / dias) * 100) / 100 : 0,
+          diasRede,
+          // Produtividade de rede: somente rede / dias com rede.
+          media: diasRede > 0 ? Math.round((v.rede / diasRede) * 100) / 100 : null,
         };
       })
       .sort((a, b) => b.total - a.total);

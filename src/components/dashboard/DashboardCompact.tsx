@@ -529,6 +529,41 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return null;
   };
 
+  // ------------------------------------------------------------
+  // REGRA CANÔNICA DE "EXECUTADO" (rede)
+  // Fonte única de verdade: view `relatorio_producao_diaria`.
+  //   - período: data_producao entre periodo.inicio e periodo.fim (inclusivos);
+  //   - valor: soma direta de comprimento_trecho_executado (sem cap, sem
+  //     dedup por os_id/trecho — a mesma N.S. produz em dias diferentes);
+  //   - sub-bacia: obra_nome da view; fallback para a bacia da O.S. quando
+  //     obra_nome vier vazio; caso contrário "Sem sub-bacia".
+  // Todo consumidor de rede executada (gráfico Avanço por Sub-bacia, valores
+  // verdes, total geral, percentuais e cards POV/SEDE) usa este memo.
+  // ------------------------------------------------------------
+  const execRedePorSubBacia = useMemo(() => {
+    const baciaPorOs = new Map<string, string>();
+    ordens.forEach((o) => baciaPorOs.set(o.id, o.bacia || ''));
+    const map = new Map<string, number>();
+    let linhas = 0;
+    for (const row of relatorioRows) {
+      const d = String(row.data_producao ?? '');
+      if (!d || d < periodo.inicio || d > periodo.fim) continue;
+      linhas += 1;
+      const metros = Number(row.comprimento_trecho_executado) || 0;
+      if (metros === 0) continue;
+      const bacia =
+        String(row.obra_nome ?? '').trim() ||
+        (row.os_id ? String(baciaPorOs.get(row.os_id) ?? '').trim() : '') ||
+        SEM_SUB_BACIA;
+      map.set(bacia, (map.get(bacia) ?? 0) + metros);
+    }
+    let total = 0;
+    map.forEach((v) => { total += v; });
+    return { porBacia: map, total, linhas };
+  }, [relatorioRows, ordens, periodo.inicio, periodo.fim]);
+
+
+
   const avancoPovSede = useMemo(() => {
     const classByOs = new Map<string, 'POV' | 'SEDE'>();
     const classByTrecho = new Map<string, 'POV' | 'SEDE'>();

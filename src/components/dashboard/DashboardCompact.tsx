@@ -1160,8 +1160,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       <td className="py-1 text-right font-semibold tabular-nums">
                         {e.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
-                      <td className="py-1 text-right tabular-nums text-foreground">
-                        {e.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      <td
+                        className="py-1 text-right tabular-nums text-foreground"
+                        title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
+                      >
+                        {e.media == null ? '—' : e.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
                     </tr>
                   ))}

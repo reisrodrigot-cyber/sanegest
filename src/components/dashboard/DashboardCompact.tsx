@@ -1120,7 +1120,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               <PeriodoPicker />
             </div>
             <p className="text-[10px] text-muted-foreground mb-2">
-              Produção lançada de {fmtDateBR(periodo.inicio)} a {fmtDateBR(periodo.fim)}
+              Produção lançada de {fmtDateBR(periodo.inicio)} a {fmtDateBR(periodo.fim)} · Produtividade de rede
+              calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador.
             </p>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
@@ -1131,7 +1132,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     <th className="pb-1 font-medium text-right">Lig. (m)</th>
                     <th className="pb-1 font-medium text-right">Lig. (un)</th>
                     <th className="pb-1 font-medium text-right">Total (m)</th>
-                    <th className="pb-1 font-medium text-right">Média (m/d)</th>
+                    <th
+                      className="pb-1 font-medium text-right"
+                      title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
+                    >
+                      Produtividade de rede (m/dia)
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

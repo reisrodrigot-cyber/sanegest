@@ -398,7 +398,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   //     evita dupla contagem quando a mesma OS aparece em vários dias e o
   //     comprimento acumulado da OS se repete linha a linha.
   //   - Total: rede + ligações (m).
-  //   - Média (m/dia): total / dias distintos COM produção do encarregado.
+  //   - Produtividade de rede (m/dia): rede / dias distintos com rede > 0.
+  //     Ligações NÃO entram neste indicador.
   //   - Normaliza nomes: "nilton*" → Nilton Alexandre, "ailton*" → Ailton Santos.
   const porEncarregado = useMemo(() => {
     interface Agg {
@@ -406,6 +407,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       rede: number;
       ligUn: number;
       days: Set<string>;
+      diasRede: Set<string>;
       ligMaxPorOs: Map<string, number>;
     }
     const map = new Map<string, Agg>();
@@ -432,11 +434,13 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         rede: 0,
         ligUn: 0,
         days: new Set<string>(),
+        diasRede: new Set<string>(),
         ligMaxPorOs: new Map<string, number>(),
       };
       cur.rede += rede;
       cur.ligUn += ligUn;
       cur.days.add(data);
+      if (rede > 0) cur.diasRede.add(data);
       const prevMax = cur.ligMaxPorOs.get(grupo) ?? 0;
       if (ligTot > prevMax) cur.ligMaxPorOs.set(grupo, ligTot);
       map.set(nome, cur);
@@ -448,6 +452,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         v.ligMaxPorOs.forEach((m) => { ligM += m; });
         const total = v.rede + ligM;
         const dias = v.days.size;
+        const diasRede = v.diasRede.size;
         return {
           nome: v.nome,
           rede: Math.round(v.rede * 100) / 100,
@@ -455,7 +460,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           ligUn: v.ligUn,
           total: Math.round(total * 100) / 100,
           dias,
-          media: dias > 0 ? Math.round((total / dias) * 100) / 100 : 0,
+          diasRede,
+          // Produtividade de rede: somente rede / dias com rede.
+          media: diasRede > 0 ? Math.round((v.rede / diasRede) * 100) / 100 : null,
         };
       })
       .sort((a, b) => b.total - a.total);
@@ -829,35 +836,34 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   };
 
   const totaisEnc = useMemo(() => {
-    const t = { rede: 0, ligM: 0, ligUn: 0, total: 0, dias: 0, media: 0 };
+    const t = { rede: 0, ligM: 0, ligUn: 0, total: 0 };
     porEncarregado.forEach((e) => {
       t.rede += e.rede;
       t.ligM += e.ligM;
       t.ligUn += e.ligUn;
       t.total += e.total;
     });
-    // Dias produtivos da obra: datas distintas dentro do período com
-    // pelo menos um lançamento com rede > 0 ou ligação realizada > 0.
-    const diasProdutivos = new Set<string>();
+    // Dias produtivos de REDE: datas distintas no período com rede > 0.
+    const diasRede = new Set<string>();
     for (const row of relatorioRows) {
       const data = String(row.data_producao ?? '');
       if (!data) continue;
       if (data < periodo.inicio || data > periodo.fim) continue;
       const rede = Number(row.comprimento_trecho_executado) || 0;
-      const ligUn = Number(row.quantidade_ligacoes_realizadas) || 0;
-      if (rede > 0 || ligUn > 0) diasProdutivos.add(data);
+      if (rede > 0) diasRede.add(data);
     }
-    t.dias = diasProdutivos.size;
-    t.media = t.dias > 0 ? t.total / t.dias : 0;
+    const dias = diasRede.size;
     return {
       rede: Math.round(t.rede * 100) / 100,
       ligM: Math.round(t.ligM * 100) / 100,
       ligUn: t.ligUn,
       total: Math.round(t.total * 100) / 100,
-      dias: t.dias,
-      media: Math.round(t.media * 100) / 100,
+      dias,
+      // Produtividade de rede da obra: rede / dias com rede.
+      media: dias > 0 ? Math.round((t.rede / dias) * 100) / 100 : null,
     };
   }, [porEncarregado, relatorioRows, periodo.inicio, periodo.fim]);
+
 
   // Persiste o período aplicado na URL (di/df) para deep-link e refresh.
   useEffect(() => {
@@ -1114,7 +1120,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               <PeriodoPicker />
             </div>
             <p className="text-[10px] text-muted-foreground mb-2">
-              Produção lançada de {fmtDateBR(periodo.inicio)} a {fmtDateBR(periodo.fim)}
+              Produção lançada de {fmtDateBR(periodo.inicio)} a {fmtDateBR(periodo.fim)} · Produtividade de rede
+              calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador.
             </p>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs">
@@ -1125,7 +1132,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     <th className="pb-1 font-medium text-right">Lig. (m)</th>
                     <th className="pb-1 font-medium text-right">Lig. (un)</th>
                     <th className="pb-1 font-medium text-right">Total (m)</th>
-                    <th className="pb-1 font-medium text-right">Média (m/d)</th>
+                    <th
+                      className="pb-1 font-medium text-right"
+                      title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
+                    >
+                      Produtividade de rede (m/dia)
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1148,8 +1160,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       <td className="py-1 text-right font-semibold tabular-nums">
                         {e.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
-                      <td className="py-1 text-right tabular-nums text-foreground">
-                        {e.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                      <td
+                        className="py-1 text-right tabular-nums text-foreground"
+                        title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
+                      >
+                        {e.media == null ? '—' : e.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
                     </tr>
                   ))}
@@ -1177,9 +1192,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Média diária</span>
+                  <span
+                    className="text-muted-foreground"
+                    title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
+                  >
+                    Produtividade de rede
+                  </span>
                   <span className="font-semibold text-foreground tabular-nums">
-                    {totaisEnc.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia
+                    {totaisEnc.media == null
+                      ? '—'
+                      : `${totaisEnc.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m/dia`}
                   </span>
                 </div>
               </div>

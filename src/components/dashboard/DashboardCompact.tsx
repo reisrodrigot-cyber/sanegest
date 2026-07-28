@@ -836,35 +836,34 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   };
 
   const totaisEnc = useMemo(() => {
-    const t = { rede: 0, ligM: 0, ligUn: 0, total: 0, dias: 0, media: 0 };
+    const t = { rede: 0, ligM: 0, ligUn: 0, total: 0 };
     porEncarregado.forEach((e) => {
       t.rede += e.rede;
       t.ligM += e.ligM;
       t.ligUn += e.ligUn;
       t.total += e.total;
     });
-    // Dias produtivos da obra: datas distintas dentro do período com
-    // pelo menos um lançamento com rede > 0 ou ligação realizada > 0.
-    const diasProdutivos = new Set<string>();
+    // Dias produtivos de REDE: datas distintas no período com rede > 0.
+    const diasRede = new Set<string>();
     for (const row of relatorioRows) {
       const data = String(row.data_producao ?? '');
       if (!data) continue;
       if (data < periodo.inicio || data > periodo.fim) continue;
       const rede = Number(row.comprimento_trecho_executado) || 0;
-      const ligUn = Number(row.quantidade_ligacoes_realizadas) || 0;
-      if (rede > 0 || ligUn > 0) diasProdutivos.add(data);
+      if (rede > 0) diasRede.add(data);
     }
-    t.dias = diasProdutivos.size;
-    t.media = t.dias > 0 ? t.total / t.dias : 0;
+    const dias = diasRede.size;
     return {
       rede: Math.round(t.rede * 100) / 100,
       ligM: Math.round(t.ligM * 100) / 100,
       ligUn: t.ligUn,
       total: Math.round(t.total * 100) / 100,
-      dias: t.dias,
-      media: Math.round(t.media * 100) / 100,
+      dias,
+      // Produtividade de rede da obra: rede / dias com rede.
+      media: dias > 0 ? Math.round((t.rede / dias) * 100) / 100 : null,
     };
   }, [porEncarregado, relatorioRows, periodo.inicio, periodo.fim]);
+
 
   // Persiste o período aplicado na URL (di/df) para deep-link e refresh.
   useEffect(() => {

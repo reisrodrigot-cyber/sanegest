@@ -1306,8 +1306,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             if (baciaFilter && !String(b.trecho).toLowerCase().includes(baciaFilter.toLowerCase())) return false;
             return true;
           });
-          // Aba Rede só considera sub-bacias com previsto > 0
-          const filteredRede = filtered.filter((b) => b.total > 0);
+          // Aba Rede: sub-bacias com previsto OU com execução (inclui "Sem sub-bacia")
+          const filteredRede = filtered.filter((b) => b.total > 0 || b.executado > 0);
+          // Total geral do gráfico = soma exata dos verdes exibidos
+          const totalExecRede = Math.round(filteredRede.reduce((s, b) => s + b.executado, 0) * 100) / 100;
+          const totalPrevRede = Math.round(filteredRede.reduce((s, b) => s + b.total, 0) * 100) / 100;
+          const temSemSubBacia = filteredRede.some((b) => b.semSubBacia && b.executado > 0);
           // Aba Ligações só sub-bacias com alguma ligação executada
           const filteredLig = filtered
             .filter((b) => b.ligQtd > 0 || b.ligComp > 0)

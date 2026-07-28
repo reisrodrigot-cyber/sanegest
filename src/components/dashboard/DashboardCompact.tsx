@@ -636,7 +636,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       };
     };
     return { POV: build('POV'), SEDE: build('SEDE') };
-  }, [ordens, relatorioRows, periodo.inicio, periodo.fim, subBaciaTab]);
+  }, [ordens, relatorioRows, execRedePorSubBacia, periodo.inicio, periodo.fim, subBaciaTab]);
 
 
   // Produção diária (30 dias)

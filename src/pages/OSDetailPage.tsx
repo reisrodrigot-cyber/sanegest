@@ -32,7 +32,9 @@ import {
 } from '@/components/ui/select';
 
 import type { OSStatus } from '@/types/sanegest';
-import { LEGACY_STATUS_OPTIONS, statusLabel } from '@/lib/osStatus';
+import { LEGACY_STATUS_OPTIONS, statusLabel, resolveDisplayStatus } from '@/lib/osStatus';
+import { SituacaoOperacionalNS } from '@/components/os/SituacaoOperacionalNS';
+
 
 const PAV_OPTIONS = [
   'Terreno Natural',
@@ -175,6 +177,8 @@ const OSDetailPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingOs, setDeletingOs] = useState(false);
   const [campoSums, setCampoSums] = useState<{ comprimento: number; ligacoes: number } | null>(null);
+  const [pvAssentado, setPvAssentado] = useState(false);
+  const [temProducao, setTemProducao] = useState<boolean | null>(null);
 
   // Soma bruta de registros de campo desta OS — usada como fallback de exibição
   // e para pré-preencher o editor de REAL quando ainda não houver validação.
@@ -184,7 +188,7 @@ const OSDetailPage = () => {
     (async () => {
       const { data } = await supabase
         .from('registros_producao')
-        .select('comprimento_dia, ligacoes_dia')
+        .select('comprimento_dia, ligacoes_dia, pv_final_assentado')
         .eq('excluido', false)
         .eq('os_id', id);
       if (cancelled) return;
@@ -193,9 +197,14 @@ const OSDetailPage = () => {
         comprimento: rows.reduce((s, r: any) => s + (Number(r.comprimento_dia) || 0), 0),
         ligacoes: rows.reduce((s, r: any) => s + (Number(r.ligacoes_dia) || 0), 0),
       });
+      // Regra operacional: OR/EXISTS — um PV assentado anterior não é anulado
+      // por lançamentos posteriores sem PV.
+      setPvAssentado(rows.some((r: any) => r.pv_final_assentado === true));
+      setTemProducao(rows.length > 0);
     })();
     return () => { cancelled = true; };
   }, [id]);
+
 
   const handleDeleteOs = async () => {
     if (!os) return;
@@ -307,7 +316,7 @@ const OSDetailPage = () => {
       toast.error('Erro ao alterar status: ' + error.message);
     } else {
       const now = new Date().toLocaleString('pt-BR');
-      toast.success(`Status alterado de ${previousStatus} para ${pendingStatus} por Sala Técnica em ${now}`);
+      toast.success(`Status alterado de ${statusLabel(previousStatus)} para ${statusLabel(pendingStatus)} por Sala Técnica em ${now}`);
       window.location.reload();
     }
     setChangingStatus(false);
@@ -615,7 +624,7 @@ const OSDetailPage = () => {
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">{os.trecho}</h1>
-          <StatusBadge status={os.status} />
+          <StatusBadge status={resolveDisplayStatus({ liberado: os.liberado, temProducao, pvFinalAssentado: pvAssentado, statusLegado: os.status })} />
           {os.liberado && (
             <span className="text-xs px-2 py-1 rounded-full bg-status-green/20 text-status-green font-medium">
               Liberada para {os.liberado_para}
@@ -640,29 +649,42 @@ const OSDetailPage = () => {
         <p className="text-sm text-muted-foreground mt-1">{os.bacia} • PV {os.pv_montante} → {os.pv_jusante}</p>
       </div>
 
-      {/* Status Selector for Sala Técnica / Admin */}
+      {/* Situação operacional derivada (fonte: @/lib/osStatus) */}
+      <SituacaoOperacionalNS
+        liberado={os.liberado}
+        temProducao={temProducao}
+        pvFinalAssentado={pvAssentado}
+        statusLegado={os.status}
+      />
+
+      {/* Ajuste técnico legado do registro — mantido por compatibilidade, sem LARANJA */}
       {isSalaTecnica && (
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Controle de Status</h3>
+        <details className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
+          <summary className="text-sm font-semibold text-foreground cursor-pointer">
+            Ajuste técnico do registro (uso interno)
+          </summary>
+          <p className="text-xs text-muted-foreground mt-2 mb-3">
+            A situação operacional acima é calculada automaticamente. Use este ajuste apenas em correções internas de registro.
+          </p>
           <div className="flex flex-wrap gap-3">
-            {LEGACY_STATUS_OPTIONS.map(s => (
+            {LEGACY_STATUS_OPTIONS.filter(s => s.value !== 'LARANJA').map(s => (
               <button
                 key={s.value}
                 onClick={() => handleStatusChange(s.value)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                   os.status === s.value
-                    ? `${s.ringClass} ring-2 border-transparent ${s.bgClass} text-white`
+                    ? `${s.ringClass} ring-2 border-transparent ${s.bgClass} text-primary-foreground`
                     : 'border-border text-muted-foreground hover:border-foreground/30'
                 }`}
               >
                 <span className={`w-3 h-3 rounded-full ${s.bgClass}`} />
                 <span>{s.label}</span>
-                <span className="text-xs opacity-70">— {s.description}</span>
               </button>
             ))}
           </div>
-        </div>
+        </details>
       )}
+
 
       {/* Status Change Confirmation Dialog */}
       <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
@@ -672,7 +694,7 @@ const OSDetailPage = () => {
             <AlertDialogDescription asChild>
               <div>
                 <p>
-                  Confirmar alteração de status para <strong>{pendingStatus}</strong>?
+                  Confirmar alteração de status para <strong>{statusLabel(pendingStatus)}</strong>?
                 </p>
                 {pendingStatus === 'VERDE' && checkingPendencias && (
                   <span className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">

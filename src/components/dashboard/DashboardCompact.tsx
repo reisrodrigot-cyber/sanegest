@@ -1344,7 +1344,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           const filteredRede = filtered.filter((b) => b.total > 0 || b.executado > 0);
           // Total geral do gráfico = soma exata dos verdes exibidos
           const totalExecRede = Math.round(filteredRede.reduce((s, b) => s + b.executado, 0) * 100) / 100;
-          const totalPrevRede = Math.round(filteredRede.reduce((s, b) => s + b.total, 0) * 100) / 100;
+          const totalPrevRede = Math.round(filteredRede.reduce((s, b) => s + b.totalBase, 0) * 100) / 100;
           const temSemSubBacia = filteredRede.some((b) => b.semSubBacia && b.executado > 0);
           // Aba Ligações só sub-bacias com alguma ligação executada
           const filteredLig = filtered

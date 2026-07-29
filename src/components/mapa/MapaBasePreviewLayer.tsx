@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import type { MapaTrechoPreview, MapaPontoPreview } from '@/hooks/useMapaBasePreview';
-import { statusAgregado } from '@/hooks/useMapaBasePreview';
-import type { OSStatus } from '@/types/sanegest';
-import { getStatusMeta, statusHex, statusLabel } from '@/lib/osStatus';
+import { getStatusMeta, aggregateVinculosStatus, vinculoDisplayStatus, statusHex, statusLabel } from '@/lib/osStatus';
+
 
 interface Props {
   map: L.Map | null;

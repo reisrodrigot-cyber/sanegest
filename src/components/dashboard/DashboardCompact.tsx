@@ -850,10 +850,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // Previsto/pendente continuam vindo do plano (ordens.comprimento_previsto).
   const porTrecho = useMemo(() => {
     const round2 = (n: number) => Math.round(n * 100) / 100;
-    const map = new Map<string, { executado: number; total: number; ligQtd: number; ligComp: number }>();
+    const map = new Map<string, { executado: number; pendente: number; total: number; ligQtd: number; ligComp: number }>();
     const get = (bacia: string) => {
       let c = map.get(bacia);
-      if (!c) { c = { executado: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
+      if (!c) { c = { executado: 0, pendente: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
       return c;
     };
     ordens.forEach((o) => {
@@ -862,24 +862,34 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       c.total += o.comprimento_previsto ?? 0;
       c.ligQtd += qtdLigacoesPorOs.get(o.id) ?? 0;
       c.ligComp += ligCompExecutadoPorOs.get(o.id) ?? 0;
+      // Pendência: apenas O.S. NÃO concluídas (pv_final_assentado ≠ true).
+      // Concluídas contribuem só com o executado real — nunca geram saldo.
+      if (redePorOs.concluido.has(o.id)) return;
+      const execOs = redePorOs.exec.get(o.id) ?? 0;
+      c.pendente += Math.max((o.comprimento_previsto ?? 0) - execOs, 0);
     });
     // Executado canônico — inclui sub-bacias sem previsto e "Sem sub-bacia".
     execRedePorSubBacia.porBacia.forEach((metros, bacia) => {
       get(bacia).executado += metros;
     });
     return Array.from(map.entries())
-      .map(([bacia, v]) => ({
-        trecho: bacia,
-        executado: round2(v.executado),
-        pendente: round2(Math.max(v.total - v.executado, 0)),
-        total: round2(v.total),
-        pct: v.total > 0 ? Math.round((v.executado / v.total) * 100) : 0,
-        semSubBacia: bacia === SEM_SUB_BACIA,
-        ligQtd: v.ligQtd,
-        ligComp: round2(v.ligComp),
-      }))
+      .map(([bacia, v]) => {
+        const base = v.executado + v.pendente;
+        return {
+          trecho: bacia,
+          executado: round2(v.executado),
+          pendente: round2(v.pendente),
+          total: round2(v.total),
+          totalBase: round2(base),
+          pct: base > 0 ? Math.round((v.executado / base) * 100) : 0,
+          semSubBacia: bacia === SEM_SUB_BACIA,
+          ligQtd: v.ligQtd,
+          ligComp: round2(v.ligComp),
+        };
+      })
       .sort((a, b) => String(a.trecho).localeCompare(String(b.trecho), 'pt-BR', { numeric: true, sensitivity: 'base' }));
-  }, [ordens, qtdLigacoesPorOs, ligCompExecutadoPorOs, execRedePorSubBacia]);
+  }, [ordens, qtdLigacoesPorOs, ligCompExecutadoPorOs, execRedePorSubBacia, redePorOs]);
+
 
 
   const accent = {

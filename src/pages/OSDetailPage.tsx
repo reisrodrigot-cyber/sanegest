@@ -668,6 +668,8 @@ const OSDetailPage = () => {
             ))}
           </div>
         </div>
+      )}
+
       <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

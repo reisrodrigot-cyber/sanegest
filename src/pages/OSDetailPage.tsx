@@ -33,7 +33,7 @@ import {
 
 import type { OSStatus } from '@/types/sanegest';
 import { LEGACY_STATUS_OPTIONS, statusLabel, resolveDisplayStatus } from '@/lib/osStatus';
-import { SituacaoOperacionalNS } from '@/components/os/SituacaoOperacionalNS';
+
 
 
 const PAV_OPTIONS = [
@@ -649,23 +649,10 @@ const OSDetailPage = () => {
         <p className="text-sm text-muted-foreground mt-1">{os.bacia} • PV {os.pv_montante} → {os.pv_jusante}</p>
       </div>
 
-      {/* Situação operacional derivada (fonte: @/lib/osStatus) */}
-      <SituacaoOperacionalNS
-        liberado={os.liberado}
-        temProducao={temProducao}
-        pvFinalAssentado={pvAssentado}
-        statusLegado={os.status}
-      />
-
-      {/* Ajuste técnico legado do registro — mantido por compatibilidade, sem LARANJA */}
+      {/* Ajuste técnico do registro — mantido por compatibilidade, sem LARANJA */}
       {isSalaTecnica && (
-        <details className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
-          <summary className="text-sm font-semibold text-foreground cursor-pointer">
-            Ajuste técnico do registro (uso interno)
-          </summary>
-          <p className="text-xs text-muted-foreground mt-2 mb-3">
-            A situação operacional acima é calculada automaticamente. Use este ajuste apenas em correções internas de registro.
-          </p>
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Ajuste técnico do registro</h3>
           <div className="flex flex-wrap gap-3">
             {LEGACY_STATUS_OPTIONS.filter(s => s.value !== 'LARANJA').map(s => (
               <button
@@ -682,7 +669,7 @@ const OSDetailPage = () => {
               </button>
             ))}
           </div>
-        </details>
+        </div>
       )}
 
 

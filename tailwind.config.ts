@@ -83,6 +83,8 @@ export default {
           "yellow-bg": "hsl(var(--status-yellow-bg))",
           green: "hsl(var(--status-green))",
           "green-bg": "hsl(var(--status-green-bg))",
+          blue: "hsl(var(--status-blue))",
+          "blue-bg": "hsl(var(--status-blue-bg))",
         },
       },
       borderRadius: {

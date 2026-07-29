@@ -62,6 +62,8 @@ interface RelatorioRow {
   comprimento_trecho_executado: number | null;
   quantidade_ligacoes_realizadas: number | null;
   comprimento_total_ligacoes: number | null;
+  pv_final_assentado: boolean | null;
+
 }
 
 const SEM_SUB_BACIA = 'Sem sub-bacia';

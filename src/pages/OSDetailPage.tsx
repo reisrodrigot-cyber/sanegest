@@ -316,7 +316,7 @@ const OSDetailPage = () => {
       toast.error('Erro ao alterar status: ' + error.message);
     } else {
       const now = new Date().toLocaleString('pt-BR');
-      toast.success(`Status alterado de ${previousStatus} para ${pendingStatus} por Sala Técnica em ${now}`);
+      toast.success(`Status alterado de ${statusLabel(previousStatus)} para ${statusLabel(pendingStatus)} por Sala Técnica em ${now}`);
       window.location.reload();
     }
     setChangingStatus(false);
@@ -624,7 +624,7 @@ const OSDetailPage = () => {
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">{os.trecho}</h1>
-          <StatusBadge status={os.status} />
+          <StatusBadge status={resolveDisplayStatus({ liberado: os.liberado, temProducao, pvFinalAssentado: pvAssentado, statusLegado: os.status })} />
           {os.liberado && (
             <span className="text-xs px-2 py-1 rounded-full bg-status-green/20 text-status-green font-medium">
               Liberada para {os.liberado_para}
@@ -694,7 +694,7 @@ const OSDetailPage = () => {
             <AlertDialogDescription asChild>
               <div>
                 <p>
-                  Confirmar alteração de status para <strong>{pendingStatus}</strong>?
+                  Confirmar alteração de status para <strong>{statusLabel(pendingStatus)}</strong>?
                 </p>
                 {pendingStatus === 'VERDE' && checkingPendencias && (
                   <span className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">

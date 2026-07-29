@@ -62,6 +62,8 @@ interface RelatorioRow {
   comprimento_trecho_executado: number | null;
   quantidade_ligacoes_realizadas: number | null;
   comprimento_total_ligacoes: number | null;
+  pv_final_assentado: boolean | null;
+
 }
 
 const SEM_SUB_BACIA = 'Sem sub-bacia';
@@ -299,7 +301,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const fetchAllRelatorio = () => fetchAllPaged<RelatorioRow>((from, to) =>
       supabase
         .from('relatorio_producao_diaria')
-        .select('os_id, obra_nome, trecho, encarregado, liberado_para, responsavel_nome, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes')
+        .select('os_id, obra_nome, trecho, encarregado, liberado_para, responsavel_nome, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes, pv_final_assentado')
         .order('data_producao', { ascending: true })
         .range(from, to),
     );
@@ -561,6 +563,28 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     map.forEach((v) => { total += v; });
     return { porBacia: map, total, linhas };
   }, [relatorioRows, ordens, periodo.inicio, periodo.fim]);
+
+  // ------------------------------------------------------------
+  // Consolidação por O.S. (rede) — usada pelo gráfico "Avanço por Sub-bacia".
+  //   - executado: soma de comprimento_trecho_executado agregada por os_id
+  //     (evita duplicar quando a mesma N.S. produz em vários dias);
+  //   - concluído: exclusivamente relatorio_producao_diaria.pv_final_assentado.
+  // ------------------------------------------------------------
+  const redePorOs = useMemo(() => {
+    const exec = new Map<string, number>();
+    const concluido = new Set<string>();
+    for (const row of relatorioRows) {
+      if (!row.os_id) continue;
+      if (row.pv_final_assentado === true) concluido.add(row.os_id);
+      const d = String(row.data_producao ?? '');
+      if (!d || d < periodo.inicio || d > periodo.fim) continue;
+      const metros = Number(row.comprimento_trecho_executado) || 0;
+      if (metros === 0) continue;
+      exec.set(row.os_id, (exec.get(row.os_id) ?? 0) + metros);
+    }
+    return { exec, concluido };
+  }, [relatorioRows, periodo.inicio, periodo.fim]);
+
 
 
 
@@ -826,10 +850,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // Previsto/pendente continuam vindo do plano (ordens.comprimento_previsto).
   const porTrecho = useMemo(() => {
     const round2 = (n: number) => Math.round(n * 100) / 100;
-    const map = new Map<string, { executado: number; total: number; ligQtd: number; ligComp: number }>();
+    const map = new Map<string, { executado: number; pendente: number; total: number; ligQtd: number; ligComp: number }>();
     const get = (bacia: string) => {
       let c = map.get(bacia);
-      if (!c) { c = { executado: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
+      if (!c) { c = { executado: 0, pendente: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
       return c;
     };
     ordens.forEach((o) => {
@@ -838,24 +862,34 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       c.total += o.comprimento_previsto ?? 0;
       c.ligQtd += qtdLigacoesPorOs.get(o.id) ?? 0;
       c.ligComp += ligCompExecutadoPorOs.get(o.id) ?? 0;
+      // Pendência: apenas O.S. NÃO concluídas (pv_final_assentado ≠ true).
+      // Concluídas contribuem só com o executado real — nunca geram saldo.
+      if (redePorOs.concluido.has(o.id)) return;
+      const execOs = redePorOs.exec.get(o.id) ?? 0;
+      c.pendente += Math.max((o.comprimento_previsto ?? 0) - execOs, 0);
     });
     // Executado canônico — inclui sub-bacias sem previsto e "Sem sub-bacia".
     execRedePorSubBacia.porBacia.forEach((metros, bacia) => {
       get(bacia).executado += metros;
     });
     return Array.from(map.entries())
-      .map(([bacia, v]) => ({
-        trecho: bacia,
-        executado: round2(v.executado),
-        pendente: round2(Math.max(v.total - v.executado, 0)),
-        total: round2(v.total),
-        pct: v.total > 0 ? Math.round((v.executado / v.total) * 100) : 0,
-        semSubBacia: bacia === SEM_SUB_BACIA,
-        ligQtd: v.ligQtd,
-        ligComp: round2(v.ligComp),
-      }))
+      .map(([bacia, v]) => {
+        const base = v.executado + v.pendente;
+        return {
+          trecho: bacia,
+          executado: round2(v.executado),
+          pendente: round2(v.pendente),
+          total: round2(v.total),
+          totalBase: round2(base),
+          pct: base > 0 ? Math.round((v.executado / base) * 100) : 0,
+          semSubBacia: bacia === SEM_SUB_BACIA,
+          ligQtd: v.ligQtd,
+          ligComp: round2(v.ligComp),
+        };
+      })
       .sort((a, b) => String(a.trecho).localeCompare(String(b.trecho), 'pt-BR', { numeric: true, sensitivity: 'base' }));
-  }, [ordens, qtdLigacoesPorOs, ligCompExecutadoPorOs, execRedePorSubBacia]);
+  }, [ordens, qtdLigacoesPorOs, ligCompExecutadoPorOs, execRedePorSubBacia, redePorOs]);
+
 
 
   const accent = {
@@ -1310,7 +1344,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           const filteredRede = filtered.filter((b) => b.total > 0 || b.executado > 0);
           // Total geral do gráfico = soma exata dos verdes exibidos
           const totalExecRede = Math.round(filteredRede.reduce((s, b) => s + b.executado, 0) * 100) / 100;
-          const totalPrevRede = Math.round(filteredRede.reduce((s, b) => s + b.total, 0) * 100) / 100;
+          const totalPrevRede = Math.round(filteredRede.reduce((s, b) => s + b.totalBase, 0) * 100) / 100;
           const temSemSubBacia = filteredRede.some((b) => b.semSubBacia && b.executado > 0);
           // Aba Ligações só sub-bacias com alguma ligação executada
           const filteredLig = filtered

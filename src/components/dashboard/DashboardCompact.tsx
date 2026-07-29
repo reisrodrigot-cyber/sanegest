@@ -564,6 +564,28 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     return { porBacia: map, total, linhas };
   }, [relatorioRows, ordens, periodo.inicio, periodo.fim]);
 
+  // ------------------------------------------------------------
+  // Consolidação por O.S. (rede) — usada pelo gráfico "Avanço por Sub-bacia".
+  //   - executado: soma de comprimento_trecho_executado agregada por os_id
+  //     (evita duplicar quando a mesma N.S. produz em vários dias);
+  //   - concluído: exclusivamente relatorio_producao_diaria.pv_final_assentado.
+  // ------------------------------------------------------------
+  const redePorOs = useMemo(() => {
+    const exec = new Map<string, number>();
+    const concluido = new Set<string>();
+    for (const row of relatorioRows) {
+      if (!row.os_id) continue;
+      if (row.pv_final_assentado === true) concluido.add(row.os_id);
+      const d = String(row.data_producao ?? '');
+      if (!d || d < periodo.inicio || d > periodo.fim) continue;
+      const metros = Number(row.comprimento_trecho_executado) || 0;
+      if (metros === 0) continue;
+      exec.set(row.os_id, (exec.get(row.os_id) ?? 0) + metros);
+    }
+    return { exec, concluido };
+  }, [relatorioRows, periodo.inicio, periodo.fim]);
+
+
 
 
   const avancoPovSede = useMemo(() => {

@@ -34,8 +34,6 @@ import {
 import type { OSStatus } from '@/types/sanegest';
 import { LEGACY_STATUS_OPTIONS, statusLabel, resolveDisplayStatus } from '@/lib/osStatus';
 
-
-
 const PAV_OPTIONS = [
   'Terreno Natural',
   'Asfalto',
@@ -670,10 +668,6 @@ const OSDetailPage = () => {
             ))}
           </div>
         </div>
-      )}
-
-
-      {/* Status Change Confirmation Dialog */}
       <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

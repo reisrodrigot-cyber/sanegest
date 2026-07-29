@@ -1559,9 +1559,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       {(os.comprimento_previsto ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}m
                     </span>
                     <span
-                      className={`status-dot-${(os.status || 'CINZA').toLowerCase()} w-2 h-2 rounded-full flex-shrink-0`}
-                      title={os.status}
-                      aria-label={`Status: ${os.status}`}
+                      className={`${getStatusMeta(os.status).dotClass} w-2 h-2 rounded-full flex-shrink-0`}
+                      title={getStatusMeta(os.status).label}
+                      aria-label={`Status: ${getStatusMeta(os.status).label}`}
                     />
 
                   </Link>

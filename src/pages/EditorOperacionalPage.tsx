@@ -13,12 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import type { OSStatus } from '@/types/sanegest';
+import { statusHex, statusLabel } from '@/lib/osStatus';
+import { StatusLegenda } from '@/components/mapa/StatusLegenda';
 import { AlertTriangle, Split, Move, Trash2, Link2, RotateCcw, Plus, X } from 'lucide-react';
-
-const STATUS_COLORS: Record<OSStatus, string> = {
-  CINZA: '#8a8a8a', VERMELHO: '#dc2626', LARANJA: '#f97316',
-  AMARELO: '#ca8a04', VERDE: '#16a34a',
-};
 
 function coordsToLatLng(coords: Coord[]): L.LatLngExpression[] {
   return coords.map(([lon, lat]) => [lat, lon]);
@@ -129,7 +126,7 @@ const EditorOperacionalPage = () => {
       if (ll.length < 2) continue;
       const info = statusPorTrecho.get(t.id);
       const status: OSStatus = info?.status ?? 'CINZA';
-      const cor = STATUS_COLORS[status];
+      const cor = statusHex(status);
       const selected = t.id === selectedTrechoId;
       const line = L.polyline(ll, {
         color: isSuprimido ? '#dc2626' : cor,
@@ -688,14 +685,14 @@ const EditorOperacionalPage = () => {
                 <div className="text-xs">DN: {selectedTrecho.dn ?? '—'} · {selectedTrecho.material ?? '—'}</div>
                 <div className="text-xs mt-2">PVs: {pvsEfetivos.find((p) => p.op_id === selectedTrecho.pv_inicial_id || p.id === selectedTrecho.pv_inicial_id)?.rotulo ?? '—'} → {pvsEfetivos.find((p) => p.op_id === selectedTrecho.pv_final_id || p.id === selectedTrecho.pv_final_id)?.rotulo ?? '—'}</div>
                 <div className="text-xs mt-2">
-                  Status agregado: <b style={{ color: STATUS_COLORS[infoSelected?.status ?? 'CINZA'] }}>{infoSelected?.status ?? 'CINZA'}</b>
+                  Status agregado: <b style={{ color: statusHex(infoSelected?.status ?? 'CINZA') }}>{statusLabel(infoSelected?.status ?? 'CINZA')}</b>
                 </div>
                 <div className="text-xs mt-1">
                   N.S. vinculadas:
                   <ul className="pl-4 list-disc">
                     {(infoSelected?.osList ?? []).length === 0 && <li className="text-muted-foreground">nenhuma</li>}
                     {(infoSelected?.osList ?? []).map((o) => (
-                      <li key={o.id}>{o.trecho} ({o.bacia}) — <span style={{ color: STATUS_COLORS[o.status] }}>{o.status}</span>{o.pv_final_assentado ? ' · PV final ✓' : ''}</li>
+                      <li key={o.id}>{o.trecho} ({o.bacia}) — <span style={{ color: statusHex(o.status) }}>{statusLabel(o.status)}</span>{o.pv_final_assentado ? ' · PV final ✓' : ''}</li>
                     ))}
                   </ul>
                 </div>
@@ -870,7 +867,7 @@ const VincularNSDialog = ({ open, onClose, onConfirm, allOs, currentIds, bacia }
                 setSelected((prev) => e.target.checked ? [...prev, o.id] : prev.filter((x) => x !== o.id));
               }} />
               <span className="flex-1">{o.trecho} <span className="text-muted-foreground">({o.bacia})</span></span>
-              <span className="text-xs" style={{ color: STATUS_COLORS[o.status] }}>{o.status}</span>
+              <span className="text-xs" style={{ color: statusHex(o.status) }}>{statusLabel(o.status)}</span>
             </label>
           ))}
         </div>

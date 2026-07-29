@@ -16,6 +16,7 @@ import { CamadaModal } from './CamadaModal';
 import { AsBuiltConfigModal } from './AsBuiltConfigModal';
 import { MapaBasePreviewLayer } from './MapaBasePreviewLayer';
 import { useMapaBasePreview } from '@/hooks/useMapaBasePreview';
+import { StatusLegenda } from './StatusLegenda';
 
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';

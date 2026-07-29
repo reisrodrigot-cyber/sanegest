@@ -647,29 +647,42 @@ const OSDetailPage = () => {
         <p className="text-sm text-muted-foreground mt-1">{os.bacia} • PV {os.pv_montante} → {os.pv_jusante}</p>
       </div>
 
-      {/* Status Selector for Sala Técnica / Admin */}
+      {/* Situação operacional derivada (fonte: @/lib/osStatus) */}
+      <SituacaoOperacionalNS
+        liberado={os.liberado}
+        temProducao={temProducao}
+        pvFinalAssentado={pvAssentado}
+        statusLegado={os.status}
+      />
+
+      {/* Ajuste técnico legado do registro — mantido por compatibilidade, sem LARANJA */}
       {isSalaTecnica && (
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Controle de Status</h3>
+        <details className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
+          <summary className="text-sm font-semibold text-foreground cursor-pointer">
+            Ajuste técnico do registro (uso interno)
+          </summary>
+          <p className="text-xs text-muted-foreground mt-2 mb-3">
+            A situação operacional acima é calculada automaticamente. Use este ajuste apenas em correções internas de registro.
+          </p>
           <div className="flex flex-wrap gap-3">
-            {LEGACY_STATUS_OPTIONS.map(s => (
+            {LEGACY_STATUS_OPTIONS.filter(s => s.value !== 'LARANJA').map(s => (
               <button
                 key={s.value}
                 onClick={() => handleStatusChange(s.value)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                   os.status === s.value
-                    ? `${s.ringClass} ring-2 border-transparent ${s.bgClass} text-white`
+                    ? `${s.ringClass} ring-2 border-transparent ${s.bgClass} text-primary-foreground`
                     : 'border-border text-muted-foreground hover:border-foreground/30'
                 }`}
               >
                 <span className={`w-3 h-3 rounded-full ${s.bgClass}`} />
                 <span>{s.label}</span>
-                <span className="text-xs opacity-70">— {s.description}</span>
               </button>
             ))}
           </div>
-        </div>
+        </details>
       )}
+
 
       {/* Status Change Confirmation Dialog */}
       <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>

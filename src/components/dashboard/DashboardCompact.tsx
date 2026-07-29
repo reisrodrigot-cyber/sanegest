@@ -301,7 +301,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const fetchAllRelatorio = () => fetchAllPaged<RelatorioRow>((from, to) =>
       supabase
         .from('relatorio_producao_diaria')
-        .select('os_id, obra_nome, trecho, encarregado, liberado_para, responsavel_nome, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes')
+        .select('os_id, obra_nome, trecho, encarregado, liberado_para, responsavel_nome, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes, pv_final_assentado')
         .order('data_producao', { ascending: true })
         .range(from, to),
     );

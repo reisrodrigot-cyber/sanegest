@@ -32,7 +32,9 @@ import {
 } from '@/components/ui/select';
 
 import type { OSStatus } from '@/types/sanegest';
-import { LEGACY_STATUS_OPTIONS, statusLabel } from '@/lib/osStatus';
+import { LEGACY_STATUS_OPTIONS, statusLabel, resolveDisplayStatus } from '@/lib/osStatus';
+import { SituacaoOperacionalNS } from '@/components/os/SituacaoOperacionalNS';
+
 
 const PAV_OPTIONS = [
   'Terreno Natural',

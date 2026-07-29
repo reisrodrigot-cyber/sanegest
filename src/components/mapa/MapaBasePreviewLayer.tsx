@@ -3,14 +3,7 @@ import L from 'leaflet';
 import type { MapaTrechoPreview, MapaPontoPreview } from '@/hooks/useMapaBasePreview';
 import { statusAgregado } from '@/hooks/useMapaBasePreview';
 import type { OSStatus } from '@/types/sanegest';
-
-const STATUS_COLORS: Record<OSStatus, string> = {
-  CINZA: '#8a8a8a',
-  VERMELHO: '#dc2626',
-  LARANJA: '#f97316',
-  AMARELO: '#ca8a04',
-  VERDE: '#16a34a',
-};
+import { getStatusMeta, statusHex, statusLabel } from '@/lib/osStatus';
 
 interface Props {
   map: L.Map | null;
@@ -64,7 +57,8 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
       if (latlngs.length < 2) continue;
       const statusList = t.vinculos.map((v) => v.status);
       const status: OSStatus = statusAgregado(statusList);
-      const cor = STATUS_COLORS[status];
+      const meta = getStatusMeta(status);
+      const cor = meta.hex;
       const pvFinal = t.vinculos.some((v) => v.pv_final_assentado);
       const hasDivergencia = t.divergencias.length > 0 || (t.vinculos.length === 0);
 
@@ -72,7 +66,7 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
         ? t.vinculos.map((v) => `
             <li style="margin:2px 0;">
               <b>${esc(v.trecho)}</b> <span style="color:#666">(${esc(v.bacia)})</span>
-              — <span style="color:${STATUS_COLORS[v.status]};font-weight:600">${esc(v.status)}</span>
+              — <span style="color:${statusHex(v.status)};font-weight:600">${esc(statusLabel(v.status))}</span>
               <span style="font-size:11px;color:#888"> · ${esc(v.origem)}</span>
             </li>`).join('')
         : '<li style="color:#a16207">Sem N.S. vinculada</li>';
@@ -89,7 +83,7 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
           <div style="color:#666;margin-bottom:6px">Nó: ${esc(t.no_inicial ?? '—')} → ${esc(t.no_final ?? '—')}</div>
           <div style="margin-bottom:2px;font-weight:600">N.S. vinculadas:</div>
           <ul style="margin:0;padding-left:16px;">${vincHtml}</ul>
-          <div style="margin-top:6px">Status agregado: <b style="color:${cor}">${status}</b></div>
+          <div style="margin-top:6px">Status agregado: <b style="color:${cor}">${esc(meta.label)}</b></div>
           ${pvFinal ? `<div style="margin-top:4px;padding:4px 6px;background:#dbeafe;color:#1e40af;border-radius:4px;font-size:11px;">PV final assentado — pronto para Topografia</div>` : ''}
           ${divHtml}
           ${hasDivergencia ? '<div style="margin-top:4px;font-size:11px;color:#a16207">Requer revisão da Sala Técnica</div>' : ''}

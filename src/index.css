@@ -64,6 +64,8 @@
     --status-yellow-bg: 48 100% 9%;
     --status-green: 135 64% 47%;
     --status-green-bg: 143 100% 9%;
+    --status-blue: 217 91% 60%;
+    --status-blue-bg: 220 70% 12%;
 
     /* Sidebar */
     --sidebar-background: 217 64% 14%;
@@ -133,6 +135,12 @@
   }
   .status-dot-amarelo {
     @apply bg-[hsl(var(--status-yellow))];
+  }
+  .status-azul {
+    @apply bg-[hsl(var(--status-blue-bg))] text-[hsl(var(--status-blue))] border-[hsl(var(--status-blue))];
+  }
+  .status-dot-azul {
+    @apply bg-[hsl(var(--status-blue))];
   }
   .status-dot-verde {
     @apply bg-[hsl(var(--status-green))];

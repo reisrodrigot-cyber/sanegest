@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
+import { statusLabel } from '@/lib/osStatus';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, UserPlus, UserMinus, X } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
@@ -470,11 +471,11 @@ const OrdensPage = () => {
             <div className="flex flex-wrap gap-2 mb-4">
               {([
                 { key: 'TODAS' as const, label: 'Todas as fases' },
-                { key: 'CINZA' as const, label: `Cinza (${countByStatus('CINZA')})` },
-                { key: 'VERMELHO' as const, label: `Vermelho (${countByStatus('VERMELHO')})` },
-                { key: 'LARANJA' as const, label: `Laranja (${countByStatus('LARANJA')})` },
-                { key: 'AMARELO' as const, label: `Amarelo (${countByStatus('AMARELO')})` },
-                { key: 'VERDE' as const, label: `Verde (${countByStatus('VERDE')})` },
+                { key: 'CINZA' as const, label: `${statusLabel('CINZA')} (${countByStatus('CINZA')})` },
+                { key: 'VERMELHO' as const, label: `${statusLabel('VERMELHO')} (${countByStatus('VERMELHO')})` },
+                { key: 'LARANJA' as const, label: `${statusLabel('LARANJA')} · material entregue (${countByStatus('LARANJA')})` },
+                { key: 'AMARELO' as const, label: `${statusLabel('AMARELO')} (${countByStatus('AMARELO')})` },
+                { key: 'VERDE' as const, label: `${statusLabel('VERDE')} (${countByStatus('VERDE')})` },
               ]).map(f => (
                 <button
                   key={f.key}

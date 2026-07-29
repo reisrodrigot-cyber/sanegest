@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronDown, ChevronRight, History, Loader2 } from 'lucide-react';
+import { statusLabel } from '@/lib/osStatus';
 
 interface Props {
   osId: string;
@@ -178,7 +179,7 @@ export const OSHistoricoSection = ({ osId }: Props) => {
                     {statusHist.map((r) => (
                       <li key={r.id} className="text-muted-foreground">
                         <span className="text-foreground font-medium">
-                          {r.status_anterior ?? '—'} → {r.status_novo}
+                          {r.status_anterior ? statusLabel(r.status_anterior) : '—'} → {statusLabel(r.status_novo)}
                         </span>{' '}
                         por {userName(r.user_id)} em {fmtDateTime(r.created_at)}
                       </li>

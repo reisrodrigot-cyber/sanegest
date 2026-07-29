@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import type { MapaTrechoPreview, MapaPontoPreview } from '@/hooks/useMapaBasePreview';
-import { statusAgregado } from '@/hooks/useMapaBasePreview';
-import type { OSStatus } from '@/types/sanegest';
-import { getStatusMeta, statusHex, statusLabel } from '@/lib/osStatus';
+import { getStatusMeta, aggregateVinculosStatus, vinculoDisplayStatus, statusHex, statusLabel } from '@/lib/osStatus';
+
 
 interface Props {
   map: L.Map | null;
@@ -55,20 +54,25 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
     for (const t of trechos) {
       const latlngs = coordsFromGeom(t.geometry);
       if (latlngs.length < 2) continue;
-      const statusList = t.vinculos.map((v) => v.status);
-      const status: OSStatus = statusAgregado(statusList);
+      // Resolve primeiro o status operacional de CADA N.S. (PV assentado vence
+      // o enum legado) e só então agrega pela precedência visual.
+      const status = aggregateVinculosStatus(t.vinculos);
       const meta = getStatusMeta(status);
       const cor = meta.hex;
       const pvFinal = t.vinculos.some((v) => v.pv_final_assentado);
       const hasDivergencia = t.divergencias.length > 0 || (t.vinculos.length === 0);
 
       const vincHtml = t.vinculos.length
-        ? t.vinculos.map((v) => `
+        ? t.vinculos.map((v) => {
+            const d = vinculoDisplayStatus(v);
+            return `
             <li style="margin:2px 0;">
               <b>${esc(v.trecho)}</b> <span style="color:#666">(${esc(v.bacia)})</span>
-              — <span style="color:${statusHex(v.status)};font-weight:600">${esc(statusLabel(v.status))}</span>
+              — <span style="color:${statusHex(d)};font-weight:600">${esc(statusLabel(d))}</span>
               <span style="font-size:11px;color:#888"> · ${esc(v.origem)}</span>
-            </li>`).join('')
+            </li>`;
+          }).join('')
+
         : '<li style="color:#a16207">Sem N.S. vinculada</li>';
 
       const divHtml = t.divergencias.map((d) =>

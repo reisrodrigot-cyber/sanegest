@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { OSStatus } from '@/types/sanegest';
-import { statusAgregado } from './useMapaBasePreview';
+import { aggregateVinculosStatus, type OSDisplayStatus } from '@/lib/osStatus';
 
 export type Coord = [number, number]; // [lon, lat]
 
@@ -137,7 +137,7 @@ export function useEditorOperacional(enabled: boolean) {
       if (osIds.length) {
         const [{ data: osData }, { data: regs }] = await Promise.all([
           supabase.from('ordens_servico').select('id, trecho, bacia, status').in('id', osIds),
-          supabase.from('registros_producao').select('os_id').in('os_id', osIds).eq('pv_final_assentado', true),
+          supabase.from('registros_producao').select('os_id').in('os_id', osIds).eq('pv_final_assentado', true).eq('excluido', false).eq('status', 'ativo'),
         ]);
         const pvSet = new Set((regs ?? []).map((r: any) => r.os_id));
         setOrdens(((osData ?? []) as any[]).map((o) => ({
@@ -254,14 +254,14 @@ export function useEditorOperacional(enabled: boolean) {
   // Status por trecho
   const statusPorTrecho = useMemo(() => {
     const osById = new Map(ordens.map((o) => [o.id, o]));
-    const m = new Map<string, { status: OSStatus; pvFinal: boolean; osList: OSInfo[] }>();
+    const m = new Map<string, { status: OSDisplayStatus; pvFinal: boolean; osList: OSInfo[] }>();
     for (const t of trechosEfetivos) {
       const vs = vinculos.filter((v) =>
         (t.op_id && v.trecho_operacional_id === t.op_id)
         || (!t.op_id && v.trecho_id === t.origem_id)
       );
       const osList = vs.map((v) => osById.get(v.os_id)).filter(Boolean) as OSInfo[];
-      const status = statusAgregado(osList.map((o) => o.status));
+      const status = aggregateVinculosStatus(osList);
       const pvFinal = osList.some((o) => o.pv_final_assentado);
       m.set(t.id, { status, pvFinal, osList });
     }

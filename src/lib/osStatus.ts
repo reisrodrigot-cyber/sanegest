@@ -174,6 +174,23 @@ export function hasAsBuiltVinculado(_input: ResolveInput): boolean {
   return false;
 }
 
+/**
+ * Status visual de UMA N.S. vinculada a um trecho do mapa.
+ *
+ * Regra operacional obrigatória: se existir pelo menos um registro de produção
+ * ativo/não excluído com `pv_final_assentado = true` para a os_id, o vínculo é
+ * VERDE ("PV assentado") — o enum técnico legado (AMARELO/LARANJA) não pode
+ * rebaixar essa condição. Lançamentos posteriores com PV falso e execução zero
+ * não anulam um PV assentado anterior (a fonte é OR/EXISTS, não o último).
+ */
+export function vinculoDisplayStatus(v: {
+  status?: OSStatus | string | null;
+  pv_final_assentado?: boolean | null;
+}): OSDisplayStatus {
+  if (v.pv_final_assentado) return 'VERDE';
+  return toDisplayStatus(v.status);
+}
+
 /** Agrega vários status visuais pela precedência central. */
 export function aggregateDisplayStatus(
   statuses: Array<OSStatus | OSDisplayStatus | string | null | undefined>,
@@ -186,6 +203,20 @@ export function aggregateDisplayStatus(
   }
   return best;
 }
+
+/** Agrega os vínculos de um trecho já aplicando a regra operacional de PV assentado. */
+export function aggregateVinculosStatus(
+  vinculos: Array<{ status?: OSStatus | string | null; pv_final_assentado?: boolean | null }>,
+): OSDisplayStatus {
+  if (!vinculos.length) return 'CINZA';
+  let best: OSDisplayStatus = 'CINZA';
+  for (const v of vinculos) {
+    const d = vinculoDisplayStatus(v);
+    if (STATUS_META[d].priority > STATUS_META[best].priority) best = d;
+  }
+  return best;
+}
+
 
 /** Prioridade visual de um status técnico ou visual. */
 export function statusPriority(status: OSStatus | OSDisplayStatus | string | null | undefined): number {

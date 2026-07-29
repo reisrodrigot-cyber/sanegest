@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import type { OSStatus } from '@/types/sanegest';
-import { statusHex, statusLabel } from '@/lib/osStatus';
+import { statusHex, statusLabel, vinculoDisplayStatus } from '@/lib/osStatus';
 import { StatusLegenda } from '@/components/mapa/StatusLegenda';
 import { AlertTriangle, Split, Move, Trash2, Link2, RotateCcw, Plus, X } from 'lucide-react';
 
@@ -125,7 +125,7 @@ const EditorOperacionalPage = () => {
       const ll = coordsToLatLng(firstCoords(t.geometry));
       if (ll.length < 2) continue;
       const info = statusPorTrecho.get(t.id);
-      const status: OSStatus = info?.status ?? 'CINZA';
+      const status = info?.status ?? 'CINZA';
       const cor = statusHex(status);
       const selected = t.id === selectedTrechoId;
       const line = L.polyline(ll, {
@@ -692,7 +692,7 @@ const EditorOperacionalPage = () => {
                   <ul className="pl-4 list-disc">
                     {(infoSelected?.osList ?? []).length === 0 && <li className="text-muted-foreground">nenhuma</li>}
                     {(infoSelected?.osList ?? []).map((o) => (
-                      <li key={o.id}>{o.trecho} ({o.bacia}) — <span style={{ color: statusHex(o.status) }}>{statusLabel(o.status)}</span>{o.pv_final_assentado ? ' · PV final ✓' : ''}</li>
+                      <li key={o.id}>{o.trecho} ({o.bacia}) — <span style={{ color: statusHex(vinculoDisplayStatus(o)) }}>{statusLabel(vinculoDisplayStatus(o))}</span>{o.pv_final_assentado ? ' · PV final ✓' : ''}</li>
                     ))}
                   </ul>
                 </div>

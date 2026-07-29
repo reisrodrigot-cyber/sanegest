@@ -1132,7 +1132,7 @@ ${placemarks.join('\n')}
 
 
       {/* Legenda oficial de status */}
-      <StatusLegenda className="absolute bottom-3 left-3 z-[500] max-w-[260px]" />
+      <StatusLegenda className="absolute bottom-6 left-3 z-[500]" />
 
       {/* Controle flutuante: camadas + minha localização */}
       <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">

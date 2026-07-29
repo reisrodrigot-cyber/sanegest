@@ -515,7 +515,7 @@ const OSDetailPage = () => {
     if (error) {
       toast.error('Erro ao validar: ' + error.message);
     } else {
-      toast.success('OS validada — status alterado para AMARELO');
+      toast.success(`OS validada — status alterado para "${statusLabel('AMARELO')}"`);
       window.location.reload();
     }
     setValidando(false);

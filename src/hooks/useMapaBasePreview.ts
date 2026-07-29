@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { OSStatus } from '@/types/sanegest';
+import { statusPriority } from '@/lib/osStatus';
 
 export type MapaTrechoPreview = {
   id: string;
@@ -45,12 +46,15 @@ export type MapaBasePreview = {
   feicoes_pv: number;
 };
 
-const STATUS_PRECEDENCIA: OSStatus[] = ['VERMELHO', 'LARANJA', 'AMARELO', 'VERDE', 'CINZA'];
-
+/**
+ * Agrega status pela precedência visual central (Azul > Verde > Amarelo > Vermelho > Cinza).
+ * Mantém a assinatura legada (retorna o status técnico) para não quebrar consumidores.
+ */
 export function statusAgregado(statuses: OSStatus[]): OSStatus {
   if (!statuses.length) return 'CINZA';
-  for (const s of STATUS_PRECEDENCIA) if (statuses.includes(s)) return s;
-  return 'CINZA';
+  let best: OSStatus = statuses[0];
+  for (const s of statuses) if (statusPriority(s) > statusPriority(best)) best = s;
+  return best;
 }
 
 /**

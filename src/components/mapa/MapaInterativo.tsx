@@ -69,11 +69,6 @@ interface LigacaoPoint {
   longitude: number;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  CINZA: '#999999', VERMELHO: '#dc2626', LARANJA: '#f97316',
-  AMARELO: '#ca8a04', VERDE: '#16a34a',
-};
-
 const DEFAULT_redeColor = '#16a34a';
 const DEFAULT_ligacoesColor = '#2563eb';
 const DEFAULT_CENTER: [number, number] = [-9.1167, -35.2667];
@@ -1134,6 +1129,9 @@ ${placemarks.join('\n')}
 
 
 
+
+      {/* Legenda oficial de status */}
+      <StatusLegenda className="absolute bottom-3 left-3 z-[500] max-w-[260px]" />
 
       {/* Controle flutuante: camadas + minha localização */}
       <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">

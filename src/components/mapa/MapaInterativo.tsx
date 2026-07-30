@@ -109,11 +109,15 @@ interface MapaInterativoProps {
   className?: string;
   /** OS ID para focar (flyToBounds + popup + pulse) */
   focusOsId?: string | null;
+  /** OS ID para localizar via vínculo de mapa (mapa_trecho_os.ativo = true) */
+  focusMapaOsId?: string | null;
+  /** Callback ao limpar o destaque da N.S. localizada */
+  onClearFocusMapa?: () => void;
   /** Exibe botão de ampliar/recolher o mapa em tela cheia */
   allowFullscreen?: boolean;
 }
 
-export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null, allowFullscreen = false }: MapaInterativoProps) => {
+export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null, focusMapaOsId = null, onClearFocusMapa, allowFullscreen = false }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
   // Visualização das bases geográficas é liberada para qualquer perfil autenticado

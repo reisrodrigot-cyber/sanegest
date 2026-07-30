@@ -40,6 +40,13 @@ function isMapAlive(map: L.Map | null): map is L.Map {
   }
 }
 
+/** Largura da área clicável invisível (não altera o traço visível). */
+function hitWeight(): number {
+  const coarse = typeof window !== 'undefined'
+    && (window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth < 768);
+  return coarse ? 18 : 12;
+}
+
 /** Raio visual dos PVs por faixa de zoom. `null` = ocultar pontos individuais. */
 function pvRadiusForZoom(zoom: number): number | null {
   if (zoom < 14) return null;   // zoom distante: esconder PVs
@@ -49,6 +56,7 @@ function pvRadiusForZoom(zoom: number): number | null {
   if (zoom < 18) return 3.5;
   return 4;                     // zoom próximo: tamanho atual
 }
+
 
 
 export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) => {

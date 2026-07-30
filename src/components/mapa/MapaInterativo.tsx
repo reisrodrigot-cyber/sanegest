@@ -77,7 +77,7 @@ const DEFAULT_redeColor = '#16a34a';
 const DEFAULT_ligacoesColor = '#2563eb';
 const DEFAULT_CENTER: [number, number] = [-9.1167, -35.2667];
 const DEFAULT_ZOOM = 13;
-const BASEMAP_STORAGE_KEY = 'sanegest.mapa.basemap';
+
 
 
 // Parse KMZ (zip with .kml inside) → GeoJSON

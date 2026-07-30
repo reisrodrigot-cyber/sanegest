@@ -1354,7 +1354,7 @@ ${placemarks.join('\n')}
             sideOffset={6}
             collisionPadding={12}
             avoidCollisions
-            className="w-[min(20rem,calc(100vw-1.5rem))] p-3 z-[1000]"
+            className="w-[min(20rem,calc(100vw-1.5rem))] p-3 z-[2600]"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -1434,7 +1434,7 @@ ${placemarks.join('\n')}
             sideOffset={6}
             collisionPadding={12}
             avoidCollisions
-            className="w-[min(18rem,calc(100vw-1.5rem))] p-3 max-h-[70vh] overflow-y-auto z-[1000]"
+            className="w-[min(18rem,calc(100vw-1.5rem))] p-3 max-h-[70vh] overflow-y-auto z-[2600]"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -1571,12 +1571,12 @@ ${placemarks.join('\n')}
                               <MoreVertical size={12} />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="z-[1100]">
+                          <DropdownMenuContent align="end" className="z-[2700]">
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger>
                                 <FolderOpen size={12} className="mr-2" /> Mover para
                               </DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent className="z-[1100]">
+                              <DropdownMenuSubContent className="z-[2700]">
                                 {groups.length === 0 && (
                                   <DropdownMenuItem disabled>Nenhum grupo</DropdownMenuItem>
                                 )}
@@ -1667,7 +1667,7 @@ ${placemarks.join('\n')}
                                   <MoreVertical size={12} />
                                 </button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="z-[1100]">
+                              <DropdownMenuContent align="end" className="z-[2700]">
                                 <DropdownMenuItem onClick={() => handleRenameGroup(g)}>
                                   <Pencil size={12} className="mr-2" /> Renomear
                                 </DropdownMenuItem>

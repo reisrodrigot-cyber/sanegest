@@ -73,8 +73,23 @@ const OrdensPage = () => {
 
   useEffect(() => {
     let cancelled = false;
+    const fetchAllPaged = async (
+      q: (from: number, to: number) => any,
+    ): Promise<any[]> => {
+      const page = 1000;
+      let from = 0;
+      let out: any[] = [];
+      for (;;) {
+        const { data, error } = await q(from, from + page - 1);
+        if (error) break;
+        out = out.concat(data || []);
+        if (!data || data.length < page) break;
+        from += page;
+      }
+      return out;
+    };
     (async () => {
-      const [{ data: regs }, { data: hist }, { data: ab }] = await Promise.all([
+      const [{ data: regs }, { data: hist }, { data: ab }, vinculos] = await Promise.all([
         supabase.from('registros_producao').select('os_id, comprimento_dia, comprimento_ajustado, status, pv_final_assentado').eq('excluido', false).eq('status', 'ativo'),
         supabase
           .from('os_status_historico')
@@ -85,8 +100,13 @@ const OrdensPage = () => {
           .select('os_id')
           .not('latitude', 'is', null)
           .not('longitude', 'is', null),
+        fetchAllPaged((from, to) =>
+          supabase.from('mapa_trecho_os').select('os_id').eq('ativo', true).range(from, to)
+        ),
       ]);
       if (cancelled) return;
+
+      setMapeadasOsIds(new Set((vinculos || []).map((v: any) => v.os_id as string)));
 
       const counts = new Map<string, number>();
       (ab || []).forEach((r: any) => counts.set(r.os_id, (counts.get(r.os_id) || 0) + 1));
@@ -111,6 +131,11 @@ const OrdensPage = () => {
     })();
     return () => { cancelled = true; };
   }, [ordens.length]);
+
+  /** Status efetivo: PV final assentado vence o enum técnico legado. */
+  const statusEfetivo = (os: { id: string; status: OSStatus }): OSDisplayStatus =>
+    vinculoDisplayStatus({ status: os.status, pv_final_assentado: executadasOsIds.has(os.id) });
+
 
   const bacias = [...new Set(ordens.map(os => os.bacia).filter(Boolean))].sort();
   const responsaveis = [...new Set(ordens.map(os => os.liberado_para).filter(Boolean) as string[])].sort();

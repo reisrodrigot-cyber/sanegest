@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      assistant_access_log: {
+        Row: {
+          created_at: string
+          erro: string | null
+          id: string
+          operacao: string
+          params_hash: string | null
+          registros_retornados: number | null
+          sucesso: boolean
+        }
+        Insert: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          operacao: string
+          params_hash?: string | null
+          registros_retornados?: number | null
+          sucesso: boolean
+        }
+        Update: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          operacao?: string
+          params_hash?: string | null
+          registros_retornados?: number | null
+          sucesso?: boolean
+        }
+        Relationships: []
+      }
       estacas: {
         Row: {
           cc: number | null
@@ -1587,6 +1617,70 @@ export type Database = {
       }
     }
     Functions: {
+      assistant_avanco_por_bacia: {
+        Args: { _bacia?: string }
+        Returns: {
+          bacia: string
+          executado_m: number
+          ligacoes_comprimento_m: number
+          ns_concluidas: number
+          ns_total: number
+          pendente_m: number
+          previsto_m: number
+        }[]
+      }
+      assistant_buscar_ns: {
+        Args: { _limit?: number; _termo: string }
+        Returns: {
+          bacia: string
+          liberado: boolean
+          os_id: string
+          pv_jusante: string
+          pv_montante: string
+          responsavel: string
+          status: string
+          trecho: string
+        }[]
+      }
+      assistant_ns_detalhe: {
+        Args: { _bacia?: string; _os_id?: string; _trecho?: string }
+        Returns: Json
+      }
+      assistant_producao_periodo: {
+        Args: {
+          _bacia?: string
+          _data_final: string
+          _data_inicial: string
+          _encarregado?: string
+          _limit?: number
+        }
+        Returns: {
+          bacia: string
+          data_producao: string
+          ligacoes_comprimento_m: number
+          ligacoes_qtd: number
+          os_id: string
+          pv_final_assentado: boolean
+          rede_m: number
+          responsavel: string
+          trecho: string
+        }[]
+      }
+      assistant_produtividade_encarregado: {
+        Args: {
+          _data_final: string
+          _data_inicial: string
+          _encarregado?: string
+        }
+        Returns: {
+          dias_com_rede: number
+          ligacoes_comprimento_m: number
+          ligacoes_qtd: number
+          produtividade_rede_m_dia: number
+          rede_m: number
+          responsavel: string
+        }[]
+      }
       get_mapa_publico: { Args: { _ss: string }; Returns: Json }
       has_role: {
         Args: {

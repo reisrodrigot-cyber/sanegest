@@ -77,6 +77,8 @@ const DEFAULT_redeColor = '#16a34a';
 const DEFAULT_ligacoesColor = '#2563eb';
 const DEFAULT_CENTER: [number, number] = [-9.1167, -35.2667];
 const DEFAULT_ZOOM = 13;
+const BASEMAP_STORAGE_KEY = 'sanegest.mapa.basemap';
+
 
 // Parse KMZ (zip with .kml inside) → GeoJSON
 async function loadKmzAsGeoJSON(url: string): Promise<GeoJSON.FeatureCollection | null> {
@@ -395,9 +397,30 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
 
     const map = L.map(containerRef.current, { preferCanvas }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     mapRef.current = map;
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+    // ===== Mapas-base: Rua (padrão) e Satélite =====
+    const ruaLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',
-    }).addTo(map);
+      maxZoom: 19,
+    });
+    const sateliteLayer = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution:
+          'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        maxZoom: 19,
+      }
+    );
+    let baseEscolhido: string | null = null;
+    try { baseEscolhido = window.localStorage.getItem(BASEMAP_STORAGE_KEY); } catch { /* ignore */ }
+    (baseEscolhido === 'Satélite' ? sateliteLayer : ruaLayer).addTo(map);
+    L.control
+      .layers({ 'Rua': ruaLayer, 'Satélite': sateliteLayer }, undefined, { position: 'topright', collapsed: true })
+      .addTo(map);
+    map.on('baselayerchange', (e: any) => {
+      try { window.localStorage.setItem(BASEMAP_STORAGE_KEY, e?.name ?? 'Rua'); } catch { /* ignore */ }
+    });
+
     // Pane dedicado às ligações com z-index acima da polyline (overlayPane=400)
     const ligacoesPane = map.createPane('ligacoesPane');
     ligacoesPane.style.zIndex = '650';

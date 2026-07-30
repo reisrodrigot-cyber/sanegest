@@ -1698,6 +1698,7 @@ export type Database = {
         Args: { _os_id: string }
         Returns: undefined
       }
+      recompute_os_status: { Args: { _os_id: string }; Returns: undefined }
     }
     Enums: {
       app_role:

@@ -1254,6 +1254,39 @@ ${placemarks.join('\n')}
       {/* Legenda oficial de status */}
       <StatusLegenda className="absolute bottom-6 left-3 z-[500]" />
 
+      {/* Destaque de N.S. localizada pelo atalho "Ver no mapa" (somente leitura) */}
+      {(focusMapaInfo || focusMapaErro) && (
+        <div className="absolute top-3 left-3 z-[600] max-w-[300px] rounded-lg border border-border bg-card/95 shadow-lg p-3 text-xs">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              {focusMapaInfo ? (
+                <>
+                  <div className="font-semibold text-sm text-foreground">{focusMapaInfo.trecho}</div>
+                  <div className="text-muted-foreground">{focusMapaInfo.bacia}</div>
+                  <div className="text-muted-foreground mt-1">
+                    PV mont.: {focusMapaInfo.pv_montante || '—'} · PV jus.: {focusMapaInfo.pv_jusante || '—'}
+                  </div>
+                  <div className="mt-1 text-foreground">Situação: <b>{focusMapaInfo.status}</b></div>
+                  {focusMapaInfo.qtdTrechos > 1 && (
+                    <div className="text-muted-foreground mt-1">{focusMapaInfo.qtdTrechos} trechos vinculados</div>
+                  )}
+                </>
+              ) : (
+                <div className="text-amber-600">Trecho ainda não vinculado ao mapa</div>
+              )}
+            </div>
+            <button
+              onClick={limparFocoMapa}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Limpar destaque"
+              title="Limpar destaque"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Controle flutuante: camadas + minha localização */}
       <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">
         {/* Removido: Exportar/Inserir KMZ — agora dentro do painel de Camadas */}

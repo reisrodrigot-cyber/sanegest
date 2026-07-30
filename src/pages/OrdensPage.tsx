@@ -345,7 +345,7 @@ const OrdensPage = () => {
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.liberado_para || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <StatusBadge status={os.status} size="sm" />
+                      <StatusBadge status={statusEfetivo(os)} size="sm" />
                       {parado && (
                         <TooltipProvider>
                           <Tooltip>

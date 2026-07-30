@@ -145,8 +145,15 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
   const handleSave = async () => {
     const compNum = parseFloat(comprimento) || 0;
     const ligNum = parseInt(numLigacoes) || 0;
-    if (compNum <= 0 && ligNum <= 0) {
-      toast.error('Informe comprimento ou ligações.');
+    const compLigTotal = ligacoes.reduce((s, l) => s + (parseFloat(l.comprimento) || 0), 0);
+    if (compNum < 0 || ligNum < 0 || ligacoes.some((l) => (parseFloat(l.comprimento) || 0) < 0)) {
+      toast.error('Valores não podem ser negativos.');
+      return;
+    }
+    // Basta UMA informação operacional válida: rede, ligações, comprimento de
+    // ligação ou PV batido. Observação isolada não libera o registro.
+    if (compNum <= 0 && ligNum <= 0 && compLigTotal <= 0 && !pvFinalAssentado) {
+      toast.error('Informe rede, ligação, comprimento de ligação ou marque PV batido para registrar a produção.');
       return;
     }
     // Aviso de possível duplicidade: já existe envio hoje para esta OS pelo mesmo
@@ -160,10 +167,12 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       if (!ok) return;
     }
 
-    if (!tipoPavimento) {
+    // Pavimento só é exigido quando houve execução de rede (abertura de vala).
+    if (compNum > 0 && !tipoPavimento) {
       toast.error('Selecione o Tipo de Pavimento.');
       return;
     }
+
     if (!user) return;
     setSaving(true);
 

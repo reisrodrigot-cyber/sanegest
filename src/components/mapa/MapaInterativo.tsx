@@ -1338,6 +1338,75 @@ ${placemarks.join('\n')}
               : <Maximize2 size={18} className="text-foreground" />}
           </button>
         )}
+        <Popover open={buscaOpen} onOpenChange={(o) => { setBuscaOpen(o); if (!o) setBuscaTermo(''); }}>
+          <PopoverTrigger asChild>
+            <button
+              className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+              title="Localizar trecho ou N.S."
+              aria-label="Localizar trecho ou N.S."
+            >
+              <Search size={18} className="text-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            side="bottom"
+            sideOffset={6}
+            collisionPadding={12}
+            avoidCollisions
+            className="w-[min(20rem,calc(100vw-1.5rem))] p-3 z-[1000]"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <Search size={14} /> Localizar trecho ou N.S.
+              </div>
+              <button
+                onClick={() => { setBuscaOpen(false); setBuscaTermo(''); }}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Fechar busca"
+                title="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+            <input
+              autoFocus
+              value={buscaTermo}
+              onChange={(e) => setBuscaTermo(e.target.value)}
+              placeholder="Digite o trecho, ex.: 9.01 ou TR-9.01"
+              className="w-full text-sm rounded-md border border-border bg-background px-2 py-1.5 outline-none focus:ring-1 focus:ring-ring"
+            />
+            <div className="mt-2 max-h-64 overflow-y-auto">
+              {buscaDebounced.trim() === '' ? (
+                <div className="text-[11px] text-muted-foreground py-1">Digite ao menos um caractere do trecho.</div>
+              ) : resultadosBusca.length === 0 ? (
+                <div className="text-[11px] text-amber-600 py-1">Trecho ainda não vinculado ao mapa</div>
+              ) : (
+                <ul className="space-y-1">
+                  {resultadosBusca.map((r) => {
+                    const meta = getStatusMeta(r.pv_final_assentado ? 'VERDE' : r.status);
+                    return (
+                      <li key={r.os_id}>
+                        <button
+                          onClick={() => { setInternalFocusOsId(r.os_id); setBuscaOpen(false); setBuscaTermo(''); }}
+                          className="w-full text-left rounded-md px-2 py-1.5 hover:bg-accent transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dotClass}`} title={meta.label} />
+                            <span className="text-sm font-medium text-foreground">{r.trecho}</span>
+                            <span className="text-[11px] text-muted-foreground">• {r.bacia}</span>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground pl-3.5">{meta.label}</div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
         {showLocation && (
           <button
             onClick={centerOnMe}

@@ -186,14 +186,38 @@
 
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
-  background: rgba(255, 255, 255, 0.96) !important;
+  background: #ffffff !important;
   color: #0f172a !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
 }
 .leaflet-popup-content-wrapper {
   border: 1px solid rgba(15, 23, 42, 0.2) !important;
   border-radius: 10px !important;
 }
+.leaflet-popup-content,
+.leaflet-popup-content * {
+  color: #0f172a;
+}
+
+/* Cartão de informação renderizado em React sobre o mapa (inspeção de N.S. etc.) */
+.sg-map-card {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(15, 23, 42, 0.2) !important;
+  backdrop-filter: none !important;
+}
+.sg-map-card * {
+  color: #0f172a !important;
+}
+.sg-map-card .text-muted-foreground {
+  color: #475569 !important;
+}
+.sg-map-card .text-amber-600 {
+  color: #b45309 !important;
+}
+
 
 /* Borda na cor semântica do status, quando aplicável */
 .sg-label-cinza .leaflet-popup-content-wrapper,
@@ -218,7 +242,16 @@
     margin: 8px 10px !important;
     max-width: 220px !important;
   }
+  /* Sem seta/conector solto no mobile */
+  .leaflet-popup-tip-container { display: none !important; }
+  .leaflet-tooltip::before { display: none !important; }
+  /* Cartão de inspeção acima da atribuição Esri, sem cobrir controles */
+  .sg-map-card {
+    max-width: calc(100vw - 88px) !important;
+    font-size: 12px !important;
+  }
 }
+
 
 
 @keyframes mePulse {

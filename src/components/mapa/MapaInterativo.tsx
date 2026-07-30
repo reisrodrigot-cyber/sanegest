@@ -1330,7 +1330,7 @@ ${placemarks.join('\n')}
 
       {/* Destaque de N.S. localizada pelo atalho "Ver no mapa" (somente leitura) */}
       {(focusMapaInfo || focusMapaErro) && (
-        <div className="absolute top-3 left-3 z-[600] max-w-[300px] rounded-lg border border-border bg-card/95 shadow-lg p-3 text-xs">
+        <div className="sg-map-card absolute top-3 left-3 z-[600] max-w-[300px] rounded-lg shadow-lg p-3 text-xs">
           <div className="flex items-start justify-between gap-3">
             <div>
               {focusMapaInfo ? (

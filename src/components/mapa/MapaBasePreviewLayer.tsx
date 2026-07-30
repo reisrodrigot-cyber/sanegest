@@ -126,12 +126,22 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
           ${hasDivergencia ? '<div style="margin-top:4px;font-size:11px;color:#a16207">Requer revisão da Sala Técnica</div>' : ''}
         </div>`;
 
+      const popupOpts: L.PopupOptions = { className: `sg-label-${meta.key.toLowerCase()}`, maxWidth: 280 };
+
+      // Área clicável invisível (não altera cor, espessura ou geometria visível)
+      const hit = L.polyline(latlngs, {
+        color: cor, weight: hitWeight(), opacity: 0, fillOpacity: 0, interactive: true,
+      });
+      hit.bindPopup(popupHtml, popupOpts);
+      hit.addTo(group);
+
       const line = L.polyline(latlngs, {
         color: cor, weight: 4, opacity: 0.9,
         dashArray: hasDivergencia ? '6,4' : undefined,
       });
-      line.bindPopup(popupHtml);
+      line.bindPopup(popupHtml, popupOpts);
       line.addTo(group);
+
     }
 
     // Pontos (em subgrupo próprio, controlado por zoom)

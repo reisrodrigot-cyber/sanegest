@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -5,6 +6,8 @@ import { ROLE_LABELS } from '@/types/sanegest';
 
 const MapaPage = () => {
   const { effectiveRole } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusMapaOsId = searchParams.get('os');
   // Encarregado e Topógrafo se beneficiam de ver a própria localização no mapa
   const showLocation = effectiveRole === 'encarregado' || effectiveRole === 'topografo';
 
@@ -16,7 +19,16 @@ const MapaPage = () => {
           Visualização da obra{effectiveRole ? ` • ${ROLE_LABELS[effectiveRole]}` : ''}
         </p>
       </div>
-      <MapaInterativo showLocation={showLocation} />
+      <MapaInterativo
+        showLocation={showLocation}
+        allowFullscreen
+        focusMapaOsId={focusMapaOsId}
+        onClearFocusMapa={() => {
+          const next = new URLSearchParams(searchParams);
+          next.delete('os');
+          setSearchParams(next, { replace: true });
+        }}
+      />
     </AppLayout>
   );
 };

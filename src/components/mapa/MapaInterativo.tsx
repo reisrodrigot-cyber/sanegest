@@ -395,7 +395,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       mapRef.current = null;
     }
 
-    const map = L.map(containerRef.current, { preferCanvas }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    const map = L.map(containerRef.current, { preferCanvas, maxZoom: 19 }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     mapRef.current = map;
 
     // ===== Mapa-base: Esri World Imagery (único) =====
@@ -405,6 +405,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
         attribution:
           'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
         maxZoom: 19,
+        maxNativeZoom: 19,
       }
     );
     sateliteLayer.addTo(map);

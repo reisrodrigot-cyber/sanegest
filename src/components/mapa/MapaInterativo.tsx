@@ -129,15 +129,21 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
   const previewBase = useMapaBasePreview(canViewPreviewBase);
   const [expanded, setExpanded] = useState(false);
 
-  // Esc fecha o modo ampliado
+  // Esc fecha o modo ampliado — mas só quando nenhum painel flutuante estiver aberto
   useEffect(() => {
     if (!expanded) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Popover/Dropdown abertos tratam o Esc primeiro (fecham apenas o painel)
+      if (document.querySelector('[data-radix-popper-content-wrapper]')) return;
+      setExpanded(false);
+    };
     window.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow; };
   }, [expanded]);
+
 
   // Reajusta o Leaflet ao ampliar/recolher (sem recriar o mapa)
   useEffect(() => {
@@ -1354,7 +1360,7 @@ ${placemarks.join('\n')}
             sideOffset={6}
             collisionPadding={12}
             avoidCollisions
-            className="w-[min(20rem,calc(100vw-1.5rem))] p-3 z-[1000]"
+            className="w-[min(20rem,calc(100vw-1.5rem))] p-3 z-[2600]"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -1434,7 +1440,7 @@ ${placemarks.join('\n')}
             sideOffset={6}
             collisionPadding={12}
             avoidCollisions
-            className="w-[min(18rem,calc(100vw-1.5rem))] p-3 max-h-[70vh] overflow-y-auto z-[1000]"
+            className="w-[min(18rem,calc(100vw-1.5rem))] p-3 max-h-[70vh] overflow-y-auto z-[2600]"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -1571,12 +1577,12 @@ ${placemarks.join('\n')}
                               <MoreVertical size={12} />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="z-[1100]">
+                          <DropdownMenuContent align="end" className="z-[2700]">
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger>
                                 <FolderOpen size={12} className="mr-2" /> Mover para
                               </DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent className="z-[1100]">
+                              <DropdownMenuSubContent className="z-[2700]">
                                 {groups.length === 0 && (
                                   <DropdownMenuItem disabled>Nenhum grupo</DropdownMenuItem>
                                 )}
@@ -1667,7 +1673,7 @@ ${placemarks.join('\n')}
                                   <MoreVertical size={12} />
                                 </button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="z-[1100]">
+                              <DropdownMenuContent align="end" className="z-[2700]">
                                 <DropdownMenuItem onClick={() => handleRenameGroup(g)}>
                                   <Pencil size={12} className="mr-2" /> Renomear
                                 </DropdownMenuItem>

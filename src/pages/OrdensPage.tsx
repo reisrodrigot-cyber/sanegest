@@ -195,7 +195,7 @@ const OrdensPage = () => {
     const base = activeTab === 'executadas'
       ? ordens.filter(os => executadasOsIds.has(os.id))
       : ordens.filter(os => os.liberado && !executadasOsIds.has(os.id));
-    return base.filter(os => os.status === status).length;
+    return base.filter(os => statusEfetivo(os) === toDisplayStatus(status)).length;
   };
 
   const daysSince = (iso?: string) => {

@@ -30,8 +30,21 @@ function esc(s: any): string {
   );
 }
 
+/** Raio visual dos PVs por faixa de zoom. `null` = ocultar pontos individuais. */
+function pvRadiusForZoom(zoom: number): number | null {
+  if (zoom < 14) return null;   // zoom distante: esconder PVs
+  if (zoom < 15) return 2;
+  if (zoom < 16) return 2.5;
+  if (zoom < 17) return 3;
+  if (zoom < 18) return 3.5;
+  return 4;                     // zoom próximo: tamanho atual
+}
+
 export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) => {
   const layerRef = useRef<L.LayerGroup | null>(null);
+  const pvLayerRef = useRef<L.LayerGroup | null>(null);
+  const pvMarkersRef = useRef<L.CircleMarker[]>([]);
+
 
   useEffect(() => {
     if (!map) return;
@@ -101,12 +114,18 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
       line.addTo(group);
     }
 
-    // Pontos
+    // Pontos (em subgrupo próprio, controlado por zoom)
+    const pvGroup = L.layerGroup();
+    pvLayerRef.current = pvGroup;
+    const markers: L.CircleMarker[] = [];
+    const zoom = map0.getZoom();
+    const r = pvRadiusForZoom(zoom);
+
     for (const p of pontos) {
       if (p.lon == null || p.lat == null) continue;
       const cor = p.tipo_no === 'PV' ? '#0C447C' : p.tipo_no === 'TL' ? '#7c3aed' : p.tipo_no === 'TQ' ? '#dc2626' : '#525252';
       const marker = L.circleMarker([p.lat, p.lon], {
-        radius: 4, color: '#fff', weight: 1.5,
+        radius: r ?? 4, color: '#fff', weight: 1.5,
         fillColor: cor, fillOpacity: 0.95,
       });
       marker.bindPopup(`
@@ -116,9 +135,34 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
           ${p.cota_inv != null ? `<div>Cota inv.: ${p.cota_inv}</div>` : ''}
           ${p.prof != null ? `<div>Profundidade: ${p.prof} m</div>` : ''}
         </div>`);
-      marker.addTo(group);
+      marker.addTo(pvGroup);
+      markers.push(marker);
     }
+    pvMarkersRef.current = markers;
+    if (r != null) pvGroup.addTo(group);
   }, [map, trechos, pontos, visible]);
+
+  // Ajuste visual dos PVs conforme o zoom (sem recarregar camadas/dados)
+  useEffect(() => {
+    const map0 = map;
+    if (!map0) return;
+    const apply = () => {
+      const group = layerRef.current;
+      const pvGroup = pvLayerRef.current;
+      if (!group || !pvGroup) return;
+      const r = pvRadiusForZoom(map0.getZoom());
+      if (r == null) {
+        if (group.hasLayer(pvGroup)) group.removeLayer(pvGroup);
+        return;
+      }
+      for (const m of pvMarkersRef.current) m.setRadius(r);
+      if (!group.hasLayer(pvGroup)) pvGroup.addTo(group);
+    };
+    map0.on('zoomend', apply);
+    apply();
+    return () => { map0.off('zoomend', apply); };
+  }, [map, pontos, visible]);
 
   return null;
 };
+

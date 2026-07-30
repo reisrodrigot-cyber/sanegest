@@ -129,15 +129,21 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
   const previewBase = useMapaBasePreview(canViewPreviewBase);
   const [expanded, setExpanded] = useState(false);
 
-  // Esc fecha o modo ampliado
+  // Esc fecha o modo ampliado — mas só quando nenhum painel flutuante estiver aberto
   useEffect(() => {
     if (!expanded) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Popover/Dropdown abertos tratam o Esc primeiro (fecham apenas o painel)
+      if (document.querySelector('[data-radix-popper-content-wrapper]')) return;
+      setExpanded(false);
+    };
     window.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow; };
   }, [expanded]);
+
 
   // Reajusta o Leaflet ao ampliar/recolher (sem recriar o mapa)
   useEffect(() => {

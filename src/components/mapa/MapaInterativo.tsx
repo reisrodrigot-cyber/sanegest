@@ -395,20 +395,30 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       mapRef.current = null;
     }
 
-    const map = L.map(containerRef.current, { preferCanvas, maxZoom: 19 }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    // Último nível de zoom com imagem real do Esri World Imagery nesta região (z19 retorna "Map data not yet available")
+    const ZOOM_VALIDO = 18;
+
+    const map = L.map(containerRef.current, { preferCanvas, maxZoom: ZOOM_VALIDO }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     mapRef.current = map;
 
     // ===== Mapa-base: Esri World Imagery (único) =====
+    // Garante que nenhuma tile layer anterior permaneça com limite incorreto
+    map.eachLayer((l) => { if (l instanceof L.TileLayer) map.removeLayer(l); });
+
     const sateliteLayer = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       {
         attribution:
           'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-        maxZoom: 19,
-        maxNativeZoom: 19,
+        maxZoom: ZOOM_VALIDO,
+        maxNativeZoom: ZOOM_VALIDO,
       }
     );
     sateliteLayer.addTo(map);
+
+    map.setMaxZoom(ZOOM_VALIDO);
+    if (map.getZoom() > ZOOM_VALIDO) map.setZoom(ZOOM_VALIDO);
+
 
     // Pane dedicado às ligações com z-index acima da polyline (overlayPane=400)
     const ligacoesPane = map.createPane('ligacoesPane');

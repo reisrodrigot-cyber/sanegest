@@ -362,16 +362,36 @@ const OrdensPage = () => {
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex items-center gap-1 justify-end">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); if (mapeadasOsIds.has(os.id)) navigate(`/mapa?os=${os.id}`); }}
+                                disabled={!mapeadasOsIds.has(os.id)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                aria-label="Ver no mapa"
+                              >
+                                <Map size={14} /> <span className="hidden lg:inline">Ver no mapa</span>
+                              </button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <span>{mapeadasOsIds.has(os.id) ? 'Ver no mapa' : 'Trecho ainda não vinculado ao mapa'}</span>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                       {locatableOsIds.has(os.id) && (
                         <button
                           onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-primary/10 transition-colors"
                           style={{ color: '#4dd9ac' }}
-                          title="Localizar no mapa"
+                          title="Localizar As Built"
                         >
-                          <MapPin size={14} /> <span className="hidden lg:inline">Localizar</span>
+                          <MapPin size={14} /> <span className="hidden lg:inline">As Built</span>
                         </button>
                       )}
+
                       {canLiberar && os.liberado && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setDesatribuirOS([os]); }}

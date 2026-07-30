@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
-import { statusLabel } from '@/lib/osStatus';
+import { statusLabel, vinculoDisplayStatus, toDisplayStatus, type OSDisplayStatus } from '@/lib/osStatus';
+
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, UserPlus, UserMinus, X } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';

@@ -275,9 +275,9 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       if (b.isValid()) map.flyToBounds(b, { padding: [60, 60], maxZoom: 18, duration: 0.8 });
     } catch {}
 
-    const v = alvo.flatMap((t) => t.vinculos).find((x) => x.os_id === focusMapaOsId)!;
+    const v = alvo.flatMap((t) => t.vinculos).find((x) => x.os_id === activeFocusOsId)!;
     const statusEfetivo = aggregateVinculosStatus(
-      alvo.flatMap((t) => t.vinculos).filter((x) => x.os_id === focusMapaOsId)
+      alvo.flatMap((t) => t.vinculos).filter((x) => x.os_id === activeFocusOsId)
     );
     setFocusMapaErro(null);
     setFocusMapaInfo({
@@ -292,14 +292,15 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
     supabase
       .from('ordens_servico')
       .select('pv_montante, pv_jusante')
-      .eq('id', focusMapaOsId)
+      .eq('id', activeFocusOsId)
       .maybeSingle()
       .then(({ data }) => {
         if (!data) return;
         setFocusMapaInfo((prev) => (prev ? { ...prev, pv_montante: data.pv_montante, pv_jusante: data.pv_jusante } : prev));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusMapaOsId, previewBase.trechos]);
+  }, [activeFocusOsId, previewBase.trechos]);
+
 
 
 

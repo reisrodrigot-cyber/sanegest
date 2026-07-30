@@ -109,15 +109,37 @@ interface MapaInterativoProps {
   className?: string;
   /** OS ID para focar (flyToBounds + popup + pulse) */
   focusOsId?: string | null;
+  /** Exibe botão de ampliar/recolher o mapa em tela cheia */
+  allowFullscreen?: boolean;
 }
 
-export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null }: MapaInterativoProps) => {
+export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null, allowFullscreen = false }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
   // Visualização das bases geográficas é liberada para qualquer perfil autenticado
   // (somente leitura). A edição continua restrita por `canManage` e pelas RLS.
   const canViewPreviewBase = !!effectiveRole;
   const previewBase = useMapaBasePreview(canViewPreviewBase);
+  const [expanded, setExpanded] = useState(false);
+
+  // Esc fecha o modo ampliado
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow; };
+  }, [expanded]);
+
+  // Reajusta o Leaflet ao ampliar/recolher (sem recriar o mapa)
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      try { mapRef.current?.invalidateSize({ animate: false }); } catch {}
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [expanded]);
+
   const PREVIEW_VIS_KEY = 'sanegest_map_preview_vis_by_ss';
   const [previewVisByS, setPreviewVisByS] = useState<Record<string, boolean>>(() => {
     try {

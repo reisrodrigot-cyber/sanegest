@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 
@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical, Upload, Download, Maximize2, Minimize2 } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical, Upload, Download, Maximize2, Minimize2, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
@@ -17,7 +17,9 @@ import { AsBuiltConfigModal } from './AsBuiltConfigModal';
 import { MapaBasePreviewLayer } from './MapaBasePreviewLayer';
 import { useMapaBasePreview } from '@/hooks/useMapaBasePreview';
 import { StatusLegenda } from './StatusLegenda';
-import { aggregateVinculosStatus, statusLabel } from '@/lib/osStatus';
+import { aggregateVinculosStatus, statusLabel, getStatusMeta } from '@/lib/osStatus';
+import type { OSStatus } from '@/types/sanegest';
+
 
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';
@@ -188,6 +190,37 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
     | null
   >(null);
   const [focusMapaErro, setFocusMapaErro] = useState<string | null>(null);
+  // Busca interna (quarto botão) — reutiliza exatamente o fluxo de "Ver no mapa"
+  const [buscaOpen, setBuscaOpen] = useState(false);
+  const [buscaTermo, setBuscaTermo] = useState('');
+  const [buscaDebounced, setBuscaDebounced] = useState('');
+  const [internalFocusOsId, setInternalFocusOsId] = useState<string | null>(null);
+  const activeFocusOsId = internalFocusOsId ?? focusMapaOsId;
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setBuscaDebounced(buscaTermo), 250);
+    return () => window.clearTimeout(t);
+  }, [buscaTermo]);
+
+  const normalizarTrecho = (v: string) =>
+    v.trim().toLowerCase().replace(/,/g, '.').replace(/\s+/g, '').replace(/^tr[-_ ]?/, '');
+
+  const resultadosBusca = useMemo(() => {
+    const q = normalizarTrecho(buscaDebounced);
+    if (q.length < 1) return [] as Array<{ os_id: string; trecho: string; bacia: string; status: OSStatus | string; pv_final_assentado: boolean | null }>;
+    const porOs = new Map<string, { os_id: string; trecho: string; bacia: string; status: OSStatus | string; pv_final_assentado: boolean | null }>();
+    for (const t of previewBase.trechos) {
+      for (const v of t.vinculos) {
+        if (!normalizarTrecho(v.trecho ?? '').includes(q)) continue;
+        const atual = porOs.get(v.os_id);
+        if (!atual) porOs.set(v.os_id, { os_id: v.os_id, trecho: v.trecho, bacia: v.bacia, status: v.status, pv_final_assentado: v.pv_final_assentado });
+        else if (v.pv_final_assentado) atual.pv_final_assentado = true;
+      }
+    }
+    return Array.from(porOs.values())
+      .sort((a, b) => a.trecho.localeCompare(b.trecho, 'pt-BR', { numeric: true }) || a.bacia.localeCompare(b.bacia))
+      .slice(0, 8);
+  }, [buscaDebounced, previewBase.trechos]);
 
   const limparFocoMapa = () => {
     const map = mapRef.current;
@@ -196,6 +229,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
     focusMapaLayerRef.current = null;
     setFocusMapaInfo(null);
     setFocusMapaErro(null);
+    setInternalFocusOsId(null);
     onClearFocusMapa?.();
   };
 
@@ -207,10 +241,11 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       try { map.removeLayer(focusMapaLayerRef.current); } catch {}
       focusMapaLayerRef.current = null;
     }
-    if (!focusMapaOsId) { setFocusMapaInfo(null); setFocusMapaErro(null); return; }
+    if (!activeFocusOsId) { setFocusMapaInfo(null); setFocusMapaErro(null); return; }
     if (!previewBase.trechos.length) return;
 
-    const alvo = previewBase.trechos.filter((t) => t.vinculos.some((v) => v.os_id === focusMapaOsId));
+    const alvo = previewBase.trechos.filter((t) => t.vinculos.some((v) => v.os_id === activeFocusOsId));
+
     if (!alvo.length) {
       setFocusMapaInfo(null);
       setFocusMapaErro('Trecho ainda não vinculado ao mapa');
@@ -240,9 +275,9 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       if (b.isValid()) map.flyToBounds(b, { padding: [60, 60], maxZoom: 18, duration: 0.8 });
     } catch {}
 
-    const v = alvo.flatMap((t) => t.vinculos).find((x) => x.os_id === focusMapaOsId)!;
+    const v = alvo.flatMap((t) => t.vinculos).find((x) => x.os_id === activeFocusOsId)!;
     const statusEfetivo = aggregateVinculosStatus(
-      alvo.flatMap((t) => t.vinculos).filter((x) => x.os_id === focusMapaOsId)
+      alvo.flatMap((t) => t.vinculos).filter((x) => x.os_id === activeFocusOsId)
     );
     setFocusMapaErro(null);
     setFocusMapaInfo({
@@ -257,14 +292,15 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
     supabase
       .from('ordens_servico')
       .select('pv_montante, pv_jusante')
-      .eq('id', focusMapaOsId)
+      .eq('id', activeFocusOsId)
       .maybeSingle()
       .then(({ data }) => {
         if (!data) return;
         setFocusMapaInfo((prev) => (prev ? { ...prev, pv_montante: data.pv_montante, pv_jusante: data.pv_jusante } : prev));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusMapaOsId, previewBase.trechos]);
+  }, [activeFocusOsId, previewBase.trechos]);
+
 
 
 
@@ -1302,6 +1338,75 @@ ${placemarks.join('\n')}
               : <Maximize2 size={18} className="text-foreground" />}
           </button>
         )}
+        <Popover open={buscaOpen} onOpenChange={(o) => { setBuscaOpen(o); if (!o) setBuscaTermo(''); }}>
+          <PopoverTrigger asChild>
+            <button
+              className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+              title="Localizar trecho ou N.S."
+              aria-label="Localizar trecho ou N.S."
+            >
+              <Search size={18} className="text-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            side="bottom"
+            sideOffset={6}
+            collisionPadding={12}
+            avoidCollisions
+            className="w-[min(20rem,calc(100vw-1.5rem))] p-3 z-[1000]"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <Search size={14} /> Localizar trecho ou N.S.
+              </div>
+              <button
+                onClick={() => { setBuscaOpen(false); setBuscaTermo(''); }}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Fechar busca"
+                title="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+            <input
+              autoFocus
+              value={buscaTermo}
+              onChange={(e) => setBuscaTermo(e.target.value)}
+              placeholder="Digite o trecho, ex.: 9.01 ou TR-9.01"
+              className="w-full text-sm rounded-md border border-border bg-background px-2 py-1.5 outline-none focus:ring-1 focus:ring-ring"
+            />
+            <div className="mt-2 max-h-64 overflow-y-auto">
+              {buscaDebounced.trim() === '' ? (
+                <div className="text-[11px] text-muted-foreground py-1">Digite ao menos um caractere do trecho.</div>
+              ) : resultadosBusca.length === 0 ? (
+                <div className="text-[11px] text-amber-600 py-1">Trecho ainda não vinculado ao mapa</div>
+              ) : (
+                <ul className="space-y-1">
+                  {resultadosBusca.map((r) => {
+                    const meta = getStatusMeta(r.pv_final_assentado ? 'VERDE' : r.status);
+                    return (
+                      <li key={r.os_id}>
+                        <button
+                          onClick={() => { setInternalFocusOsId(r.os_id); setBuscaOpen(false); setBuscaTermo(''); }}
+                          className="w-full text-left rounded-md px-2 py-1.5 hover:bg-accent transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dotClass}`} title={meta.label} />
+                            <span className="text-sm font-medium text-foreground">{r.trecho}</span>
+                            <span className="text-[11px] text-muted-foreground">• {r.bacia}</span>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground pl-3.5">{meta.label}</div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
         {showLocation && (
           <button
             onClick={centerOnMe}

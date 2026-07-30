@@ -1133,7 +1133,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 className=""
                 focusOsId={focusOsId}
                 showLocation
+                allowFullscreen
               />
+
             )}
           </div>
         </div>

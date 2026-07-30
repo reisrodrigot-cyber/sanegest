@@ -1143,10 +1143,23 @@ ${placemarks.join('\n')}
       {/* Controle flutuante: camadas + minha localização */}
       <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">
         {/* Removido: Exportar/Inserir KMZ — agora dentro do painel de Camadas */}
+        {allowFullscreen && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+            title={expanded ? 'Voltar ao tamanho normal' : 'Ampliar mapa'}
+            aria-label={expanded ? 'Voltar ao tamanho normal' : 'Ampliar mapa'}
+          >
+            {expanded
+              ? <Minimize2 size={18} className="text-foreground" />
+              : <Maximize2 size={18} className="text-foreground" />}
+          </button>
+        )}
         {showLocation && (
           <button
             onClick={centerOnMe}
             className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+
             title="Minha localização"
             aria-label="Minha localização"
           >

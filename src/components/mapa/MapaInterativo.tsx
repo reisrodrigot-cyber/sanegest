@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical, Upload, Download, Maximize2 } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Layers, Eye, EyeOff, Crosshair, ChevronRight, ChevronDown, FolderPlus, FolderOpen, MoreVertical, Upload, Download, Maximize2, Minimize2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CamadaModal } from './CamadaModal';
@@ -109,15 +109,37 @@ interface MapaInterativoProps {
   className?: string;
   /** OS ID para focar (flyToBounds + popup + pulse) */
   focusOsId?: string | null;
+  /** Exibe botão de ampliar/recolher o mapa em tela cheia */
+  allowFullscreen?: boolean;
 }
 
-export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null }: MapaInterativoProps) => {
+export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null, allowFullscreen = false }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
   // Visualização das bases geográficas é liberada para qualquer perfil autenticado
   // (somente leitura). A edição continua restrita por `canManage` e pelas RLS.
   const canViewPreviewBase = !!effectiveRole;
   const previewBase = useMapaBasePreview(canViewPreviewBase);
+  const [expanded, setExpanded] = useState(false);
+
+  // Esc fecha o modo ampliado
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow; };
+  }, [expanded]);
+
+  // Reajusta o Leaflet ao ampliar/recolher (sem recriar o mapa)
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      try { mapRef.current?.invalidateSize({ animate: false }); } catch {}
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [expanded]);
+
   const PREVIEW_VIS_KEY = 'sanegest_map_preview_vis_by_ss';
   const [previewVisByS, setPreviewVisByS] = useState<Record<string, boolean>>(() => {
     try {
@@ -1117,8 +1139,12 @@ ${placemarks.join('\n')}
   };
 
   return (
-    <div className={`relative ${className}`} style={{ height }}>
-      <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 200, borderRadius: '0.75rem', overflow: 'hidden' }} />
+    <div
+      className={expanded ? 'fixed inset-0 z-[2000] bg-background p-2 sm:p-3' : `relative ${className}`}
+      style={expanded ? undefined : { height }}
+    >
+      <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 200, borderRadius: '0.75rem', overflow: 'hidden', position: 'relative' }} />
+
 
       {/* Camadas Preview (bases geográficas ativas) — não afeta o KMZ */}
       {canViewPreviewBase && (
@@ -1139,10 +1165,23 @@ ${placemarks.join('\n')}
       {/* Controle flutuante: camadas + minha localização */}
       <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">
         {/* Removido: Exportar/Inserir KMZ — agora dentro do painel de Camadas */}
+        {allowFullscreen && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+            title={expanded ? 'Voltar ao tamanho normal' : 'Ampliar mapa'}
+            aria-label={expanded ? 'Voltar ao tamanho normal' : 'Ampliar mapa'}
+          >
+            {expanded
+              ? <Minimize2 size={18} className="text-foreground" />
+              : <Maximize2 size={18} className="text-foreground" />}
+          </button>
+        )}
         {showLocation && (
           <button
             onClick={centerOnMe}
             className="bg-card hover:bg-accent border border-border shadow-md rounded-md p-2 transition-colors"
+
             title="Minha localização"
             aria-label="Minha localização"
           >

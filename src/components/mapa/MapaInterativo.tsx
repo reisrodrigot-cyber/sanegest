@@ -689,11 +689,21 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
 
       // Polyline conectando os vértices (Montante → Jusante)
       if (latlngs.length >= 2) {
+        // Área clicável invisível (mesmo comportamento do trecho visível)
+        const coarse = typeof window !== 'undefined'
+          && (window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth < 768);
+        const hit = L.polyline(latlngs, {
+          color: redeColor, weight: coarse ? 18 : 12, opacity: 0, fillOpacity: 0, interactive: true,
+        });
+        hit.bindPopup(popupHtml);
+        hit.addTo(layer);
+
         const line = L.polyline(latlngs, {
           color: redeColor, weight: 4, opacity: redeOpacidade,
         });
         line.bindPopup(popupHtml);
         line.addTo(layer);
+
         osPolylineRef.current.set(first.os_id, line);
         // Setas de direcionamento do fluxo (gravidade: montante → jusante)
         // @ts-ignore - plugin polylineDecorator

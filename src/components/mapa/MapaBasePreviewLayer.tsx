@@ -69,7 +69,8 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
 
   useEffect(() => {
     const map0 = map; const group = layerRef.current;
-    if (!map0 || !group) return;
+    if (!isMapAlive(map0) || !group) return;
+
     group.clearLayers();
     if (!visible) { if (map0.hasLayer(group)) map0.removeLayer(group); return; }
     if (!map0.hasLayer(group)) group.addTo(map0);

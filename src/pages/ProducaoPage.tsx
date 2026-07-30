@@ -183,7 +183,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         user_id: user.id,
         comprimento_dia: compNum,
         ligacoes_dia: ligNum,
-        tipo_pavimento: tipoPavimento,
+        tipo_pavimento: tipoPavimento || null,
         pv_final_assentado: pvFinalAssentado,
         pv_final_assentado_em: pvFinalAssentado ? new Date().toISOString() : null,
         pv_final_assentado_por: pvFinalAssentado ? user.id : null,

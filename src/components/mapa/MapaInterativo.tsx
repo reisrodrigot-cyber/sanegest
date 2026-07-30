@@ -188,6 +188,37 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
     | null
   >(null);
   const [focusMapaErro, setFocusMapaErro] = useState<string | null>(null);
+  // Busca interna (quarto botão) — reutiliza exatamente o fluxo de "Ver no mapa"
+  const [buscaOpen, setBuscaOpen] = useState(false);
+  const [buscaTermo, setBuscaTermo] = useState('');
+  const [buscaDebounced, setBuscaDebounced] = useState('');
+  const [internalFocusOsId, setInternalFocusOsId] = useState<string | null>(null);
+  const activeFocusOsId = internalFocusOsId ?? focusMapaOsId;
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setBuscaDebounced(buscaTermo), 250);
+    return () => window.clearTimeout(t);
+  }, [buscaTermo]);
+
+  const normalizarTrecho = (v: string) =>
+    v.trim().toLowerCase().replace(/,/g, '.').replace(/\s+/g, '').replace(/^tr[-_ ]?/, '');
+
+  const resultadosBusca = useMemo(() => {
+    const q = normalizarTrecho(buscaDebounced);
+    if (q.length < 1) return [] as Array<{ os_id: string; trecho: string; bacia: string; status: OSStatus | string; pv_final_assentado: boolean | null }>;
+    const porOs = new Map<string, { os_id: string; trecho: string; bacia: string; status: OSStatus | string; pv_final_assentado: boolean | null }>();
+    for (const t of previewBase.trechos) {
+      for (const v of t.vinculos) {
+        if (!normalizarTrecho(v.trecho ?? '').includes(q)) continue;
+        const atual = porOs.get(v.os_id);
+        if (!atual) porOs.set(v.os_id, { os_id: v.os_id, trecho: v.trecho, bacia: v.bacia, status: v.status, pv_final_assentado: v.pv_final_assentado });
+        else if (v.pv_final_assentado) atual.pv_final_assentado = true;
+      }
+    }
+    return Array.from(porOs.values())
+      .sort((a, b) => a.trecho.localeCompare(b.trecho, 'pt-BR', { numeric: true }) || a.bacia.localeCompare(b.bacia))
+      .slice(0, 8);
+  }, [buscaDebounced, previewBase.trechos]);
 
   const limparFocoMapa = () => {
     const map = mapRef.current;
@@ -196,6 +227,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
     focusMapaLayerRef.current = null;
     setFocusMapaInfo(null);
     setFocusMapaErro(null);
+    setInternalFocusOsId(null);
     onClearFocusMapa?.();
   };
 
@@ -207,10 +239,11 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       try { map.removeLayer(focusMapaLayerRef.current); } catch {}
       focusMapaLayerRef.current = null;
     }
-    if (!focusMapaOsId) { setFocusMapaInfo(null); setFocusMapaErro(null); return; }
+    if (!activeFocusOsId) { setFocusMapaInfo(null); setFocusMapaErro(null); return; }
     if (!previewBase.trechos.length) return;
 
-    const alvo = previewBase.trechos.filter((t) => t.vinculos.some((v) => v.os_id === focusMapaOsId));
+    const alvo = previewBase.trechos.filter((t) => t.vinculos.some((v) => v.os_id === activeFocusOsId));
+
     if (!alvo.length) {
       setFocusMapaInfo(null);
       setFocusMapaErro('Trecho ainda não vinculado ao mapa');

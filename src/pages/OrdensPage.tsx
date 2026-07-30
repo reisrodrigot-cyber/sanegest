@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
-import { statusLabel } from '@/lib/osStatus';
+import { statusLabel, vinculoDisplayStatus, toDisplayStatus, type OSDisplayStatus } from '@/lib/osStatus';
+
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, UserPlus, UserMinus, X } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,11 +67,29 @@ const OrdensPage = () => {
   const [statusSinceByOs, setStatusSinceByOs] = useState<Record<string, string>>({});
   // OS ids that have ≥2 as-built points (PV montante + jusante coords filled)
   const [locatableOsIds, setLocatableOsIds] = useState<Set<string>>(new Set());
+  // OS ids com ao menos um vínculo ativo no mapa (mapa_trecho_os.ativo = true)
+  const [mapeadasOsIds, setMapeadasOsIds] = useState<Set<string>>(new Set());
+
 
   useEffect(() => {
     let cancelled = false;
+    const fetchAllPaged = async (
+      q: (from: number, to: number) => any,
+    ): Promise<any[]> => {
+      const page = 1000;
+      let from = 0;
+      let out: any[] = [];
+      for (;;) {
+        const { data, error } = await q(from, from + page - 1);
+        if (error) break;
+        out = out.concat(data || []);
+        if (!data || data.length < page) break;
+        from += page;
+      }
+      return out;
+    };
     (async () => {
-      const [{ data: regs }, { data: hist }, { data: ab }] = await Promise.all([
+      const [{ data: regs }, { data: hist }, { data: ab }, vinculos] = await Promise.all([
         supabase.from('registros_producao').select('os_id, comprimento_dia, comprimento_ajustado, status, pv_final_assentado').eq('excluido', false).eq('status', 'ativo'),
         supabase
           .from('os_status_historico')
@@ -81,8 +100,13 @@ const OrdensPage = () => {
           .select('os_id')
           .not('latitude', 'is', null)
           .not('longitude', 'is', null),
+        fetchAllPaged((from, to) =>
+          supabase.from('mapa_trecho_os').select('os_id').eq('ativo', true).range(from, to)
+        ),
       ]);
       if (cancelled) return;
+
+      setMapeadasOsIds(new Set((vinculos || []).map((v: any) => v.os_id as string)));
 
       const counts = new Map<string, number>();
       (ab || []).forEach((r: any) => counts.set(r.os_id, (counts.get(r.os_id) || 0) + 1));
@@ -107,6 +131,11 @@ const OrdensPage = () => {
     })();
     return () => { cancelled = true; };
   }, [ordens.length]);
+
+  /** Status efetivo: PV final assentado vence o enum técnico legado. */
+  const statusEfetivo = (os: { id: string; status: OSStatus }): OSDisplayStatus =>
+    vinculoDisplayStatus({ status: os.status, pv_final_assentado: executadasOsIds.has(os.id) });
+
 
   const bacias = [...new Set(ordens.map(os => os.bacia).filter(Boolean))].sort();
   const responsaveis = [...new Set(ordens.map(os => os.liberado_para).filter(Boolean) as string[])].sort();
@@ -138,7 +167,7 @@ const OrdensPage = () => {
         if (!matchSearch(os)) return false;
         if (!matchBacia(os)) return false;
         if (!matchResponsavel(os)) return false;
-        if (faseFilter !== 'TODAS' && os.status !== faseFilter) return false;
+        if (faseFilter !== 'TODAS' && statusEfetivo(os) !== toDisplayStatus(faseFilter)) return false;
         return true;
       })
       .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
@@ -152,7 +181,7 @@ const OrdensPage = () => {
         if (!matchSearch(os)) return false;
         if (!matchBacia(os)) return false;
         if (!matchResponsavel(os)) return false;
-        if (faseFilter !== 'TODAS' && os.status !== faseFilter) return false;
+        if (faseFilter !== 'TODAS' && statusEfetivo(os) !== toDisplayStatus(faseFilter)) return false;
         return true;
       })
       .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
@@ -166,7 +195,7 @@ const OrdensPage = () => {
     const base = activeTab === 'executadas'
       ? ordens.filter(os => executadasOsIds.has(os.id))
       : ordens.filter(os => os.liberado && !executadasOsIds.has(os.id));
-    return base.filter(os => os.status === status).length;
+    return base.filter(os => statusEfetivo(os) === toDisplayStatus(status)).length;
   };
 
   const daysSince = (iso?: string) => {
@@ -316,7 +345,7 @@ const OrdensPage = () => {
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.liberado_para || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <StatusBadge status={os.status} size="sm" />
+                      <StatusBadge status={statusEfetivo(os)} size="sm" />
                       {parado && (
                         <TooltipProvider>
                           <Tooltip>
@@ -333,16 +362,36 @@ const OrdensPage = () => {
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex items-center gap-1 justify-end">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); if (mapeadasOsIds.has(os.id)) navigate(`/mapa?os=${os.id}`); }}
+                                disabled={!mapeadasOsIds.has(os.id)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                aria-label="Ver no mapa"
+                              >
+                                <MapIcon size={14} /> <span className="hidden lg:inline">Ver no mapa</span>
+                              </button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <span>{mapeadasOsIds.has(os.id) ? 'Ver no mapa' : 'Trecho ainda não vinculado ao mapa'}</span>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                       {locatableOsIds.has(os.id) && (
                         <button
                           onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-primary/10 transition-colors"
                           style={{ color: '#4dd9ac' }}
-                          title="Localizar no mapa"
+                          title="Localizar As Built"
                         >
-                          <MapPin size={14} /> <span className="hidden lg:inline">Localizar</span>
+                          <MapPin size={14} /> <span className="hidden lg:inline">As Built</span>
                         </button>
                       )}
+
                       {canLiberar && os.liberado && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setDesatribuirOS([os]); }}

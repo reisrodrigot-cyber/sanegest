@@ -17,6 +17,7 @@ import { AsBuiltConfigModal } from './AsBuiltConfigModal';
 import { MapaBasePreviewLayer } from './MapaBasePreviewLayer';
 import { useMapaBasePreview } from '@/hooks/useMapaBasePreview';
 import { StatusLegenda } from './StatusLegenda';
+import { aggregateVinculosStatus, statusLabel } from '@/lib/osStatus';
 
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';
@@ -109,11 +110,15 @@ interface MapaInterativoProps {
   className?: string;
   /** OS ID para focar (flyToBounds + popup + pulse) */
   focusOsId?: string | null;
+  /** OS ID para localizar via vínculo de mapa (mapa_trecho_os.ativo = true) */
+  focusMapaOsId?: string | null;
+  /** Callback ao limpar o destaque da N.S. localizada */
+  onClearFocusMapa?: () => void;
   /** Exibe botão de ampliar/recolher o mapa em tela cheia */
   allowFullscreen?: boolean;
 }
 
-export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null, allowFullscreen = false }: MapaInterativoProps) => {
+export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null, focusMapaOsId = null, onClearFocusMapa, allowFullscreen = false }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
   // Visualização das bases geográficas é liberada para qualquer perfil autenticado
@@ -175,6 +180,93 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       didFitPreviewRef.current = true;
     } catch {}
   }, [previewBase.bases, previewBase.trechos, previewBase.pontos]);
+
+  // ======= Localizar N.S. vinculada ao mapa (somente leitura) =======
+  const focusMapaLayerRef = useRef<L.LayerGroup | null>(null);
+  const [focusMapaInfo, setFocusMapaInfo] = useState<
+    | { trecho: string; bacia: string; pv_montante: string | null; pv_jusante: string | null; status: string; qtdTrechos: number }
+    | null
+  >(null);
+  const [focusMapaErro, setFocusMapaErro] = useState<string | null>(null);
+
+  const limparFocoMapa = () => {
+    const map = mapRef.current;
+    const g = focusMapaLayerRef.current;
+    if (map && g) { try { map.removeLayer(g); } catch {} }
+    focusMapaLayerRef.current = null;
+    setFocusMapaInfo(null);
+    setFocusMapaErro(null);
+    onClearFocusMapa?.();
+  };
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    // limpa destaque anterior
+    if (focusMapaLayerRef.current) {
+      try { map.removeLayer(focusMapaLayerRef.current); } catch {}
+      focusMapaLayerRef.current = null;
+    }
+    if (!focusMapaOsId) { setFocusMapaInfo(null); setFocusMapaErro(null); return; }
+    if (!previewBase.trechos.length) return;
+
+    const alvo = previewBase.trechos.filter((t) => t.vinculos.some((v) => v.os_id === focusMapaOsId));
+    if (!alvo.length) {
+      setFocusMapaInfo(null);
+      setFocusMapaErro('Trecho ainda não vinculado ao mapa');
+      return;
+    }
+
+    const group = L.layerGroup();
+    const pts: [number, number][] = [];
+    for (const t of alvo) {
+      const g: any = t.geometry;
+      const segs: [number, number][][] =
+        g?.type === 'LineString' ? [g.coordinates] : g?.type === 'MultiLineString' ? g.coordinates : [];
+      for (const seg of segs) {
+        const latlngs = seg.map(([lon, lat]) => [lat, lon] as [number, number]);
+        if (latlngs.length < 2) continue;
+        pts.push(...latlngs);
+        L.polyline(latlngs, { color: '#4dd9ac', weight: 9, opacity: 0.75 }).addTo(group);
+      }
+    }
+    if (!pts.length) { setFocusMapaErro('Trecho ainda não vinculado ao mapa'); return; }
+    group.addTo(map);
+    focusMapaLayerRef.current = group;
+    didFitPreviewRef.current = true;
+
+    try {
+      const b = L.latLngBounds(pts);
+      if (b.isValid()) map.flyToBounds(b, { padding: [60, 60], maxZoom: 18, duration: 0.8 });
+    } catch {}
+
+    const v = alvo.flatMap((t) => t.vinculos).find((x) => x.os_id === focusMapaOsId)!;
+    const statusEfetivo = aggregateVinculosStatus(
+      alvo.flatMap((t) => t.vinculos).filter((x) => x.os_id === focusMapaOsId)
+    );
+    setFocusMapaErro(null);
+    setFocusMapaInfo({
+      trecho: v.trecho,
+      bacia: v.bacia,
+      pv_montante: null,
+      pv_jusante: null,
+      status: statusLabel(statusEfetivo),
+      qtdTrechos: alvo.length,
+    });
+
+    supabase
+      .from('ordens_servico')
+      .select('pv_montante, pv_jusante')
+      .eq('id', focusMapaOsId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setFocusMapaInfo((prev) => (prev ? { ...prev, pv_montante: data.pv_montante, pv_jusante: data.pv_jusante } : prev));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusMapaOsId, previewBase.trechos]);
+
+
 
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1161,6 +1253,39 @@ ${placemarks.join('\n')}
 
       {/* Legenda oficial de status */}
       <StatusLegenda className="absolute bottom-6 left-3 z-[500]" />
+
+      {/* Destaque de N.S. localizada pelo atalho "Ver no mapa" (somente leitura) */}
+      {(focusMapaInfo || focusMapaErro) && (
+        <div className="absolute top-3 left-3 z-[600] max-w-[300px] rounded-lg border border-border bg-card/95 shadow-lg p-3 text-xs">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              {focusMapaInfo ? (
+                <>
+                  <div className="font-semibold text-sm text-foreground">{focusMapaInfo.trecho}</div>
+                  <div className="text-muted-foreground">{focusMapaInfo.bacia}</div>
+                  <div className="text-muted-foreground mt-1">
+                    PV mont.: {focusMapaInfo.pv_montante || '—'} · PV jus.: {focusMapaInfo.pv_jusante || '—'}
+                  </div>
+                  <div className="mt-1 text-foreground">Situação: <b>{focusMapaInfo.status}</b></div>
+                  {focusMapaInfo.qtdTrechos > 1 && (
+                    <div className="text-muted-foreground mt-1">{focusMapaInfo.qtdTrechos} trechos vinculados</div>
+                  )}
+                </>
+              ) : (
+                <div className="text-amber-600">Trecho ainda não vinculado ao mapa</div>
+              )}
+            </div>
+            <button
+              onClick={limparFocoMapa}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Limpar destaque"
+              title="Limpar destaque"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Controle flutuante: camadas + minha localização */}
       <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">

@@ -5,7 +5,7 @@ import { OSStatus } from '@/types/sanegest';
 import { statusLabel, vinculoDisplayStatus, toDisplayStatus, type OSDisplayStatus } from '@/lib/osStatus';
 
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, UserPlus, UserMinus, X } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
@@ -372,7 +372,7 @@ const OrdensPage = () => {
                                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                                 aria-label="Ver no mapa"
                               >
-                                <Map size={14} /> <span className="hidden lg:inline">Ver no mapa</span>
+                                <MapIcon size={14} /> <span className="hidden lg:inline">Ver no mapa</span>
                               </button>
                             </span>
                           </TooltipTrigger>

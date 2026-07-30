@@ -114,7 +114,9 @@ interface MapaInterativoProps {
 export const MapaInterativo = ({ showLocation = false, height = 520, preferCanvas = true, className = 'mb-6', focusOsId = null }: MapaInterativoProps) => {
   const { effectiveRole } = useAuth();
   const canManage = permissions.canEditOS(effectiveRole);
-  const canViewPreviewBase = effectiveRole === 'admin' || effectiveRole === 'sala_tecnica' || effectiveRole === 'gerencia';
+  // Visualização das bases geográficas é liberada para qualquer perfil autenticado
+  // (somente leitura). A edição continua restrita por `canManage` e pelas RLS.
+  const canViewPreviewBase = !!effectiveRole;
   const previewBase = useMapaBasePreview(canViewPreviewBase);
   const PREVIEW_VIS_KEY = 'sanegest_map_preview_vis_by_ss';
   const [previewVisByS, setPreviewVisByS] = useState<Record<string, boolean>>(() => {

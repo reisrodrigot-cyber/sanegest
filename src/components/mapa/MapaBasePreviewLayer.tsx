@@ -30,8 +30,21 @@ function esc(s: any): string {
   );
 }
 
+/** Raio visual dos PVs por faixa de zoom. `null` = ocultar pontos individuais. */
+function pvRadiusForZoom(zoom: number): number | null {
+  if (zoom < 14) return null;   // zoom distante: esconder PVs
+  if (zoom < 15) return 2;
+  if (zoom < 16) return 2.5;
+  if (zoom < 17) return 3;
+  if (zoom < 18) return 3.5;
+  return 4;                     // zoom próximo: tamanho atual
+}
+
 export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) => {
   const layerRef = useRef<L.LayerGroup | null>(null);
+  const pvLayerRef = useRef<L.LayerGroup | null>(null);
+  const pvMarkersRef = useRef<L.CircleMarker[]>([]);
+
 
   useEffect(() => {
     if (!map) return;

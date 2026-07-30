@@ -30,6 +30,16 @@ function esc(s: any): string {
   );
 }
 
+/** Um mapa removido (`map.remove()`) perde `_container`/panes: adicionar layers nele quebra. */
+function isMapAlive(map: L.Map | null): map is L.Map {
+  if (!map) return false;
+  try {
+    return !!(map as any)._container && !!(map as any)._panes?.overlayPane && !!map.getPane('overlayPane');
+  } catch {
+    return false;
+  }
+}
+
 /** Raio visual dos PVs por faixa de zoom. `null` = ocultar pontos individuais. */
 function pvRadiusForZoom(zoom: number): number | null {
   if (zoom < 14) return null;   // zoom distante: esconder PVs
@@ -39,6 +49,7 @@ function pvRadiusForZoom(zoom: number): number | null {
   if (zoom < 18) return 3.5;
   return 4;                     // zoom próximo: tamanho atual
 }
+
 
 export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) => {
   const layerRef = useRef<L.LayerGroup | null>(null);

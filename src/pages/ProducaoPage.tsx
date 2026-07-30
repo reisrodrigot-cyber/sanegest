@@ -411,10 +411,24 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           </label>
         </div>
 
+        {(() => {
+          const vazio =
+            (parseFloat(comprimento) || 0) <= 0 &&
+            (parseInt(numLigacoes) || 0) <= 0 &&
+            ligacoes.reduce((s, l) => s + (parseFloat(l.comprimento) || 0), 0) <= 0 &&
+            !pvFinalAssentado;
+          return vazio ? (
+            <p className="text-xs text-muted-foreground leading-snug">
+              Informe rede, ligação, comprimento de ligação ou marque PV batido para registrar a produção.
+            </p>
+          ) : null;
+        })()}
+
         <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
           {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save size={14} className="mr-2" />}
           Salvar registro do dia
         </Button>
+
       </div>
 
       {/* Histórico do encarregado */}

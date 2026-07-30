@@ -17,7 +17,9 @@ import { AsBuiltConfigModal } from './AsBuiltConfigModal';
 import { MapaBasePreviewLayer } from './MapaBasePreviewLayer';
 import { useMapaBasePreview } from '@/hooks/useMapaBasePreview';
 import { StatusLegenda } from './StatusLegenda';
-import { aggregateVinculosStatus, statusLabel } from '@/lib/osStatus';
+import { aggregateVinculosStatus, statusLabel, getStatusMeta } from '@/lib/osStatus';
+import type { OSStatus } from '@/types/sanegest';
+
 
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';

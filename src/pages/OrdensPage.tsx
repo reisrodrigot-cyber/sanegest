@@ -67,6 +67,9 @@ const OrdensPage = () => {
   const [statusSinceByOs, setStatusSinceByOs] = useState<Record<string, string>>({});
   // OS ids that have ≥2 as-built points (PV montante + jusante coords filled)
   const [locatableOsIds, setLocatableOsIds] = useState<Set<string>>(new Set());
+  // OS ids com ao menos um vínculo ativo no mapa (mapa_trecho_os.ativo = true)
+  const [mapeadasOsIds, setMapeadasOsIds] = useState<Set<string>>(new Set());
+
 
   useEffect(() => {
     let cancelled = false;

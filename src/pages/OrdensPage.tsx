@@ -167,7 +167,7 @@ const OrdensPage = () => {
         if (!matchSearch(os)) return false;
         if (!matchBacia(os)) return false;
         if (!matchResponsavel(os)) return false;
-        if (faseFilter !== 'TODAS' && os.status !== faseFilter) return false;
+        if (faseFilter !== 'TODAS' && statusEfetivo(os) !== toDisplayStatus(faseFilter)) return false;
         return true;
       })
       .sort((a, b) => naturalCompare(a.trecho, b.trecho)),

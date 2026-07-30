@@ -350,7 +350,10 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="text-xs text-muted-foreground">Tipo de Pavimento *</label>
+            <label className="text-xs text-muted-foreground">
+              Tipo de Pavimento{(parseFloat(comprimento) || 0) > 0 ? ' *' : ''}
+            </label>
+
             <Select value={tipoPavimento} onValueChange={setTipoPavimento}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o tipo de pavimento" />

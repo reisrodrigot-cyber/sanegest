@@ -145,8 +145,15 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
   const handleSave = async () => {
     const compNum = parseFloat(comprimento) || 0;
     const ligNum = parseInt(numLigacoes) || 0;
-    if (compNum <= 0 && ligNum <= 0) {
-      toast.error('Informe comprimento ou ligações.');
+    const compLigTotal = ligacoes.reduce((s, l) => s + (parseFloat(l.comprimento) || 0), 0);
+    if (compNum < 0 || ligNum < 0 || ligacoes.some((l) => (parseFloat(l.comprimento) || 0) < 0)) {
+      toast.error('Valores não podem ser negativos.');
+      return;
+    }
+    // Basta UMA informação operacional válida: rede, ligações, comprimento de
+    // ligação ou PV batido. Observação isolada não libera o registro.
+    if (compNum <= 0 && ligNum <= 0 && compLigTotal <= 0 && !pvFinalAssentado) {
+      toast.error('Informe rede, ligação, comprimento de ligação ou marque PV batido para registrar a produção.');
       return;
     }
     // Aviso de possível duplicidade: já existe envio hoje para esta OS pelo mesmo
@@ -160,10 +167,12 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       if (!ok) return;
     }
 
-    if (!tipoPavimento) {
+    // Pavimento só é exigido quando houve execução de rede (abertura de vala).
+    if (compNum > 0 && !tipoPavimento) {
       toast.error('Selecione o Tipo de Pavimento.');
       return;
     }
+
     if (!user) return;
     setSaving(true);
 
@@ -174,7 +183,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         user_id: user.id,
         comprimento_dia: compNum,
         ligacoes_dia: ligNum,
-        tipo_pavimento: tipoPavimento,
+        tipo_pavimento: tipoPavimento || null,
         pv_final_assentado: pvFinalAssentado,
         pv_final_assentado_em: pvFinalAssentado ? new Date().toISOString() : null,
         pv_final_assentado_por: pvFinalAssentado ? user.id : null,
@@ -341,7 +350,10 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="text-xs text-muted-foreground">Tipo de Pavimento *</label>
+            <label className="text-xs text-muted-foreground">
+              Tipo de Pavimento{(parseFloat(comprimento) || 0) > 0 ? ' *' : ''}
+            </label>
+
             <Select value={tipoPavimento} onValueChange={setTipoPavimento}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o tipo de pavimento" />
@@ -399,10 +411,24 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           </label>
         </div>
 
+        {(() => {
+          const vazio =
+            (parseFloat(comprimento) || 0) <= 0 &&
+            (parseInt(numLigacoes) || 0) <= 0 &&
+            ligacoes.reduce((s, l) => s + (parseFloat(l.comprimento) || 0), 0) <= 0 &&
+            !pvFinalAssentado;
+          return vazio ? (
+            <p className="text-xs text-muted-foreground leading-snug">
+              Informe rede, ligação, comprimento de ligação ou marque PV batido para registrar a produção.
+            </p>
+          ) : null;
+        })()}
+
         <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
           {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save size={14} className="mr-2" />}
           Salvar registro do dia
         </Button>
+
       </div>
 
       {/* Histórico do encarregado */}

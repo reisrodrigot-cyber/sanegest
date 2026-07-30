@@ -242,7 +242,16 @@
     margin: 8px 10px !important;
     max-width: 220px !important;
   }
+  /* Sem seta/conector solto no mobile */
+  .leaflet-popup-tip-container { display: none !important; }
+  .leaflet-tooltip::before { display: none !important; }
+  /* Cartão de inspeção acima da atribuição Esri, sem cobrir controles */
+  .sg-map-card {
+    max-width: calc(100vw - 88px) !important;
+    font-size: 12px !important;
+  }
 }
+
 
 
 @keyframes mePulse {

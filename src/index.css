@@ -160,6 +160,67 @@
   z-index: 0;
 }
 
+/* ============================================================
+   Rótulos do mapa (tooltips/popups) sobre imagem de satélite.
+   Etiqueta opaca, alto contraste e sombra leve — nunca transparente.
+   ============================================================ */
+.leaflet-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(15, 23, 42, 0.25) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  padding: 5px 8px !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  font-weight: 500;
+  max-width: 240px;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  opacity: 1 !important;
+}
+.leaflet-tooltip-top::before { border-top-color: rgba(255, 255, 255, 0.95) !important; }
+.leaflet-tooltip-bottom::before { border-bottom-color: rgba(255, 255, 255, 0.95) !important; }
+.leaflet-tooltip-left::before { border-left-color: rgba(255, 255, 255, 0.95) !important; }
+.leaflet-tooltip-right::before { border-right-color: rgba(255, 255, 255, 0.95) !important; }
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+.leaflet-popup-content-wrapper {
+  border: 1px solid rgba(15, 23, 42, 0.2) !important;
+  border-radius: 10px !important;
+}
+
+/* Borda na cor semântica do status, quando aplicável */
+.sg-label-cinza .leaflet-popup-content-wrapper,
+.leaflet-tooltip.sg-label-cinza { border-color: #8a8a8a !important; }
+.sg-label-vermelho .leaflet-popup-content-wrapper,
+.leaflet-tooltip.sg-label-vermelho { border-color: #dc2626 !important; }
+.sg-label-amarelo .leaflet-popup-content-wrapper,
+.leaflet-tooltip.sg-label-amarelo { border-color: #ca8a04 !important; }
+.sg-label-verde .leaflet-popup-content-wrapper,
+.leaflet-tooltip.sg-label-verde { border-color: #16a34a !important; }
+.sg-label-azul .leaflet-popup-content-wrapper,
+.leaflet-tooltip.sg-label-azul { border-color: #2563eb !important; }
+
+@media (max-width: 767px) {
+  .leaflet-tooltip {
+    font-size: 11px !important;
+    padding: 4px 6px !important;
+    max-width: 180px;
+  }
+  .leaflet-popup-content {
+    font-size: 12px !important;
+    margin: 8px 10px !important;
+    max-width: 220px !important;
+  }
+}
+
+
 @keyframes mePulse {
   0%   { transform: scale(0.6); opacity: 0.6; }
   70%  { transform: scale(1.8); opacity: 0; }

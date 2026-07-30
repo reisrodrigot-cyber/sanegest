@@ -157,12 +157,13 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
   // Ajuste visual dos PVs conforme o zoom (sem recarregar camadas/dados)
   useEffect(() => {
     const map0 = map;
-    if (!map0) return;
+    if (!isMapAlive(map0)) return;
     const apply = () => {
       const group = layerRef.current;
       const pvGroup = pvLayerRef.current;
-      if (!group || !pvGroup) return;
+      if (!group || !pvGroup || !isMapAlive(map0)) return;
       const r = pvRadiusForZoom(map0.getZoom());
+
       if (r == null) {
         if (group.hasLayer(pvGroup)) group.removeLayer(pvGroup);
         return;

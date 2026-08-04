@@ -374,6 +374,26 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           </span>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
+          <div className="md:col-span-2">
+            <label className="text-xs text-muted-foreground" htmlFor="data-producao">
+              Data da produção *
+            </label>
+            <Input
+              id="data-producao"
+              type="date"
+              value={dataProducao}
+              max={hojeMaceio()}
+              onChange={(e) => setDataProducao(e.target.value)}
+              className="h-11 text-base"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {dataProducao
+                ? dataProducao === hojeMaceio()
+                  ? `Hoje — ${formatBR(dataProducao)}`
+                  : `Lançamento retroativo — ${formatBR(dataProducao)}`
+                : 'Informe a data em que a produção foi executada.'}
+            </p>
+          </div>
           <div>
             <label className="text-xs text-muted-foreground">Rede do dia — comprimento de trecho (m)</label>
             <Input

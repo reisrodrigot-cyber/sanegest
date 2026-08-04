@@ -491,8 +491,30 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
 
         <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
           {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save size={14} className="mr-2" />}
-          Salvar registro do dia
+          Salvar registro
         </Button>
+
+        <Dialog open={confirmDataOpen} onOpenChange={(o) => !saving && setConfirmDataOpen(o)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirmar data de produção</DialogTitle>
+              <DialogDescription>
+                A data selecionada é {formatBR(dataProducao || hojeMaceio())}, diferente da data de
+                hoje, {formatBR(hojeMaceio())}. Esta produção será registrada no dia selecionado.
+                Deseja confirmar?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+              <Button variant="outline" disabled={saving} onClick={() => setConfirmDataOpen(false)}>
+                Cancelar
+              </Button>
+              <Button disabled={saving} onClick={() => void doSave()}>
+                {saving && <Loader2 className="animate-spin mr-2" size={14} />}
+                Confirmar lançamento
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
       </div>
 

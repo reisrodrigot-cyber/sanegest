@@ -1387,6 +1387,7 @@ export type Database = {
           comprimento_dia: number
           created_at: string
           data_registro: string
+          data_retroativa_confirmada: boolean
           excluido: boolean
           excluido_em: string | null
           excluido_por: string | null
@@ -1415,6 +1416,7 @@ export type Database = {
           comprimento_dia?: number
           created_at?: string
           data_registro?: string
+          data_retroativa_confirmada?: boolean
           excluido?: boolean
           excluido_em?: string | null
           excluido_por?: string | null
@@ -1443,6 +1445,7 @@ export type Database = {
           comprimento_dia?: number
           created_at?: string
           data_registro?: string
+          data_retroativa_confirmada?: boolean
           excluido?: boolean
           excluido_em?: string | null
           excluido_por?: string | null

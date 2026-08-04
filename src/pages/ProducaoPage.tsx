@@ -362,7 +362,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
 
       {/* Novo registro do dia */}
       <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">Registro de hoje</h3>
+        <h3 className="text-sm font-semibold text-foreground">Novo registro de produção</h3>
         <div
           className="flex items-start gap-2.5 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm leading-snug text-destructive"
           role="alert"

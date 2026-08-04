@@ -158,36 +158,60 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
   const acumComprimento = registros.reduce((s, r) => s + Number(r.comprimento_dia || 0), 0);
   const acumLigacoes = registros.reduce((s, r) => s + (r.ligacoes_dia || 0), 0);
 
-  const handleSave = async () => {
+  const validar = () => {
     const compNum = parseFloat(comprimento) || 0;
     const ligNum = parseInt(numLigacoes) || 0;
     const compLigTotal = ligacoes.reduce((s, l) => s + (parseFloat(l.comprimento) || 0), 0);
     if (compNum < 0 || ligNum < 0 || ligacoes.some((l) => (parseFloat(l.comprimento) || 0) < 0)) {
       toast.error('Valores não podem ser negativos.');
-      return;
+      return false;
     }
     // Basta UMA informação operacional válida: rede, ligações, comprimento de
     // ligação ou PV batido. Observação isolada não libera o registro.
     if (compNum <= 0 && ligNum <= 0 && compLigTotal <= 0 && !pvFinalAssentado) {
       toast.error('Informe rede, ligação, comprimento de ligação ou marque PV batido para registrar a produção.');
-      return;
+      return false;
     }
-    // Aviso de possível duplicidade: já existe envio hoje para esta OS pelo mesmo
-    // encarregado? Não bloqueia (pode haver produção complementar), apenas confirma.
-    const hojeStr = new Date().toISOString().slice(0, 10);
-    const jaEnviadoHoje = registros.some((r) => r.data_registro === hojeStr);
-    if (jaEnviadoHoje) {
+    // Data da produção: obrigatória, formato calendário e nunca futura.
+    if (!dataProducao) {
+      toast.error('Informe a data da produção.');
+      return false;
+    }
+    if (dataProducao > hojeMaceio()) {
+      toast.error('A data da produção não pode ser futura.');
+      return false;
+    }
+    // Aviso de possível duplicidade: já existe envio nesta data para esta OS pelo
+    // mesmo encarregado? Não bloqueia (pode haver produção complementar).
+    const jaEnviado = registros.some((r) => r.data_registro === dataProducao);
+    if (jaEnviado) {
       const ok = window.confirm(
-        `Você já enviou produção hoje para o trecho ${os.trecho}.\nDeseja registrar outro envio mesmo assim?`,
+        `Você já enviou produção em ${formatBR(dataProducao)} para o trecho ${os.trecho}.\nDeseja registrar outro envio mesmo assim?`,
       );
-      if (!ok) return;
+      if (!ok) return false;
     }
 
     // Pavimento só é exigido quando houve execução de rede (abertura de vala).
     if (compNum > 0 && !tipoPavimento) {
       toast.error('Selecione o Tipo de Pavimento.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = () => {
+    if (!validar()) return;
+    if (dataProducao !== hojeMaceio()) {
+      setConfirmDataOpen(true);
       return;
     }
+    void doSave();
+  };
+
+  const doSave = async () => {
+    const compNum = parseFloat(comprimento) || 0;
+    const ligNum = parseInt(numLigacoes) || 0;
+    const retroativa = dataProducao !== hojeMaceio();
 
     if (!user) return;
     setSaving(true);
@@ -197,6 +221,9 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       .insert({
         os_id: os.id,
         user_id: user.id,
+        // data real de execução (calendário), fonte de verdade dos relatórios
+        data_registro: dataProducao,
+        data_retroativa_confirmada: retroativa,
         comprimento_dia: compNum,
         ligacoes_dia: ligNum,
         tipo_pavimento: tipoPavimento || null,
@@ -239,14 +266,16 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
 
     toast.success(
       pvFinalAssentado
-        ? 'Produção registrada — trecho marcado como concluído (PV final assentado).'
-        : 'Produção do dia registrada!'
+        ? `Produção registrada em ${formatBR(dataProducao)} — trecho marcado como concluído (PV final assentado).`
+        : `Produção registrada em ${formatBR(dataProducao)}!`
     );
     setComprimento('');
     setNumLigacoes('');
     setTipoPavimento('');
     setLigacoes([]);
     setPvFinalAssentado(false);
+    setDataProducao(hojeMaceio());
+    setConfirmDataOpen(false);
     fetchRegistros();
     setSaving(false);
   };

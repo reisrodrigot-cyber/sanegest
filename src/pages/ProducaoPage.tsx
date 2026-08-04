@@ -62,6 +62,20 @@ interface LigacaoNova {
   referencia: string;
 }
 
+// "Hoje" sempre em America/Maceio (UTC-03), como data de calendário YYYY-MM-DD.
+const hojeMaceio = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Maceio',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+
+const formatBR = (iso: string) => {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+};
+
 const fmt = (v: unknown) => {
   if (v == null) return '—';
   const n = Number(v);

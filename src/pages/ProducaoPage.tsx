@@ -101,6 +101,8 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
   const [tipoPavimento, setTipoPavimento] = useState<string>('');
   const [ligacoes, setLigacoes] = useState<LigacaoNova[]>([]);
   const [pvFinalAssentado, setPvFinalAssentado] = useState(false);
+  const [dataProducao, setDataProducao] = useState<string>(() => hojeMaceio());
+  const [confirmDataOpen, setConfirmDataOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [popupRegistroId, setPopupRegistroId] = useState<string | null>(null);
   const [popupAcumOpen, setPopupAcumOpen] = useState(false);

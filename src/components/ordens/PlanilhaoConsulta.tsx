@@ -107,12 +107,18 @@ export const PlanilhaoConsulta = () => {
       dados.forEach(r => {
         ws.addRow(visibleColumns.map(c => {
           const v = r[c.id];
-          if (c.type === 'number') return v == null ? null : Number(v);
+          if (c.type === 'number') {
+            if (v == null) return null;
+            const d = c.decimals ?? 2;
+            return Number(Number(v).toFixed(d));
+          }
           return cellText(r, c) === '—' ? '' : cellText(r, c);
         }));
       });
       const totalRow = ws.addRow(visibleColumns.map((c, i) =>
-        i === 0 ? `TOTAL (${dados.length} linhas)` : (c.id in totais ? totais[c.id] : null),
+        i === 0
+          ? `TOTAL (${dados.length} linhas)`
+          : (c.id in totais ? Number(totais[c.id].toFixed(c.decimals ?? 2)) : null),
       ));
       totalRow.font = { bold: true };
       const buf = await wb.xlsx.writeBuffer();

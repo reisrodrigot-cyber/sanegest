@@ -33,6 +33,8 @@ const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/dashboard': ['admin', 'gerencia', 'sala_tecnica', 'encarregado', 'topografo'],
   '/importar/historico': ['admin', 'sala_tecnica', 'gerencia'],
   '/importar': ['admin', 'sala_tecnica'],
+  // Precede '/ordens' porque o match usa startsWith
+  '/ordens/planilhao': ['admin', 'sala_tecnica'],
   '/ordens': ['admin', 'gerencia', 'sala_tecnica'],
   '/producao': ['admin', 'encarregado'],
   '/materiais': ['admin', 'almoxarifado'],
@@ -107,7 +109,9 @@ const AppRoutes = () => {
       <Route path="/" element={<Navigate to={isRecoveryFlow ? "/reset-password" + window.location.hash : supabaseUser ? home : "/login"} replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/ordens" element={<ProtectedRoute><OrdensPage /></ProtectedRoute>} />
+      <Route path="/ordens/planilhao" element={<ProtectedRoute><OrdensPage /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetailPage /></ProtectedRoute>} />
+
       <Route path="/importar" element={<ProtectedRoute><ImportarPage /></ProtectedRoute>} />
       <Route path="/importar/historico" element={<ProtectedRoute><ImportHistoricoPage /></ProtectedRoute>} />
       <Route path="/producao" element={<ProtectedRoute><ProducaoPage /></ProtectedRoute>} />

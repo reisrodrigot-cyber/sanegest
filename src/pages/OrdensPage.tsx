@@ -4,7 +4,8 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { statusLabel, vinculoDisplayStatus, toDisplayStatus, type OSDisplayStatus } from '@/lib/osStatus';
 
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { PlanilhaoConsulta } from '@/components/ordens/PlanilhaoConsulta';
 import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
@@ -48,6 +49,9 @@ const OrdensPage = () => {
   const canImport = role === 'admin' || role === 'sala_tecnica';
   const canLiberar = role === 'admin' || role === 'sala_tecnica' || role === 'gerencia';
   const canDelete = role === 'admin' || role === 'sala_tecnica';
+  const canPlanilhao = role === 'admin' || role === 'sala_tecnica';
+  const location = useLocation();
+  const planilhaoView = location.pathname.startsWith('/ordens/planilhao');
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [responsavelFilter, setResponsavelFilter] = useState('TODOS');
@@ -422,8 +426,41 @@ const OrdensPage = () => {
     );
   };
 
+  const topTabs = (
+    <div className="flex items-center gap-1 mb-4 border-b border-border">
+      <button
+        onClick={() => navigate('/ordens')}
+        className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${!planilhaoView ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+      >
+        Ordens de Serviço
+      </button>
+      {canPlanilhao && (
+        <button
+          onClick={() => navigate('/ordens/planilhao')}
+          className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${planilhaoView ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+        >
+          Planilhão
+        </button>
+      )}
+    </div>
+  );
+
+  if (planilhaoView) {
+    return (
+      <AppLayout>
+        {topTabs}
+        {canPlanilhao ? (
+          <PlanilhaoConsulta />
+        ) : (
+          <p className="text-sm text-muted-foreground">Você não tem permissão para acessar o Planilhão.</p>
+        )}
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
+      {topTabs}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Ordens de Serviço</h1>

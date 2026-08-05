@@ -422,8 +422,41 @@ const OrdensPage = () => {
     );
   };
 
+  const topTabs = (
+    <div className="flex items-center gap-1 mb-4 border-b border-border">
+      <button
+        onClick={() => navigate('/ordens')}
+        className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${!planilhaoView ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+      >
+        Ordens de Serviço
+      </button>
+      {canPlanilhao && (
+        <button
+          onClick={() => navigate('/ordens/planilhao')}
+          className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${planilhaoView ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+        >
+          Planilhão
+        </button>
+      )}
+    </div>
+  );
+
+  if (planilhaoView) {
+    return (
+      <AppLayout>
+        {topTabs}
+        {canPlanilhao ? (
+          <PlanilhaoConsulta />
+        ) : (
+          <p className="text-sm text-muted-foreground">Você não tem permissão para acessar o Planilhão.</p>
+        )}
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
+      {topTabs}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Ordens de Serviço</h1>

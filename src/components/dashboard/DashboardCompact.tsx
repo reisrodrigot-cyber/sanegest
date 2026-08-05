@@ -33,6 +33,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
+import { PeriodoPicker } from '@/components/dashboard/PeriodoPicker';
+
 
 import type { OrdemServico } from '@/types/sanegest';
 
@@ -1576,7 +1578,9 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
         {/* Activity Feed — 30% */}
         <div className="dc-activity col-span-3 h-[420px]">
-          <ActivityFeed inicio={periodo.inicio} fim={periodo.fim} />
+          {/* Filtro de período PRÓPRIO — independente do card "Produção por Encarregado". */}
+          <ActivityFeed minDate={firstProducaoDate} />
+
         </div>
       </div>
     </div>
@@ -1603,6 +1607,9 @@ const EVENT_META: Record<EventType, { label: string; color: string; bg: string; 
 const useRealEvents = (inicio: string, fim: string) => {
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
+  const recarregar = () => setTentativa((n) => n + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -1612,7 +1619,10 @@ const useRealEvents = (inicio: string, fim: string) => {
     const startMs = new Date(startIso).getTime();
     const endMs = new Date(endIso).getTime();
     setLoading(true);
+    setError(null);
     (async () => {
+      try {
+
       const [prod, topo, mat, status] = await Promise.all([
         supabase.from('registros_producao')
           .select('id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, user_id, os_id, created_at, updated_at, status')
@@ -1634,6 +1644,12 @@ const useRealEvents = (inicio: string, fim: string) => {
           .gte('created_at', startIso).lte('created_at', endIso)
           .order('created_at', { ascending: false }).limit(30),
       ]);
+
+      // Erro silencioso de consulta não pode virar "sem atividades".
+      const qErr = prod.error || topo.error || mat.error || status.error;
+      if (qErr) throw qErr;
+
+
 
       const userIds = new Set<string>();
       const osIds = new Set<string>();
@@ -1711,12 +1727,21 @@ const useRealEvents = (inicio: string, fim: string) => {
         setEvents(dentro.slice(0, 30));
         setLoading(false);
       }
+      } catch (err) {
+        console.error('[ActivityFeed] falha ao buscar atividades', err);
+        if (!cancelled) {
+          setEvents([]);
+          setError('Não foi possível carregar as atividades.');
+          setLoading(false);
+        }
+      }
     })();
     return () => { cancelled = true; };
-  }, [inicio, fim]);
+  }, [inicio, fim, tentativa]);
 
-  return { events, loading };
+  return { events, loading, error, recarregar };
 };
+
 
 const formatRelative = (d: Date) => {
   const diff = Date.now() - d.getTime();
@@ -1732,20 +1757,47 @@ const formatRelative = (d: Date) => {
 const formatStamp = (d: Date) =>
   `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-const ActivityFeed = ({ inicio, fim }: { inicio: string; fim: string }) => {
-  const { events, loading } = useRealEvents(inicio, fim);
+const ActivityFeed = ({ minDate }: { minDate?: string }) => {
+  // Estado de período PRÓPRIO do card — não compartilhado com nenhum outro card.
+  const hojeIso = toISODate(new Date());
+  const [inicio, setInicio] = useState<string>(() => minDate || hojeIso);
+  const [fim, setFim] = useState<string>(hojeIso);
+  const inicializado = useRef(false);
+  useEffect(() => {
+    // Ajusta apenas o valor inicial quando a primeira data de produção chega.
+    if (!inicializado.current && minDate) {
+      inicializado.current = true;
+      setInicio(minDate);
+    }
+  }, [minDate]);
+
+  const { events, loading, error, recarregar } = useRealEvents(inicio, fim);
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between gap-2 mb-2">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
           <Radio size={14} className="text-secondary" />
           O que está acontecendo?
         </h3>
+        <PeriodoPicker
+          inicio={inicio}
+          fim={fim}
+          minDate={minDate}
+          ariaLabel="Selecionar período das atividades"
+          onChange={(i, f) => { setInicio(i); setFim(f); }}
+        />
       </div>
       <div className="overflow-y-auto flex-1 min-h-0 pr-1">
         {loading ? (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
             <Loader2 className="animate-spin mr-2" size={14} /> Carregando…
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-xs text-muted-foreground text-center px-4">
+            <span>{error}</span>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={recarregar}>
+              Tentar novamente
+            </Button>
           </div>
         ) : events.length === 0 ? (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground text-center px-4">
@@ -1756,6 +1808,7 @@ const ActivityFeed = ({ inicio, fim }: { inicio: string; fim: string }) => {
           {events.map((e) => {
             const meta = EVENT_META[e.type];
             return (
+
               <li
                 key={e.id}
                 className="flex items-start gap-3 rounded-md py-1.5 pl-2.5 pr-2 bg-muted/20 hover:bg-muted/40 transition-colors"

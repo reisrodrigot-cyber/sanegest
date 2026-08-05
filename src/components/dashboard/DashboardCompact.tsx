@@ -1732,8 +1732,8 @@ const formatRelative = (d: Date) => {
 const formatStamp = (d: Date) =>
   `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-const ActivityFeed = () => {
-  const { events, loading } = useRealEvents();
+const ActivityFeed = ({ inicio, fim }: { inicio: string; fim: string }) => {
+  const { events, loading } = useRealEvents(inicio, fim);
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-full">
       <div className="flex items-center justify-between mb-2">

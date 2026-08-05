@@ -1075,12 +1075,66 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const periodoRangeLabel = `${fmtDateBR(periodo.inicio)} a ${fmtDateBR(periodo.fim)}`;
 
 
+  const DASH_TABS = [
+    { id: 'mapa' as const, label: 'Mapa geral' },
+    { id: 'avanco' as const, label: 'Avanço físico' },
+    { id: 'producao' as const, label: 'Produção e produtividade' },
+  ];
+
   return (
     <div className="dc-root flex flex-col gap-3">
+      {/* Abas do Dashboard */}
+      <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
+        {DASH_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => {
+              setDashTab(t.id);
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+            }}
+            className={`px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors ${
+              dashTab === t.id
+                ? 'border-primary text-foreground font-semibold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
+      {/* Aba: Mapa geral — permanece montado para não reinicializar o Leaflet */}
+      <div className={dashTab === 'mapa' ? 'block' : 'hidden'}>
+        <div className="dc-map bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col h-[70vh] min-h-[320px]">
+          <div className="flex items-center justify-between px-1 pb-1">
+            <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
+          </div>
+          <div className="dc-map-inner flex-1 min-h-0">
+            {isMobileLayout !== null && (
+              <MapaInterativo
+                key={isMobileLayout ? 'mobile' : 'desktop'}
+                height="100%"
+                preferCanvas={!isMobileLayout}
+                className=""
+                focusOsId={focusOsId}
+                showLocation
+                allowFullscreen
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Aba: Avanço físico */}
+      {dashTab === 'avanco' && <AvancoFisicoTab ordens={ordens} />}
+
+      {/* Aba: Produção e produtividade */}
+      <div className={dashTab === 'producao' ? 'flex flex-col gap-3' : 'hidden'}>
 
       {/* Row 1 — KPIs */}
       <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico — POV"

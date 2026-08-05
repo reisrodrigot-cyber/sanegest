@@ -1583,8 +1583,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
         </div>
       </div>
+      </div>
     </div>
   );
+
 };
 
 type EventType = 'producao' | 'topografia' | 'ns' | 'almoxarifado';

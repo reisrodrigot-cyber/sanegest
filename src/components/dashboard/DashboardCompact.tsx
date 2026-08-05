@@ -1576,7 +1576,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
         {/* Activity Feed — 30% */}
         <div className="dc-activity col-span-3 h-[420px]">
-          <ActivityFeed />
+          <ActivityFeed inicio={periodo.inicio} fim={periodo.fim} />
         </div>
       </div>
     </div>

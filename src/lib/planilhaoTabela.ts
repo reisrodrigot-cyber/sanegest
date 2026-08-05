@@ -239,8 +239,8 @@ export function consolidarLinhas(ordens: OrdemRaw[], producao: ProducaoRaw[]): P
 
     const previstoVal = previstoCount > 0 ? previsto : null;
     const realVal = temProducao ? rede : null;
-    let saldo: number | null = null;
-    if (previstoVal != null) saldo = pvFinal ? 0 : previstoVal - (realVal ?? 0);
+    // Regra única: saldo = previsto − executado (sem clamp, negativo é exibido)
+    const saldo: number | null = previstoVal != null ? previstoVal - (realVal ?? 0) : null;
 
     const respPrev = [...new Set(g.oss.map(o => (o.liberado_para || o.executor_real || o.executor || '').trim()).filter(Boolean))].join(', ');
 
@@ -337,6 +337,12 @@ export function calcularTotais(rows: PlanilhaoRow[], visible: string[]): Record<
     const col = COLUMN_BY_ID[id];
     if (!col || col.type !== 'number' || !col.total) continue;
     totals[id] = rows.reduce((s, r) => s + Number((r[col.id] as number | null) ?? 0), 0);
+  }
+  // Coerência obrigatória: saldo total = previsto total − real total
+  if (totals.saldo_m !== undefined) {
+    const prev = rows.reduce((s, r) => s + Number(r.previsto_m ?? 0), 0);
+    const real = rows.reduce((s, r) => s + Number(r.real_m ?? 0), 0);
+    totals.saldo_m = prev - real;
   }
   return totals;
 }

@@ -1576,7 +1576,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
         {/* Activity Feed — 30% */}
         <div className="dc-activity col-span-3 h-[420px]">
-          <ActivityFeed />
+          <ActivityFeed inicio={periodo.inicio} fim={periodo.fim} />
         </div>
       </div>
     </div>
@@ -1600,27 +1600,38 @@ const EVENT_META: Record<EventType, { label: string; color: string; bg: string; 
   almoxarifado: { label: 'Almoxarifado', color: '#EA580C', bg: 'rgba(234,88,12,0.10)',  dot: '🟠' },
 };
 
-const useRealEvents = () => {
+const useRealEvents = (inicio: string, fim: string) => {
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    // Limites do intervalo no fuso America/Maceio (UTC-03), dia inicial e final completos.
+    const startIso = `${inicio}T00:00:00.000-03:00`;
+    const endIso = `${fim}T23:59:59.999-03:00`;
+    const startMs = new Date(startIso).getTime();
+    const endMs = new Date(endIso).getTime();
+    setLoading(true);
     (async () => {
       const [prod, topo, mat, status] = await Promise.all([
         supabase.from('registros_producao')
           .select('id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, user_id, os_id, created_at, updated_at, status')
           .eq('excluido', false)
+          .lte('created_at', endIso)
+          .gte('updated_at', startIso)
           .order('updated_at', { ascending: false }).limit(40),
         supabase.from('topografia_asbuilt')
           .select('id, nome_estaca, registrado_por, os_id, created_at')
+          .gte('created_at', startIso).lte('created_at', endIso)
           .order('created_at', { ascending: false }).limit(30),
         supabase.from('materiais_entrega')
           .select('id, descricao, quantidade, unidade, registrado_por, os_id, created_at')
+          .gte('created_at', startIso).lte('created_at', endIso)
           .order('created_at', { ascending: false }).limit(30),
         supabase.from('os_status_historico')
           .select('id, status_anterior, status_novo, user_id, os_id, created_at')
           .eq('status_novo', 'VERMELHO')
+          .gte('created_at', startIso).lte('created_at', endIso)
           .order('created_at', { ascending: false }).limit(30),
       ]);
 
@@ -1691,14 +1702,18 @@ const useRealEvents = () => {
         });
       });
 
-      all.sort((a, b) => b.ts.getTime() - a.ts.getTime());
+      const dentro = all.filter((e) => {
+        const t = e.ts.getTime();
+        return Number.isFinite(t) && t >= startMs && t <= endMs;
+      });
+      dentro.sort((a, b) => b.ts.getTime() - a.ts.getTime());
       if (!cancelled) {
-        setEvents(all.slice(0, 30));
+        setEvents(dentro.slice(0, 30));
         setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [inicio, fim]);
 
   return { events, loading };
 };
@@ -1717,8 +1732,8 @@ const formatRelative = (d: Date) => {
 const formatStamp = (d: Date) =>
   `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-const ActivityFeed = () => {
-  const { events, loading } = useRealEvents();
+const ActivityFeed = ({ inicio, fim }: { inicio: string; fim: string }) => {
+  const { events, loading } = useRealEvents(inicio, fim);
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-full">
       <div className="flex items-center justify-between mb-2">
@@ -1734,7 +1749,7 @@ const ActivityFeed = () => {
           </div>
         ) : events.length === 0 ? (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground text-center px-4">
-            Nenhuma atividade registrada ainda.
+            Nenhuma atividade registrada neste período.
           </div>
         ) : (
         <ul className="space-y-1.5">

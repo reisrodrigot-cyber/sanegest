@@ -33,6 +33,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
+import { PeriodoPicker } from '@/components/dashboard/PeriodoPicker';
+
 
 import type { OrdemServico } from '@/types/sanegest';
 

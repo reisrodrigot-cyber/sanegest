@@ -1622,13 +1622,16 @@ const useRealEvents = (inicio: string, fim: string) => {
           .order('updated_at', { ascending: false }).limit(40),
         supabase.from('topografia_asbuilt')
           .select('id, nome_estaca, registrado_por, os_id, created_at')
+          .gte('created_at', startIso).lte('created_at', endIso)
           .order('created_at', { ascending: false }).limit(30),
         supabase.from('materiais_entrega')
           .select('id, descricao, quantidade, unidade, registrado_por, os_id, created_at')
+          .gte('created_at', startIso).lte('created_at', endIso)
           .order('created_at', { ascending: false }).limit(30),
         supabase.from('os_status_historico')
           .select('id, status_anterior, status_novo, user_id, os_id, created_at')
           .eq('status_novo', 'VERMELHO')
+          .gte('created_at', startIso).lte('created_at', endIso)
           .order('created_at', { ascending: false }).limit(30),
       ]);
 

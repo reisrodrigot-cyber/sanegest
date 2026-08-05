@@ -1719,12 +1719,21 @@ const useRealEvents = (inicio: string, fim: string) => {
         setEvents(dentro.slice(0, 30));
         setLoading(false);
       }
+      } catch (err) {
+        console.error('[ActivityFeed] falha ao buscar atividades', err);
+        if (!cancelled) {
+          setEvents([]);
+          setError('Não foi possível carregar as atividades.');
+          setLoading(false);
+        }
+      }
     })();
     return () => { cancelled = true; };
-  }, [inicio, fim]);
+  }, [inicio, fim, tentativa]);
 
-  return { events, loading };
+  return { events, loading, error, recarregar };
 };
+
 
 const formatRelative = (d: Date) => {
   const diff = Date.now() - d.getTime();

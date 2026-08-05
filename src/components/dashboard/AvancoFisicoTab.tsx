@@ -39,13 +39,13 @@ const CardResumo = ({
       <div>
         <div className="text-3xl font-bold text-foreground leading-tight">{fmtPct(redePct)}</div>
         <div className="text-[11px] text-muted-foreground mt-0.5">
-          Rede: {fmtM(redeReal)} / {fmtM(redePrev)} m
+          Quantidade contratual de rede (m): {fmtM(redePrev)} · Executado: {fmtM(redeReal)}
         </div>
       </div>
       <div>
         <div className="text-3xl font-bold text-foreground leading-tight">{fmtPct(ramaisPct)}</div>
         <div className="text-[11px] text-muted-foreground mt-0.5">
-          Ramais: {fmtUn(ramaisReal)} / {fmtUn(ramaisPrev)} un.
+          Quantidade contratual de ramais (un.): {fmtUn(ramaisPrev)} · Executado: {fmtUn(ramaisReal)}
         </div>
       </div>
     </div>
@@ -72,7 +72,7 @@ const TabelaAvanco = ({
           <thead className="sticky top-0 bg-card">
             <tr className="text-left text-muted-foreground border-b border-border">
               <th className="pb-1 font-medium">Sub-bacia</th>
-              <th className="pb-1 font-medium text-right">Previsto ({unidade})</th>
+              <th className="pb-1 font-medium text-right">Quantidade contratual</th>
               <th className="pb-1 font-medium text-right">Realizado ({unidade})</th>
               <th className="pb-1 font-medium text-right">Saldo ({unidade})</th>
               <th className="pb-1 font-medium text-right">Percentual</th>
@@ -86,7 +86,7 @@ const TabelaAvanco = ({
                 <td className="py-1 text-foreground">
                   {l.exibicao}
                   {!l.temReferencia && (
-                    <span className="ml-1 text-[10px] text-muted-foreground">• sem referência</span>
+                    <span className="ml-1 text-[10px] text-muted-foreground">• sem quantidade contratual</span>
                   )}
                 </td>
                 <td className="py-1 text-right tabular-nums">{formatar(l.previsto)}</td>
@@ -171,7 +171,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
       toast({ title: 'Não foi possível salvar', description: error, variant: 'destructive' });
       return;
     }
-    toast({ title: 'Referência atualizada' });
+    toast({ title: 'Quantidade contratual atualizada' });
     setAberto(false);
   };
 
@@ -222,7 +222,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
       {podeEditar && (
         <div className="flex justify-end">
           <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={abrirEdicao}>
-            <Pencil size={12} /> Editar referências
+            <Pencil size={12} /> Editar quantidades contratuais
           </Button>
         </div>
       )}
@@ -247,9 +247,9 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
       <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Referências físicas por sub-bacia</DialogTitle>
+            <DialogTitle>Quantidades contratuais por sub-bacia</DialogTitle>
             <DialogDescription>
-              Valores previstos manuais. Não alteram produção, ligações ou O.S.
+              Quantidade contratual informada manualmente por sub-bacia. Não é valor em R$ e não altera produção, ligações, O.S. ou dados históricos.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -266,7 +266,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
               </select>
             </div>
             <div>
-              <Label className="text-xs">Rede prevista (m)</Label>
+              <Label className="text-xs">Quantidade contratual de rede (m)</Label>
               <Input
                 className="mt-1"
                 type="number"
@@ -277,7 +277,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
               />
             </div>
             <div>
-              <Label className="text-xs">Ramais previstos (un.)</Label>
+              <Label className="text-xs">Quantidade contratual de ramais (un.)</Label>
               <Input
                 className="mt-1"
                 type="number"

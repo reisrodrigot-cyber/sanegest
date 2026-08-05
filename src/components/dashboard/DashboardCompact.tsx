@@ -1605,6 +1605,9 @@ const EVENT_META: Record<EventType, { label: string; color: string; bg: string; 
 const useRealEvents = (inicio: string, fim: string) => {
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
+  const recarregar = () => setTentativa((n) => n + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -1614,7 +1617,10 @@ const useRealEvents = (inicio: string, fim: string) => {
     const startMs = new Date(startIso).getTime();
     const endMs = new Date(endIso).getTime();
     setLoading(true);
+    setError(null);
     (async () => {
+      try {
+
       const [prod, topo, mat, status] = await Promise.all([
         supabase.from('registros_producao')
           .select('id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, user_id, os_id, created_at, updated_at, status')

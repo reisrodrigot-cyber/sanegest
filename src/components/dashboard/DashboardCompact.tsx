@@ -1119,32 +1119,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       </div>
 
 
-      {/* Row 2 — Map + Charts + Tables */}
+      {/* Row 2 — Charts + Tables */}
       <div className="dc-row2 grid grid-cols-10 gap-3">
-        {/* Map */}
-        <div className="dc-map col-span-4 bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col">
-          <div className="flex items-center justify-between px-1 pb-1">
-            <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
-          </div>
-          <div className="dc-map-inner flex-1 min-h-0">
-            {isMobileLayout !== null && (
-              <MapaInterativo
-                key={isMobileLayout ? 'mobile' : 'desktop'}
-                height={isMobileLayout ? 220 : '100%'}
-                preferCanvas={!isMobileLayout}
-                className=""
-                focusOsId={focusOsId}
-                showLocation
-                allowFullscreen
-              />
-
-            )}
-          </div>
-        </div>
-
-
         {/* Charts (dark) */}
-        <div className="dc-charts col-span-3 flex flex-col gap-3">
+        <div className="dc-charts col-span-5 flex flex-col gap-3">
+
           <div className="dc-chart dc-chart-daily rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Diária <span className="text-[10px] text-white/60 font-normal">(30d)</span>

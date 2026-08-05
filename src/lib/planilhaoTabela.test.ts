@@ -57,7 +57,7 @@ describe('consolidarLinhas', () => {
     expect(rows[0].dias_producao).toBe(3);
   });
 
-  it('PV final assentado zera o saldo e usa o maior comprimento de ligações', () => {
+  it('saldo é sempre previsto − executado, mesmo com PV final assentado', () => {
     const rows = consolidarLinhas(
       [os({ id: 'a', comprimento_previsto: 100 })],
       [
@@ -66,8 +66,19 @@ describe('consolidarLinhas', () => {
       ],
     );
     expect(rows[0].real_m).toBe(60);
-    expect(rows[0].saldo_m).toBe(0);
+    expect(rows[0].saldo_m).toBe(40);
     expect(rows[0].ligacoes_comprimento_m).toBe(30);
+  });
+
+  it('saldo negativo é preservado e o total bate com previsto − real', () => {
+    const rows = consolidarLinhas(
+      [os({ id: 'a', comprimento_previsto: 100 }), os({ id: 'b', bacia: 'POV. SS-08', comprimento_previsto: 50 })],
+      [prod({ os_id: 'a', comprimento_trecho_executado: 142.36 })],
+    );
+    const excedido = rows.find(r => r.bacia === 'SEDE SS-01')!;
+    expect(excedido.saldo_m).toBeCloseTo(-42.36, 6);
+    const t = calcularTotais(rows, ['previsto_m', 'real_m', 'saldo_m']);
+    expect(t.saldo_m).toBeCloseTo(t.previsto_m - t.real_m, 6);
   });
 
   it('ordena por bacia e depois trecho', () => {

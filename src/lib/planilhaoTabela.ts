@@ -1,5 +1,5 @@
 import type { OSDisplayStatus } from '@/lib/osStatus';
-import { statusLabel, vinculoDisplayStatus } from '@/lib/osStatus';
+import { statusLabel, vinculoDisplayStatus, STATUS_PRIORITY_DESC } from '@/lib/osStatus';
 
 /** Uma linha consolidada da grade: exatamente uma por Bacia + Trecho. */
 export interface PlanilhaoRow {
@@ -235,8 +235,7 @@ export function consolidarLinhas(ordens: OrdemRaw[], producao: ProducaoRaw[]): P
     }
 
     // Status agregado: prioriza a situação mais avançada do grupo
-    const ordem: OSDisplayStatus[] = ['AZUL', 'VERDE', 'AMARELO', 'LARANJA' as OSDisplayStatus, 'VERMELHO', 'CINZA'];
-    const status = ordem.find(s => statuses.includes(s)) || statuses[0] || 'CINZA';
+    const status = STATUS_PRIORITY_DESC.find(s => statuses.includes(s)) || statuses[0] || 'CINZA';
 
     const previstoVal = previstoCount > 0 ? previsto : null;
     const realVal = temProducao ? rede : null;

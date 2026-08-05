@@ -1702,14 +1702,18 @@ const useRealEvents = (inicio: string, fim: string) => {
         });
       });
 
-      all.sort((a, b) => b.ts.getTime() - a.ts.getTime());
+      const dentro = all.filter((e) => {
+        const t = e.ts.getTime();
+        return Number.isFinite(t) && t >= startMs && t <= endMs;
+      });
+      dentro.sort((a, b) => b.ts.getTime() - a.ts.getTime());
       if (!cancelled) {
-        setEvents(all.slice(0, 30));
+        setEvents(dentro.slice(0, 30));
         setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [inicio, fim]);
 
   return { events, loading };
 };

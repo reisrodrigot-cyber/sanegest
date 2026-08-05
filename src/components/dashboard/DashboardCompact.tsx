@@ -27,6 +27,7 @@ import {
   Cable,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
+import { AvancoFisicoTab } from '@/components/dashboard/AvancoFisicoTab';
 import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -225,6 +226,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // Leaflet container initializes inside a flex parent whose height isn't
   // resolved on the first paint, leaving the map stuck with 0×0 panes
   // (drag/zoom locked, no markers).
+  const [dashTab, setDashTab] = useState<'mapa' | 'avanco' | 'producao'>('mapa');
   const [isMobileLayout, setIsMobileLayout] = useState<boolean | null>(null);
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 1023px)');
@@ -1075,12 +1077,66 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const periodoRangeLabel = `${fmtDateBR(periodo.inicio)} a ${fmtDateBR(periodo.fim)}`;
 
 
+  const DASH_TABS = [
+    { id: 'mapa' as const, label: 'Mapa geral' },
+    { id: 'avanco' as const, label: 'Avanço físico' },
+    { id: 'producao' as const, label: 'Produção e produtividade' },
+  ];
+
   return (
     <div className="dc-root flex flex-col gap-3">
+      {/* Abas do Dashboard */}
+      <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
+        {DASH_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => {
+              setDashTab(t.id);
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+            }}
+            className={`px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors ${
+              dashTab === t.id
+                ? 'border-primary text-foreground font-semibold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
+      {/* Aba: Mapa geral — permanece montado para não reinicializar o Leaflet */}
+      <div className={dashTab === 'mapa' ? 'block' : 'hidden'}>
+        <div className="dc-map bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col h-[70vh] min-h-[320px]">
+          <div className="flex items-center justify-between px-1 pb-1">
+            <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
+          </div>
+          <div className="dc-map-inner flex-1 min-h-0">
+            {isMobileLayout !== null && (
+              <MapaInterativo
+                key={isMobileLayout ? 'mobile' : 'desktop'}
+                height="100%"
+                preferCanvas={!isMobileLayout}
+                className=""
+                focusOsId={focusOsId}
+                showLocation
+                allowFullscreen
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Aba: Avanço físico */}
+      {dashTab === 'avanco' && <AvancoFisicoTab ordens={ordens} />}
+
+      {/* Aba: Produção e produtividade */}
+      <div className={dashTab === 'producao' ? 'flex flex-col gap-3' : 'hidden'}>
 
       {/* Row 1 — KPIs */}
       <div className="dc-kpis grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+
         <KpiCard
           icon={<TrendingUp size={16} />}
           label="Avanço Físico — POV"
@@ -1119,32 +1175,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       </div>
 
 
-      {/* Row 2 — Map + Charts + Tables */}
+      {/* Row 2 — Charts + Tables */}
       <div className="dc-row2 grid grid-cols-10 gap-3">
-        {/* Map */}
-        <div className="dc-map col-span-4 bg-card rounded-lg border border-border shadow-sm p-2 flex flex-col">
-          <div className="flex items-center justify-between px-1 pb-1">
-            <h3 className="text-sm font-semibold text-foreground">Mapa Interativo</h3>
-          </div>
-          <div className="dc-map-inner flex-1 min-h-0">
-            {isMobileLayout !== null && (
-              <MapaInterativo
-                key={isMobileLayout ? 'mobile' : 'desktop'}
-                height={isMobileLayout ? 220 : '100%'}
-                preferCanvas={!isMobileLayout}
-                className=""
-                focusOsId={focusOsId}
-                showLocation
-                allowFullscreen
-              />
-
-            )}
-          </div>
-        </div>
-
-
         {/* Charts (dark) */}
-        <div className="dc-charts col-span-3 flex flex-col gap-3">
+        <div className="dc-charts col-span-5 flex flex-col gap-3">
+
           <div className="dc-chart dc-chart-daily rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
             <h3 className="text-sm font-semibold text-white mb-1">
               Produção Diária <span className="text-[10px] text-white/60 font-normal">(30d)</span>
@@ -1211,7 +1246,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         </div>
 
         {/* Tables + Produtividade strip */}
-        <div className="dc-tables col-span-3 flex flex-col gap-2">
+        <div className="dc-tables col-span-5 flex flex-col gap-2">
           <div className="dc-table-encarregado bg-card rounded-lg border border-border shadow-sm p-3 flex-[1.6] min-h-0 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-foreground">Produção por Encarregado</h3>
@@ -1583,8 +1618,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
         </div>
       </div>
+      </div>
     </div>
   );
+
 };
 
 type EventType = 'producao' | 'topografia' | 'ns' | 'almoxarifado';

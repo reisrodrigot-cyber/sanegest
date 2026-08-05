@@ -4,7 +4,8 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { OSStatus } from '@/types/sanegest';
 import { statusLabel, vinculoDisplayStatus, toDisplayStatus, type OSDisplayStatus } from '@/lib/osStatus';
 
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { PlanilhaoConsulta } from '@/components/ordens/PlanilhaoConsulta';
 import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
@@ -48,6 +49,9 @@ const OrdensPage = () => {
   const canImport = role === 'admin' || role === 'sala_tecnica';
   const canLiberar = role === 'admin' || role === 'sala_tecnica' || role === 'gerencia';
   const canDelete = role === 'admin' || role === 'sala_tecnica';
+  const canPlanilhao = role === 'admin' || role === 'sala_tecnica';
+  const location = useLocation();
+  const planilhaoView = location.pathname.startsWith('/ordens/planilhao');
   const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [responsavelFilter, setResponsavelFilter] = useState('TODOS');

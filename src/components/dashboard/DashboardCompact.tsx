@@ -1600,17 +1600,25 @@ const EVENT_META: Record<EventType, { label: string; color: string; bg: string; 
   almoxarifado: { label: 'Almoxarifado', color: '#EA580C', bg: 'rgba(234,88,12,0.10)',  dot: '🟠' },
 };
 
-const useRealEvents = () => {
+const useRealEvents = (inicio: string, fim: string) => {
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    // Limites do intervalo no fuso America/Maceio (UTC-03), dia inicial e final completos.
+    const startIso = `${inicio}T00:00:00.000-03:00`;
+    const endIso = `${fim}T23:59:59.999-03:00`;
+    const startMs = new Date(startIso).getTime();
+    const endMs = new Date(endIso).getTime();
+    setLoading(true);
     (async () => {
       const [prod, topo, mat, status] = await Promise.all([
         supabase.from('registros_producao')
           .select('id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, user_id, os_id, created_at, updated_at, status')
           .eq('excluido', false)
+          .lte('created_at', endIso)
+          .gte('updated_at', startIso)
           .order('updated_at', { ascending: false }).limit(40),
         supabase.from('topografia_asbuilt')
           .select('id, nome_estaca, registrado_por, os_id, created_at')

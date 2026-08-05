@@ -1749,7 +1749,7 @@ const ActivityFeed = ({ inicio, fim }: { inicio: string; fim: string }) => {
           </div>
         ) : events.length === 0 ? (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground text-center px-4">
-            Nenhuma atividade registrada ainda.
+            Nenhuma atividade registrada neste período.
           </div>
         ) : (
         <ul className="space-y-1.5">

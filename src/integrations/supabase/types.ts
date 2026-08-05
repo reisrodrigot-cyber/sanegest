@@ -1377,6 +1377,42 @@ export type Database = {
         }
         Relationships: []
       }
+      quantitativos_referencia: {
+        Row: {
+          bacia_chave: string
+          bacia_exibicao: string
+          created_at: string
+          created_by: string | null
+          id: string
+          ramais_previstos_unidades: number
+          rede_prevista_metros: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bacia_chave: string
+          bacia_exibicao: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ramais_previstos_unidades?: number
+          rede_prevista_metros?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bacia_chave?: string
+          bacia_exibicao?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ramais_previstos_unidades?: number
+          rede_prevista_metros?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       registros_producao: {
         Row: {
           ajustado_em: string | null

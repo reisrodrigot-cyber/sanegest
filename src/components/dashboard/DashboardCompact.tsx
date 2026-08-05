@@ -1643,6 +1643,12 @@ const useRealEvents = (inicio: string, fim: string) => {
           .order('created_at', { ascending: false }).limit(30),
       ]);
 
+      // Erro silencioso de consulta não pode virar "sem atividades".
+      const qErr = prod.error || topo.error || mat.error || status.error;
+      if (qErr) throw qErr;
+
+
+
       const userIds = new Set<string>();
       const osIds = new Set<string>();
       (prod.data || []).forEach((r: any) => { r.user_id && userIds.add(r.user_id); r.os_id && osIds.add(r.os_id); });

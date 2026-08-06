@@ -202,16 +202,21 @@ export function RegistrosProducaoOS({ osId }: Props) {
     const compRede = Number(String(ajComp).replace(',', '.'));
     if (isNaN(compRede) || compRede < 0) { toast.error('Comprimento inválido'); return; }
 
+    if (!ajData) { toast.error('Informe a data da produção'); return; }
+    if (ajData > hojeMaceio()) { toast.error('A data da produção não pode ser futura'); return; }
+
     setSavingAj(true);
     const valor_anterior = {
       comprimento_ajustado: ajustando.comprimento_ajustado,
       ligacoes_ajustadas: ajustando.ligacoes_ajustadas,
       motivo_ajuste: ajustando.motivo_ajuste,
+      data_registro: ajustando.data_registro,
     };
     const valor_novo: any = {
       comprimento_ajustado: compRede,
       ligacoes_ajustadas: lig,
       motivo_ajuste: ajMotivo.trim(),
+      data_registro: ajData,
       ajustado_por: user.id,
       ajustado_em: new Date().toISOString(),
     };

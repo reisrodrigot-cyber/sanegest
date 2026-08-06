@@ -220,7 +220,7 @@ export function consolidarAvanco(
       const redeReal = Math.round((real?.redeM ?? 0) * 100) / 100;
       const ramaisReal = real?.ramaisUn ?? 0;
       const redePrev = Math.round((prev?.redeM ?? 0) * 100) / 100;
-      const ramaisPrev = Number(ref?.ramais_previstos_unidades ?? 0) || 0;
+      const ramaisPrev = Math.round(prev?.ramaisUn ?? 0);
 
       rede.push({
         chave, exibicao,
@@ -228,7 +228,7 @@ export function consolidarAvanco(
         realizado: redeReal,
         saldo: saldo(redePrev, redeReal),
         pct: percentualSeguro(redeReal, redePrev),
-        temReferencia: !!ref,
+        temPrevisto: redePrev > 0,
       });
       ramais.push({
         chave, exibicao,
@@ -236,7 +236,7 @@ export function consolidarAvanco(
         realizado: ramaisReal,
         saldo: ramaisPrev - ramaisReal,
         pct: percentualSeguro(ramaisReal, ramaisPrev),
-        temReferencia: !!ref,
+        temPrevisto: ramaisPrev > 0,
       });
 
       const cls = classificarPovSede(exibicao);

@@ -8,8 +8,8 @@ const NoRolePage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary p-4">
       <div className="w-full max-w-md text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-foreground/10 mb-4">
         <div className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-primary-foreground mb-4 shadow-lg">
+
           <BrandMark variant="full" size={32} />
         </div>
 

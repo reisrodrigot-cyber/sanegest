@@ -1567,8 +1567,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   {filtered.length === 0 ? (
                     <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
                   ) : (
-                    <div className="overflow-y-auto flex-1 min-h-0">
-                      <table className="w-full text-xs text-white/90">
+                    <div className="overflow-auto flex-1 min-h-0">
+                      <table className="w-full min-w-[520px] text-xs text-white/90 whitespace-nowrap">
                         <thead className="sticky top-0" style={{ backgroundColor: DARK_BG }}>
                           <tr className="text-left text-white/60 border-b border-white/10">
                             <th className="py-1 pr-2 font-medium">Sub-bacia</th>

@@ -347,21 +347,9 @@ const OrdensPage = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.liberado_para || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                  <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-right sm:text-left">
+                    <div className="flex items-center gap-2 justify-end sm:justify-start">
                       <StatusBadge status={statusEfetivo(os)} size="sm" shortLabel />
-                      {parado && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center text-amber-500" aria-label={`Parado há ${dias} dias`}>
-                                <AlertTriangle size={14} />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent><span>⚠️ Parado há {dias} dias</span></TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
                     </div>
                   </td>
                   <td className="px-2 py-3">

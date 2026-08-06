@@ -80,13 +80,16 @@ export const AppSidebar = () => {
   const sidebarContent = (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2">
-          <BrandMark variant="symbol" size={28} />
-          <div>
-            <h1 className="text-lg font-bold text-sidebar-primary">SaneGest</h1>
-            <p className="text-xs text-sidebar-foreground/60">Gestão de Obras</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="rounded-lg bg-brand-surface p-1 shrink-0 flex items-center justify-center">
+            <BrandMark variant="symbol" size={26} />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-sidebar-primary truncate">SaneGest</h1>
+            <p className="text-xs text-sidebar-foreground/60 truncate">Gestão de Obras</p>
           </div>
         </div>
+
       </div>
 
       {user.role === 'admin' && <ViewAsSelector />}

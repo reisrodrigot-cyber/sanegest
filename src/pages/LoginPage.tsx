@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Droplets, Loader2, X, Mail, ArrowLeft, MailWarning } from 'lucide-react';
+import { Loader2, X, Mail, ArrowLeft, MailWarning } from 'lucide-react';
+import { BrandMark } from '@/components/BrandMark';
 import { lovable } from '@/integrations/lovable/index';
 
 const LoginPage = () => {

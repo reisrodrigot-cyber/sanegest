@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { Droplets, LogOut, Clock } from 'lucide-react';
+import { LogOut, Clock } from 'lucide-react';
+import { BrandMark } from '@/components/BrandMark';
 
 const NoRolePage = () => {
   const { logout, supabaseUser } = useAuth();

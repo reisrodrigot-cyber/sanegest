@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Droplets, Loader2, KeyRound } from 'lucide-react';
+import { Loader2, KeyRound } from 'lucide-react';
+import { BrandMark } from '@/components/BrandMark';
 import { toast } from 'sonner';
 
 type Status = 'validating' | 'ready' | 'invalid' | 'updating' | 'done';

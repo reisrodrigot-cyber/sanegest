@@ -1397,7 +1397,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           const tabBtn = (active: boolean) =>
             `h-7 px-2 text-[11px] rounded border ${active ? 'bg-[#4dd9ac] text-[#0d1b2a] border-[#4dd9ac]' : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'}`;
           return (
-            <div className="dc-bacia col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-[420px]" style={darkCardStyle}>
+            <div className="dc-bacia col-span-10 xl:col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-auto max-h-[520px] md:h-[420px]" style={darkCardStyle}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <h3 className="text-sm font-semibold text-white">Avanço por Sub-bacia</h3>
                 <div className="flex items-center gap-2">
@@ -1435,6 +1435,35 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   </div>
                   {filteredRede.length === 0 ? (
                     <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
+                  ) : isMobileLayout ? (
+                    <ul className="overflow-y-auto flex-1 min-h-0 flex flex-col gap-2 pr-0.5">
+                      {filteredRede.map((b) => {
+                        const base = b.totalBase > 0 ? b.totalBase : b.executado;
+                        const pctExec = base > 0 ? Math.min(100, (b.executado / base) * 100) : 0;
+                        return (
+                          <li key={b.trecho} className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-[13px] font-semibold text-white break-words">{b.trecho}</span>
+                              <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: TEAL }}>{b.pct}%</span>
+                            </div>
+                            <div className="mt-2 h-3 w-full rounded-full overflow-hidden flex bg-white/10">
+                              <div style={{ width: `${pctExec}%`, backgroundColor: GREEN_EXEC }} />
+                              <div style={{ width: `${100 - pctExec}%`, backgroundColor: RED_PEND }} />
+                            </div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+                              <div>
+                                <div className="text-white/60">Executado</div>
+                                <div className="tabular-nums font-medium" style={{ color: GREEN_EXEC }}>{fmtM(b.executado)} m</div>
+                              </div>
+                              <div>
+                                <div className="text-white/60">Pendente</div>
+                                <div className="tabular-nums font-medium" style={{ color: RED_PEND }}>{fmtM(b.pendente)} m</div>
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   ) : (
                     <div className="overflow-y-auto flex-1 min-h-0">
                       <ChartFrame className="dc-chart-box" mobileHeight={mobileBaciaHeight} desktopHeight={innerHeight}>
@@ -1500,7 +1529,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   {filteredLig.length === 0 ? (
                     <p className="text-xs text-white/60 text-center py-6">Nenhuma ligação executada.</p>
                   ) : (
-                    <div className="overflow-y-auto flex-1 min-h-0">
+                    <div className="overflow-auto flex-1 min-h-0">
+                      <div className="min-w-[300px]">
                       <table className="w-full text-xs text-white/90">
                         <thead className="sticky top-0" style={{ backgroundColor: DARK_BG }}>
                           <tr className="text-left text-white/60 border-b border-white/10">
@@ -1523,6 +1553,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </div>
                   )}
                 </>
@@ -1536,8 +1567,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   {filtered.length === 0 ? (
                     <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
                   ) : (
-                    <div className="overflow-y-auto flex-1 min-h-0">
-                      <table className="w-full text-xs text-white/90">
+                    <div className="overflow-auto flex-1 min-h-0">
+                      <table className="w-full min-w-[520px] text-xs text-white/90 whitespace-nowrap">
                         <thead className="sticky top-0" style={{ backgroundColor: DARK_BG }}>
                           <tr className="text-left text-white/60 border-b border-white/10">
                             <th className="py-1 pr-2 font-medium">Sub-bacia</th>
@@ -1578,7 +1609,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
 
         {/* NS em Execução — 20% */}
-        <div className="dc-ns col-span-2 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-[420px]">
+        <div className="dc-ns col-span-10 md:col-span-5 xl:col-span-2 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-[420px]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-foreground">NS em Execução</h3>
             <Link to="/ordens" className="text-xs text-secondary hover:underline">Ver todas</Link>
@@ -1612,7 +1643,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         </div>
 
         {/* Activity Feed — 30% */}
-        <div className="dc-activity col-span-3 h-[420px]">
+        <div className="dc-activity col-span-10 md:col-span-5 xl:col-span-3 h-[420px]">
           {/* Filtro de período PRÓPRIO — independente do card "Produção por Encarregado". */}
           <ActivityFeed minDate={firstProducaoDate} />
 

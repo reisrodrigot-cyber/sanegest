@@ -11,7 +11,8 @@
  *  - Sub-bacia: `obra_nome` da view; fallback para a bacia da O.S.; caso
  *    contrário "Sem sub-bacia" (nunca atribuída a outra sub-bacia).
  *  - PV final assentado: marca a O.S. como concluída (não gera pendência).
- *  - Previsto: SEMPRE referência manual (quantitativos_referencia).
+ *  - Previsto: soma das N.S. vigentes da sub-bacia (ordens.comprimento_previsto
+ *    e ordens.ligacoes_previstas). Nenhuma fonte manual/contratual.
  */
 
 export const SEM_SUB_BACIA = 'Sem sub-bacia';
@@ -58,6 +59,8 @@ export interface RelatorioLike {
 export interface OrdemLike {
   id: string;
   bacia: string | null;
+  comprimento_previsto?: number | null;
+  ligacoes_previstas?: number | null;
 }
 
 export interface Periodo {
@@ -141,12 +144,30 @@ export const percentualSeguro = (realizado: number, previsto: number): number | 
 export const saldo = (previsto: number, realizado: number): number =>
   Math.round((previsto - realizado) * 100) / 100;
 
-export interface ReferenciaSubBacia {
-  id?: string;
-  bacia_chave: string;
-  bacia_exibicao: string;
-  rede_prevista_metros: number;
-  ramais_previstos_unidades: number;
+export interface PrevistoSubBacia {
+  chave: string;
+  exibicao: string;
+  redeM: number;
+  ramaisUn: number;
+  ns: number;
+}
+
+/** Previsto por sub-bacia — soma das N.S. vigentes (plano operacional). */
+export function calcularPrevistoPorSubBacia(ordens: OrdemLike[]): Map<string, PrevistoSubBacia> {
+  const out = new Map<string, PrevistoSubBacia>();
+  ordens.forEach((o) => {
+    const exibicao = String(o.bacia ?? '').trim() || SEM_SUB_BACIA;
+    const chave = normalizarBaciaChave(exibicao);
+    let b = out.get(chave);
+    if (!b) {
+      b = { chave, exibicao, redeM: 0, ramaisUn: 0, ns: 0 };
+      out.set(chave, b);
+    }
+    b.redeM += Number(o.comprimento_previsto) || 0;
+    b.ramaisUn += Number(o.ligacoes_previstas) || 0;
+    b.ns += 1;
+  });
+  return out;
 }
 
 export interface LinhaAvanco {
@@ -156,7 +177,8 @@ export interface LinhaAvanco {
   realizado: number;
   saldo: number;
   pct: number | null;
-  temReferencia: boolean;
+  /** Existe N.S. vigente com previsto > 0 nesta sub-bacia. */
+  temPrevisto: boolean;
 }
 
 export interface AvancoConsolidado {
@@ -172,18 +194,16 @@ export interface AvancoConsolidado {
   }>;
 }
 
-/** Junta realizado (dados reais) com previsto (referência manual). */
+/** Junta realizado (produção registrada) com previsto (N.S. vigentes). */
 export function consolidarAvanco(
   realizado: Map<string, RealizadoSubBacia>,
-  referencias: ReferenciaSubBacia[],
+  previstoMap: Map<string, PrevistoSubBacia>,
 ): AvancoConsolidado {
   const chaves = new Map<string, string>(); // chave -> exibição
   realizado.forEach((r, k) => chaves.set(k, r.exibicao));
-  referencias.forEach((r) => {
-    if (!chaves.has(r.bacia_chave)) chaves.set(r.bacia_chave, r.bacia_exibicao);
+  previstoMap.forEach((p, k) => {
+    if (!chaves.has(k)) chaves.set(k, p.exibicao);
   });
-
-  const refPorChave = new Map(referencias.map((r) => [r.bacia_chave, r]));
 
   const rede: LinhaAvanco[] = [];
   const ramais: LinhaAvanco[] = [];
@@ -196,11 +216,11 @@ export function consolidarAvanco(
     .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
     .forEach(([chave, exibicao]) => {
       const real = realizado.get(chave);
-      const ref = refPorChave.get(chave);
+      const prev = previstoMap.get(chave);
       const redeReal = Math.round((real?.redeM ?? 0) * 100) / 100;
       const ramaisReal = real?.ramaisUn ?? 0;
-      const redePrev = Number(ref?.rede_prevista_metros ?? 0) || 0;
-      const ramaisPrev = Number(ref?.ramais_previstos_unidades ?? 0) || 0;
+      const redePrev = Math.round((prev?.redeM ?? 0) * 100) / 100;
+      const ramaisPrev = Math.round(prev?.ramaisUn ?? 0);
 
       rede.push({
         chave, exibicao,
@@ -208,7 +228,7 @@ export function consolidarAvanco(
         realizado: redeReal,
         saldo: saldo(redePrev, redeReal),
         pct: percentualSeguro(redeReal, redePrev),
-        temReferencia: !!ref,
+        temPrevisto: redePrev > 0,
       });
       ramais.push({
         chave, exibicao,
@@ -216,7 +236,7 @@ export function consolidarAvanco(
         realizado: ramaisReal,
         saldo: ramaisPrev - ramaisReal,
         pct: percentualSeguro(ramaisReal, ramaisPrev),
-        temReferencia: !!ref,
+        temPrevisto: ramaisPrev > 0,
       });
 
       const cls = classificarPovSede(exibicao);

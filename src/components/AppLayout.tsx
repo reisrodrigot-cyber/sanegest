@@ -14,7 +14,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
       <main className="flex-1 overflow-y-auto bg-background">
         {showBanner && effectiveRole && (
           <div className="flex items-center justify-between px-4 py-2 bg-amber-500/15 border-b border-amber-500/30">
-            <div className="flex items-center gap-2 text-sm text-amber-700">
+            <div className="flex items-center gap-2 text-sm text-amber-200">
               <Eye size={16} className="shrink-0" />
               <span>
                 Modo visualização: <strong>{ROLE_LABELS[effectiveRole]}</strong>
@@ -24,14 +24,14 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
                     <strong>{viewAsUserName}</strong>
                   </>
                 )}
-                <span className="text-amber-600/70 ml-1">
+                <span className="text-amber-300/80 ml-1">
                   — você está simulando {viewAsUserName ? 'este usuário' : 'este perfil'}
                 </span>
               </span>
             </div>
             <button
               onClick={() => setViewAsRole(null)}
-              className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 transition-colors"
+              className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 transition-colors"
             >
               <X size={14} />
               Sair da simulação

@@ -33,11 +33,11 @@ interface Divergencia {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  processando: 'bg-blue-100 text-blue-800',
-  preview: 'bg-amber-100 text-amber-800',
-  falha: 'bg-red-100 text-red-800',
-  ativa: 'bg-emerald-100 text-emerald-800',
-  arquivada: 'bg-gray-100 text-gray-700',
+  processando: 'bg-sky-500/15 text-sky-300 border border-sky-400/30',
+  preview: 'bg-amber-500/15 text-amber-300 border border-amber-400/30',
+  falha: 'bg-red-500/15 text-red-300 border border-red-400/30',
+  ativa: 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/30',
+  arquivada: 'bg-muted text-muted-foreground border border-border',
 };
 
 // Lista oficial de SSes do projeto (cada uma é uma base independente).
@@ -250,7 +250,7 @@ const MapaBasesPage = () => {
         )}
 
         {arquivo && ssDetectada && proximaVersao != null && !resumo && (
-          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-900">
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 text-sm text-foreground">
             <div className="font-semibold mb-1 flex items-center gap-2">
               <CheckCircle2 size={14} /> Pronto para importar
             </div>

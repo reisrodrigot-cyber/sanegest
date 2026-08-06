@@ -636,8 +636,7 @@ const OSDetailPage = () => {
           {locatable && (
             <button
               onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-primary/40 hover:bg-primary/10 transition-colors"
-              style={{ color: '#4dd9ac' }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-primary/40 text-[hsl(var(--heca-blue-bright))] hover:bg-primary/10 transition-colors"
               title="Localizar no mapa"
             >
               <MapPin size={14} /> Localizar

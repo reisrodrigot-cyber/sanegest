@@ -697,7 +697,7 @@ const EditorOperacionalPage = () => {
                   </ul>
                 </div>
                 {infoSelected?.pvFinal && (
-                  <div className="text-xs mt-1 p-2 bg-blue-50 text-blue-800 rounded">PV final assentado — pronto para Topografia</div>
+                  <div className="text-xs mt-1 p-2 bg-primary/10 text-foreground border border-primary/25 rounded">PV final assentado — pronto para Topografia</div>
                 )}
                 <div className="mt-3 flex flex-col gap-2">
                   <Button size="sm" variant="outline" onClick={() => setVincularOpen(true)}><Link2 className="h-3 w-3 mr-1" /> Vincular / desvincular N.S.</Button>

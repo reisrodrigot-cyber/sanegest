@@ -667,7 +667,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
                     const StatusIcon = cancelado ? AlertTriangle : ajustado ? AlertTriangle : CheckCircle2;
                     const statusColor = cancelado
                       ? 'text-destructive'
-                      : ajustado ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400';
+                      : ajustado ? 'text-orange-400' : 'text-emerald-400';
 
                     const editavel = podeEditar(r);
 
@@ -688,7 +688,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
                             <p className="text-[11px] text-muted-foreground">Comprimento informado</p>
                             <p className="text-base font-bold text-foreground">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
                             {ajustado && r.comprimento_ajustado != null && (
-                              <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+                              <p className="text-[11px] text-orange-400 mt-0.5">
                                 Ajustado: <span className="font-semibold">{fmtMetros(compContab)}</span>
                               </p>
                             )}
@@ -697,7 +697,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
                             <p className="text-[11px] text-muted-foreground">Ligações informadas</p>
                             <p className="text-base font-bold text-foreground">{r.ligacoes_dia ?? 0}</p>
                             {ajustado && r.ligacoes_ajustadas != null && (
-                              <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+                              <p className="text-[11px] text-orange-400 mt-0.5">
                                 Ajustado: <span className="font-semibold">{ligContab}</span>
                               </p>
                             )}
@@ -705,7 +705,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
                         </div>
 
                         {r.motivo_ajuste && (
-                          <p className="mt-2 text-[11px] text-orange-700 dark:text-orange-300 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
+                          <p className="mt-2 text-[11px] text-orange-300 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
                         )}
                         {cancelado && r.motivo_cancelamento && (
                           <p className="mt-2 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
@@ -754,7 +754,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
                           </div>
                         ) : (
                           <div className="mt-3 pt-3 border-t border-border">
-                            <p className={`text-[11px] font-semibold ${cancelado ? 'text-destructive' : 'text-orange-700 dark:text-orange-300'}`}>
+                            <p className={`text-[11px] font-semibold ${cancelado ? 'text-destructive' : 'text-orange-300'}`}>
                               Registro {cancelado ? 'cancelado' : 'ajustado'} pela sala técnica
                             </p>
                             <p className="text-[11px] text-muted-foreground italic mt-0.5">

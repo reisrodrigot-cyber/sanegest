@@ -270,7 +270,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
         const latlngs = seg.map(([lon, lat]) => [lat, lon] as [number, number]);
         if (latlngs.length < 2) continue;
         pts.push(...latlngs);
-        L.polyline(latlngs, { color: '#4dd9ac', weight: 9, opacity: 0.75 }).addTo(group);
+        L.polyline(latlngs, { color: '#4FB0EF', weight: 11, opacity: 0.9, dashArray: '14 8' }).addTo(group);
       }
     }
     if (!pts.length) { setFocusMapaErro('Trecho ainda não vinculado ao mapa'); return; }
@@ -928,7 +928,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
             return;
           }
           const w = 5 + Math.abs(Math.sin(t * Math.PI * 1.6)) * 7;
-          try { line.setStyle({ weight: w, color: '#4dd9ac', opacity: 1 }); } catch {/* ignore */}
+          try { line.setStyle({ weight: w, color: '#4FB0EF', opacity: 1 }); } catch {/* ignore */}
         }, 60);
       }, 1100);
     }
@@ -1418,7 +1418,7 @@ ${placemarks.join('\n')}
               {buscaDebounced.trim() === '' ? (
                 <div className="text-[11px] text-muted-foreground py-1">Digite ao menos um caractere do trecho.</div>
               ) : resultadosBusca.length === 0 ? (
-                <div className="text-[11px] text-amber-600 py-1">Trecho ainda não vinculado ao mapa</div>
+                <div className="text-[11px] text-amber-400 py-1">Trecho ainda não vinculado ao mapa</div>
               ) : (
                 <ul className="space-y-1">
                   {resultadosBusca.map((r) => {
@@ -1504,9 +1504,9 @@ ${placemarks.join('\n')}
             </div>
 
             {canViewPreviewBase && (
-              <div className="mb-3 border border-amber-200 bg-amber-50/60 rounded p-2">
+              <div className="mb-3 border border-amber-500/40 bg-amber-500/10 rounded p-2">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-[10px] uppercase tracking-wide text-amber-800 font-semibold">Bases geográficas</div>
+                  <div className="text-[10px] uppercase tracking-wide text-amber-300 font-semibold">Bases geográficas</div>
                   {(effectiveRole === 'admin' || effectiveRole === 'sala_tecnica') && (
                     <Link to="/mapa/bases" onClick={() => setLayersOpen(false)} className="text-[11px] text-primary hover:underline whitespace-nowrap">Gerenciar</Link>
                   )}
@@ -1525,7 +1525,7 @@ ${placemarks.join('\n')}
                         <button
                           key={b.id}
                           onClick={() => toggleSs(b.ss)}
-                          className="w-full flex items-center gap-2 text-sm px-1 py-0.5 rounded hover:bg-amber-100/60 text-left"
+                          className="w-full flex items-center gap-2 text-sm px-1 py-0.5 rounded hover:bg-amber-400/15 text-left"
                         >
                           {on ? <Eye size={14} /> : <EyeOff size={14} className="text-muted-foreground" />}
                           <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0 bg-status-red" />

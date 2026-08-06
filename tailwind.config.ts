@@ -61,7 +61,21 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        heca: {
+          navy: "hsl(var(--heca-navy))",
+          DEFAULT: "hsl(var(--heca-blue))",
+          soft: "hsl(var(--heca-blue-soft))",
+          bright: "hsl(var(--heca-blue-bright))",
+        },
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
+        },
         sane: {
+
           blue: {
             dark: "hsl(var(--sane-blue-dark))",
             DEFAULT: "hsl(var(--sane-blue))",

@@ -24,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Entrega de Materiais', path: '/materiais', icon: <Package size={20} />, roles: ['admin', 'almoxarifado'] },
   { label: 'Topografia', path: '/topografia', icon: <Map size={20} />, roles: ['admin', 'topografo'] },
   { label: 'Bases geográficas', path: '/mapa/bases', icon: <MapPin size={20} />, roles: ['admin', 'sala_tecnica'] },
-  { label: 'Editor Operacional do Mapa', path: '/mapa/editor', icon: <Pencil size={20} />, roles: ['sala_tecnica'] },
+  
   { label: 'Gestão de Usuários', path: '/usuarios', icon: <Users size={20} />, roles: ['admin'] },
 
 ];

@@ -1553,6 +1553,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </div>
                   )}
                 </>

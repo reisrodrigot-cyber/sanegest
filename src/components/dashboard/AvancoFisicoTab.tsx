@@ -1,4 +1,8 @@
-import { Loader2, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, TrendingUp, Pencil } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQuantitativosContratuais } from '@/hooks/useQuantitativosContratuais';
+import { QuantidadesContratuaisModal } from './QuantidadesContratuaisModal';
 import { useAvancoFisico } from '@/hooks/useAvancoFisico';
 import type { LinhaAvanco, OrdemLike } from '@/lib/avancoFisico';
 import { Button } from '@/components/ui/button';
@@ -60,13 +64,19 @@ const BarraPct = ({ pct }: { pct: number | null }) => (
 );
 
 const AvancoSecao = ({
-  titulo, linhas, unidade, formatar,
+  titulo, linhas, unidade, formatar, contratualPorChave, formatarContratual,
 }: {
   titulo: string;
   linhas: LinhaAvanco[];
   unidade: string;
   formatar: (n: number) => string;
+  contratualPorChave: Map<string, number | null>;
+  formatarContratual: (n: number) => string;
 }) => {
+  const contratualTexto = (chave: string) => {
+    const v = contratualPorChave.get(chave);
+    return v == null ? '—' : formatarContratual(v);
+  };
   const previsto = linhas.reduce((s, l) => s + l.previsto, 0);
   const realizado = linhas.reduce((s, l) => s + l.realizado, 0);
   const pctTotal = previsto > 0 ? Math.round((realizado / previsto) * 1000) / 10 : null;
@@ -88,6 +98,10 @@ const AvancoSecao = ({
                   <span className="text-base font-bold text-foreground tabular-nums shrink-0">{fmtPct(l.pct)}</span>
                 </div>
                 <div className="mt-2"><BarraPct pct={l.pct} /></div>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Qnt. Contratual:{' '}
+                  <span className="tabular-nums">{contratualTexto(l.chave)} {unidade}</span>
+                </p>
                 <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
                   <div className="min-w-0">
                     <dt className="text-muted-foreground">Previsto</dt>
@@ -126,6 +140,7 @@ const AvancoSecao = ({
               <thead className="sticky top-0 bg-card">
                 <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="pb-1 pr-2 font-medium whitespace-nowrap">Sub-bacia</th>
+                  <th className="pb-1 px-2 font-medium text-right whitespace-nowrap font-normal">Qnt. Contratual ({unidade})</th>
                   <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Previsto ({unidade})</th>
                   <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Realizado ({unidade})</th>
                   <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo ({unidade})</th>
@@ -136,6 +151,7 @@ const AvancoSecao = ({
                 {linhas.map((l) => (
                   <tr key={l.chave} className="border-b border-border/40">
                     <td className="py-1.5 pr-2 text-foreground">{l.exibicao}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">{contratualTexto(l.chave)}</td>
                     <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.previsto)}</td>
                     <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.realizado)}</td>
                     <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.saldo)}</td>
@@ -146,6 +162,12 @@ const AvancoSecao = ({
               <tfoot>
                 <tr className="border-t border-border font-semibold">
                   <td className="py-1.5 pr-2 text-foreground">Total</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">
+                    {(() => {
+                      const vals = linhas.map((l) => contratualPorChave.get(l.chave)).filter((v): v is number => v != null);
+                      return vals.length ? formatarContratual(vals.reduce((a, b) => a + b, 0)) : '—';
+                    })()}
+                  </td>
                   <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto)}</td>
                   <td className="py-1.5 px-2 text-right tabular-nums">{formatar(realizado)}</td>
                   <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto - realizado)}</td>
@@ -162,6 +184,14 @@ const AvancoSecao = ({
 
 export const AvancoFisicoTab = ({ ordens }: Props) => {
   const avanco = useAvancoFisico(ordens);
+  const { effectiveRole } = useAuth();
+  const { porChave, salvar } = useQuantitativosContratuais();
+  const [modalAberto, setModalAberto] = useState(false);
+  const podeEditar = effectiveRole === 'admin' || effectiveRole === 'sala_tecnica';
+
+  const subBacias = avanco.rede.map((l) => ({ chave: l.chave, exibicao: l.exibicao }));
+  const contratualRede = new Map(avanco.rede.map((l) => [l.chave, porChave.get(l.chave)?.redeM ?? null]));
+  const contratualRamais = new Map(avanco.ramais.map((l) => [l.chave, porChave.get(l.chave)?.ramaisUn ?? null]));
 
   if (avanco.loading) {
     return (
@@ -186,9 +216,19 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[11px] text-muted-foreground">
-        Previsto = soma das N.S. vigentes por sub-bacia. Realizado = produção registrada no SaneGest.
-      </p>
+      {podeEditar && (
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setModalAberto(true)}
+          >
+            <Pencil size={13} className="mr-1" />
+            Editar quantidades contratuais
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <CardResumo
@@ -214,9 +254,31 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-        <AvancoSecao titulo="Rede por sub-bacia" linhas={avanco.rede} unidade="m" formatar={fmtM} />
-        <AvancoSecao titulo="Ramais por sub-bacia" linhas={avanco.ramais} unidade="un." formatar={fmtUn} />
+        <AvancoSecao
+          titulo="Rede por sub-bacia"
+          linhas={avanco.rede}
+          unidade="m"
+          formatar={fmtM}
+          contratualPorChave={contratualRede}
+          formatarContratual={fmtM}
+        />
+        <AvancoSecao
+          titulo="Ramais por sub-bacia"
+          linhas={avanco.ramais}
+          unidade="un."
+          formatar={fmtUn}
+          contratualPorChave={contratualRamais}
+          formatarContratual={fmtUn}
+        />
       </div>
+
+      <QuantidadesContratuaisModal
+        open={modalAberto}
+        onOpenChange={setModalAberto}
+        subBacias={subBacias}
+        porChave={porChave}
+        salvar={salvar}
+      />
     </div>
   );
 };

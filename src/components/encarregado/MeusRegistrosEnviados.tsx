@@ -778,10 +778,28 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
           <DialogHeader>
             <DialogTitle>Editar registro</DialogTitle>
             <DialogDescription>
-              Ajuste apenas os dados operacionais. O trecho, a obra e a data original não podem ser alterados.
+              Ajuste os dados operacionais e, se necessário, a data da produção. O trecho e a obra não podem ser alterados.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+            <div>
+              <Label htmlFor="edit-data">Data da produção *</Label>
+              <Input
+                id="edit-data"
+                type="date"
+                value={editData}
+                max={hojeMaceio()}
+                onChange={(e) => setEditData(e.target.value)}
+                className="h-11 text-base"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {editData
+                  ? editData === hojeMaceio()
+                    ? `Hoje — ${formatBRData(editData)}`
+                    : `Lançamento retroativo — ${formatBRData(editData)}`
+                  : 'Informe a data em que a produção foi executada.'}
+              </p>
+            </div>
             <div>
               <Label htmlFor="edit-comp">Comprimento informado (m)</Label>
               <Input

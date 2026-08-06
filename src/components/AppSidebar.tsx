@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS, UserRole } from '@/types/sanegest';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ClipboardList, HardHat, Package, Map, MapPin, BarChart3, LogOut, Menu, X, Users, UserCircle, Pencil
+  LayoutDashboard, ClipboardList, HardHat, Package, Map, MapPin, BarChart3, LogOut, Menu, X, Users, UserCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ViewAsSelector } from './ViewAsSelector';

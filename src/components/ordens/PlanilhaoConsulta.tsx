@@ -253,7 +253,7 @@ export const PlanilhaoConsulta = () => {
         <div className="overflow-x-auto">
           <table className="text-sm" style={{ tableLayout: 'fixed', minWidth: '100%' }}>
             <thead>
-              <tr className="border-b border-border bg-muted/30">
+              <tr className="border-b border-border bg-secondary">
                 {visibleColumns.map((c: PlanilhaoColumn) => (
                   <th
                     key={c.id}
@@ -327,7 +327,7 @@ export const PlanilhaoConsulta = () => {
             </tbody>
             {dados.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-border bg-muted/40 font-semibold">
+                <tr className="border-t-2 border-border bg-secondary font-semibold">
                   {visibleColumns.map((c, i) => (
                     <td key={c.id} className={`px-3 py-2 ${c.type === 'number' ? 'text-right tabular-nums' : ''}`}>
                       {i === 0

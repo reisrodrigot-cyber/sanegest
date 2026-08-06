@@ -141,6 +141,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
     const ligCount = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia ?? 0) || 0;
     setAjLig(String(ligCount));
     setAjMotivo(r.motivo_ajuste ?? '');
+    setAjData(r.data_registro);
     setLigRows([]);
     if (ligCount > 0) {
       setLoadingLig(true);

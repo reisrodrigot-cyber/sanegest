@@ -898,13 +898,14 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
 
   const accent = {
-    blue: '#185FA5',
-    blueDark: '#0C447C',
+    blue: '#2E7DD1',        /* azul HECA clareado para contraste em tema escuro */
+    blueDark: '#185FA5',    /* azul HECA institucional */
     amber: '#D97706',
     green: '#16A34A',
     red: '#DC2626',
-    purple: '#7C3AED',
+    purple: '#4FB0EF',      /* realce institucional HECA claro (sem roxo) */
   };
+
 
   // Dark chart palette
   const DARK_BG = 'hsl(211 52% 13%)';           /* card institucional HECA */

@@ -1346,7 +1346,7 @@ ${placemarks.join('\n')}
                   )}
                 </>
               ) : (
-                <div className="text-amber-400">Trecho ainda não vinculado ao mapa</div>
+                <div className="text-amber-600">Trecho ainda não vinculado ao mapa</div>
               )}
             </div>
             <button

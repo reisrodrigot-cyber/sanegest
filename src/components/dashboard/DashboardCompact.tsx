@@ -1397,7 +1397,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           const tabBtn = (active: boolean) =>
             `h-7 px-2 text-[11px] rounded border ${active ? 'bg-[#4dd9ac] text-[#0d1b2a] border-[#4dd9ac]' : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'}`;
           return (
-            <div className="dc-bacia col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-[420px]" style={darkCardStyle}>
+            <div className="dc-bacia col-span-10 xl:col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-auto max-h-[520px] md:h-[420px]" style={darkCardStyle}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <h3 className="text-sm font-semibold text-white">Avanço por Sub-bacia</h3>
                 <div className="flex items-center gap-2">
@@ -1529,7 +1529,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   {filteredLig.length === 0 ? (
                     <p className="text-xs text-white/60 text-center py-6">Nenhuma ligação executada.</p>
                   ) : (
-                    <div className="overflow-y-auto flex-1 min-h-0">
+                    <div className="overflow-auto flex-1 min-h-0">
+                      <div className="min-w-[300px]">
                       <table className="w-full text-xs text-white/90">
                         <thead className="sticky top-0" style={{ backgroundColor: DARK_BG }}>
                           <tr className="text-left text-white/60 border-b border-white/10">

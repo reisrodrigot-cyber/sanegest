@@ -116,20 +116,20 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 
-  /* Thin dark scrollbars */
+  /* Thin scrollbars (tema claro) */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--heca-blue) / 0.6) hsl(var(--background));
+    scrollbar-color: hsl(var(--heca-blue) / 0.45) transparent;
   }
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: hsl(var(--secondary));
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--heca-navy));
+    background: hsl(var(--heca-blue) / 0.45);
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
@@ -139,19 +139,19 @@
 
 @layer utilities {
   .status-cinza {
-    @apply bg-[hsl(var(--status-gray-bg))] text-[hsl(var(--status-gray))] border-[hsl(var(--status-gray))];
+    @apply bg-[hsl(var(--status-gray-bg))] text-[hsl(var(--status-gray-fg))] border-[hsl(var(--status-gray))];
   }
   .status-vermelho {
-    @apply bg-[hsl(var(--status-red-bg))] text-[hsl(var(--status-red))] border-[hsl(var(--status-red))];
+    @apply bg-[hsl(var(--status-red-bg))] text-[hsl(var(--status-red-fg))] border-[hsl(var(--status-red))];
   }
   .status-laranja {
-    @apply bg-[hsl(var(--status-orange-bg))] text-[hsl(var(--status-orange))] border-[hsl(var(--status-orange))];
+    @apply bg-[hsl(var(--status-orange-bg))] text-[hsl(var(--status-orange-fg))] border-[hsl(var(--status-orange))];
   }
   .status-amarelo {
-    @apply bg-[hsl(var(--status-yellow-bg))] text-[hsl(var(--status-yellow))] border-[hsl(var(--status-yellow))];
+    @apply bg-[hsl(var(--status-yellow-bg))] text-[hsl(var(--status-yellow-fg))] border-[hsl(var(--status-yellow))];
   }
   .status-verde {
-    @apply bg-[hsl(var(--status-green-bg))] text-[hsl(var(--status-green))] border-[hsl(var(--status-green))];
+    @apply bg-[hsl(var(--status-green-bg))] text-[hsl(var(--status-green-fg))] border-[hsl(var(--status-green))];
   }
   .status-dot-cinza {
     @apply bg-[hsl(var(--status-gray))];
@@ -166,8 +166,9 @@
     @apply bg-[hsl(var(--status-yellow))];
   }
   .status-azul {
-    @apply bg-[hsl(var(--status-blue-bg))] text-[hsl(var(--status-blue))] border-[hsl(var(--status-blue))];
+    @apply bg-[hsl(var(--status-blue-bg))] text-[hsl(var(--status-blue-fg))] border-[hsl(var(--status-blue))];
   }
+
   .status-dot-azul {
     @apply bg-[hsl(var(--status-blue))];
   }

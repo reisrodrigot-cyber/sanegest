@@ -6,7 +6,7 @@ import { statusLabel, vinculoDisplayStatus, toDisplayStatus, type OSDisplayStatu
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PlanilhaoConsulta } from '@/components/ordens/PlanilhaoConsulta';
-import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
@@ -202,11 +202,6 @@ const OrdensPage = () => {
     return base.filter(os => statusEfetivo(os) === toDisplayStatus(status)).length;
   };
 
-  const daysSince = (iso?: string) => {
-    if (!iso) return 0;
-    return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
-  };
-
   const handleExport = async () => {
     try {
       await downloadPlanilhao(ordens);
@@ -320,9 +315,6 @@ const OrdensPage = () => {
               const executado = producaoByOs[os.id] || 0;
               const total = Number(os.comprimento_previsto || 0);
               const pct = total > 0 ? Math.min(100, (executado / total) * 100) : 0;
-              const since = statusSinceByOs[os.id] || os.updated_at;
-              const dias = daysSince(since);
-              const parado = dias >= 5;
               const isSel = selected.has(os.id);
               return (
                 <tr key={os.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${isSel ? 'bg-primary/5' : ''}`}>

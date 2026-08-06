@@ -667,7 +667,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
                     const StatusIcon = cancelado ? AlertTriangle : ajustado ? AlertTriangle : CheckCircle2;
                     const statusColor = cancelado
                       ? 'text-destructive'
-                      : ajustado ? 'text-orange-400' : 'text-emerald-600';
+                      : ajustado ? 'text-orange-400' : 'text-emerald-400';
 
                     const editavel = podeEditar(r);
 

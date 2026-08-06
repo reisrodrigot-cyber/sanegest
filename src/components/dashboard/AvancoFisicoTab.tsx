@@ -1,21 +1,13 @@
-import { useMemo, useState } from 'react';
-import { Loader2, Pencil, TrendingUp } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { permissions } from '@/lib/permissions';
+import { Loader2, TrendingUp } from 'lucide-react';
 import { useAvancoFisico } from '@/hooks/useAvancoFisico';
 import type { LinhaAvanco, OrdemLike } from '@/lib/avancoFisico';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
 
 const fmtM = (n: number) =>
   n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtUn = (n: number) => n.toLocaleString('pt-BR');
-const fmtPct = (p: number | null) => (p == null ? '—' : `${p.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
+const fmtUn = (n: number) => Math.round(n).toLocaleString('pt-BR');
+const fmtPct = (p: number | null) =>
+  p == null ? '—' : `${p.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 
 interface Props {
   ordens: OrdemLike[];
@@ -28,152 +20,148 @@ const CardResumo = ({
   ramaisPrev: number; ramaisReal: number; ramaisPct: number | null; accent: string;
 }) => (
   <div
-    className="bg-card rounded-lg border border-border shadow-sm p-4 flex flex-col gap-2"
+    className="bg-card rounded-lg border border-border shadow-sm p-4 flex flex-col gap-3"
     style={{ borderTop: `3px solid ${accent}` }}
   >
     <div className="flex items-center justify-between text-muted-foreground">
       <span className="text-xs font-semibold uppercase tracking-wide">{titulo}</span>
       <TrendingUp size={16} style={{ color: accent }} />
     </div>
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <div className="text-3xl font-bold text-foreground leading-tight">{fmtPct(redePct)}</div>
-        <div className="text-[11px] text-muted-foreground mt-0.5">
-          Quantidade contratual de rede (m): {fmtM(redePrev)} · Executado: {fmtM(redeReal)}
-        </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="min-w-0">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Rede</div>
+        <div className="text-3xl font-bold text-foreground leading-tight tabular-nums">{fmtPct(redePct)}</div>
+        <dl className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+          <div className="flex justify-between gap-2"><dt>Previsto</dt><dd className="tabular-nums text-foreground">{fmtM(redePrev)} m</dd></div>
+          <div className="flex justify-between gap-2"><dt>Realizado</dt><dd className="tabular-nums text-foreground">{fmtM(redeReal)} m</dd></div>
+          <div className="flex justify-between gap-2"><dt>Saldo</dt><dd className="tabular-nums text-foreground">{fmtM(redePrev - redeReal)} m</dd></div>
+        </dl>
       </div>
-      <div>
-        <div className="text-3xl font-bold text-foreground leading-tight">{fmtPct(ramaisPct)}</div>
-        <div className="text-[11px] text-muted-foreground mt-0.5">
-          Quantidade contratual de ramais (un.): {fmtUn(ramaisPrev)} · Executado: {fmtUn(ramaisReal)}
-        </div>
+      <div className="min-w-0">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Ramais</div>
+        <div className="text-3xl font-bold text-foreground leading-tight tabular-nums">{fmtPct(ramaisPct)}</div>
+        <dl className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+          <div className="flex justify-between gap-2"><dt>Previsto</dt><dd className="tabular-nums text-foreground">{fmtUn(ramaisPrev)} un.</dd></div>
+          <div className="flex justify-between gap-2"><dt>Realizado</dt><dd className="tabular-nums text-foreground">{fmtUn(ramaisReal)} un.</dd></div>
+          <div className="flex justify-between gap-2"><dt>Saldo</dt><dd className="tabular-nums text-foreground">{fmtUn(ramaisPrev - ramaisReal)} un.</dd></div>
+        </dl>
       </div>
     </div>
   </div>
 );
 
-const TabelaAvanco = ({
-  titulo, linhas, unidade, totalLabel, formatar,
+const BarraPct = ({ pct }: { pct: number | null }) => (
+  <div className="h-2 w-full rounded-full bg-muted overflow-hidden" aria-hidden>
+    <div
+      className="h-full rounded-full bg-primary"
+      style={{ width: `${Math.min(100, Math.max(0, pct ?? 0))}%` }}
+    />
+  </div>
+);
+
+const AvancoSecao = ({
+  titulo, linhas, unidade, formatar,
 }: {
   titulo: string;
   linhas: LinhaAvanco[];
   unidade: string;
-  totalLabel: string;
   formatar: (n: number) => string;
 }) => {
   const previsto = linhas.reduce((s, l) => s + l.previsto, 0);
   const realizado = linhas.reduce((s, l) => s + l.realizado, 0);
   const pctTotal = previsto > 0 ? Math.round((realizado / previsto) * 1000) / 10 : null;
+
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col min-h-0">
       <h3 className="text-sm font-semibold text-foreground mb-2">{titulo}</h3>
-      <div className="overflow-auto max-h-[420px]">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-card">
-            <tr className="text-left text-muted-foreground border-b border-border">
-              <th className="pb-1 font-medium">Sub-bacia</th>
-              <th className="pb-1 font-medium text-right">Quantidade contratual</th>
-              <th className="pb-1 font-medium text-right">Realizado ({unidade})</th>
-              <th className="pb-1 font-medium text-right">Saldo ({unidade})</th>
-              <th className="pb-1 font-medium text-right">Percentual</th>
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-muted-foreground py-3">Sem dados.</td></tr>
-            ) : linhas.map((l) => (
-              <tr key={l.chave} className="border-b border-border/40">
-                <td className="py-1 text-foreground">
-                  {l.exibicao}
-                  {!l.temReferencia && (
-                    <span className="ml-1 text-[10px] text-muted-foreground">• sem quantidade contratual</span>
-                  )}
-                </td>
-                <td className="py-1 text-right tabular-nums">{formatar(l.previsto)}</td>
-                <td className="py-1 text-right tabular-nums">{formatar(l.realizado)}</td>
-                <td className="py-1 text-right tabular-nums">{formatar(l.saldo)}</td>
-                <td className="py-1 text-right tabular-nums font-semibold">{fmtPct(l.pct)}</td>
-              </tr>
+
+      {linhas.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-4 text-center">Sem dados.</p>
+      ) : (
+        <>
+          {/* Mobile: cartões empilhados por sub-bacia */}
+          <ul className="md:hidden flex flex-col gap-2">
+            {linhas.map((l) => (
+              <li key={l.chave} className="rounded-lg border border-border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-sm font-semibold text-foreground break-words">{l.exibicao}</span>
+                  <span className="text-base font-bold text-foreground tabular-nums shrink-0">{fmtPct(l.pct)}</span>
+                </div>
+                <div className="mt-2"><BarraPct pct={l.pct} /></div>
+                <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div className="min-w-0">
+                    <dt className="text-muted-foreground">Previsto</dt>
+                    <dd className="tabular-nums font-medium text-foreground">{formatar(l.previsto)} {unidade}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-muted-foreground">Realizado</dt>
+                    <dd className="tabular-nums font-medium text-foreground">{formatar(l.realizado)} {unidade}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-muted-foreground">Saldo</dt>
+                    <dd className="tabular-nums font-medium text-foreground">{formatar(l.saldo)} {unidade}</dd>
+                  </div>
+                </dl>
+                {!l.temPrevisto && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">Sem previsto em N.S. vigentes.</p>
+                )}
+              </li>
             ))}
-          </tbody>
-          {linhas.length > 0 && (
-            <tfoot>
-              <tr className="border-t border-border font-semibold">
-                <td className="py-1 text-foreground">{totalLabel}</td>
-                <td className="py-1 text-right tabular-nums">{formatar(previsto)}</td>
-                <td className="py-1 text-right tabular-nums">{formatar(realizado)}</td>
-                <td className="py-1 text-right tabular-nums">{formatar(previsto - realizado)}</td>
-                <td className="py-1 text-right tabular-nums">{fmtPct(pctTotal)}</td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
-      </div>
+            <li className="rounded-lg border border-border bg-muted/40 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-foreground">Total</span>
+                <span className="text-base font-bold text-foreground tabular-nums">{fmtPct(pctTotal)}</span>
+              </div>
+              <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                <div><dt className="text-muted-foreground">Previsto</dt><dd className="tabular-nums font-medium text-foreground">{formatar(previsto)} {unidade}</dd></div>
+                <div><dt className="text-muted-foreground">Realizado</dt><dd className="tabular-nums font-medium text-foreground">{formatar(realizado)} {unidade}</dd></div>
+                <div><dt className="text-muted-foreground">Saldo</dt><dd className="tabular-nums font-medium text-foreground">{formatar(previsto - realizado)} {unidade}</dd></div>
+              </dl>
+            </li>
+          </ul>
+
+          {/* Desktop: tabela */}
+          <div className="hidden md:block overflow-auto max-h-[420px]">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-card">
+                <tr className="text-left text-muted-foreground border-b border-border">
+                  <th className="pb-1 pr-2 font-medium whitespace-nowrap">Sub-bacia</th>
+                  <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Previsto ({unidade})</th>
+                  <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Realizado ({unidade})</th>
+                  <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo ({unidade})</th>
+                  <th className="pb-1 pl-2 font-medium text-right whitespace-nowrap">% Executado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((l) => (
+                  <tr key={l.chave} className="border-b border-border/40">
+                    <td className="py-1.5 pr-2 text-foreground">{l.exibicao}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.previsto)}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.realizado)}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.saldo)}</td>
+                    <td className="py-1.5 pl-2 text-right tabular-nums font-semibold">{fmtPct(l.pct)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-border font-semibold">
+                  <td className="py-1.5 pr-2 text-foreground">Total</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto)}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums">{formatar(realizado)}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto - realizado)}</td>
+                  <td className="py-1.5 pl-2 text-right tabular-nums">{fmtPct(pctTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
 export const AvancoFisicoTab = ({ ordens }: Props) => {
-  const { effectiveRole, user } = useAuth();
-  const { toast } = useToast();
   const avanco = useAvancoFisico(ordens);
-  const podeEditar =
-    permissions.isAdmin(user?.role) || permissions.canEditOS(effectiveRole);
-
-  const [aberto, setAberto] = useState(false);
-  const [selecionada, setSelecionada] = useState<string>('');
-  const [rede, setRede] = useState('0');
-  const [ramais, setRamais] = useState('0');
-  const [salvando, setSalvando] = useState(false);
-
-  const subBacias = useMemo(
-    () => avanco.rede.map((l) => l.exibicao),
-    [avanco.rede],
-  );
-
-  const abrirEdicao = () => {
-    const primeira = subBacias[0] ?? '';
-    setSelecionada(primeira);
-    const linha = avanco.rede.find((l) => l.exibicao === primeira);
-    const linhaRamais = avanco.ramais.find((l) => l.exibicao === primeira);
-    setRede(String(linha?.previsto ?? 0));
-    setRamais(String(linhaRamais?.previsto ?? 0));
-    setAberto(true);
-  };
-
-  const trocarSubBacia = (valor: string) => {
-    setSelecionada(valor);
-    const linha = avanco.rede.find((l) => l.exibicao === valor);
-    const linhaRamais = avanco.ramais.find((l) => l.exibicao === valor);
-    setRede(String(linha?.previsto ?? 0));
-    setRamais(String(linhaRamais?.previsto ?? 0));
-  };
-
-  const salvar = async () => {
-    const redeNum = Number(String(rede).replace(',', '.'));
-    const ramaisNum = Number(String(ramais).replace(',', '.'));
-    if (!selecionada.trim()) {
-      toast({ title: 'Informe a sub-bacia', variant: 'destructive' });
-      return;
-    }
-    if (!Number.isFinite(redeNum) || !Number.isFinite(ramaisNum) || redeNum < 0 || ramaisNum < 0) {
-      toast({ title: 'Valores inválidos', description: 'Use apenas valores não negativos.', variant: 'destructive' });
-      return;
-    }
-    setSalvando(true);
-    const { error } = await avanco.salvarReferencia({
-      bacia_exibicao: selecionada,
-      rede_prevista_metros: redeNum,
-      ramais_previstos_unidades: ramaisNum,
-    });
-    setSalvando(false);
-    if (error) {
-      toast({ title: 'Não foi possível salvar', description: error, variant: 'destructive' });
-      return;
-    }
-    toast({ title: 'Quantidade contratual atualizada' });
-    setAberto(false);
-  };
 
   if (avanco.loading) {
     return (
@@ -188,7 +176,9 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
       <div className="text-center py-10 text-sm text-muted-foreground">
         Não foi possível carregar o avanço físico.
         <div className="mt-2">
-          <Button size="sm" variant="outline" onClick={avanco.recarregar}>Tentar novamente</Button>
+          <Button size="sm" variant="outline" className="min-h-11" onClick={avanco.recarregar}>
+            Tentar novamente
+          </Button>
         </div>
       </div>
     );
@@ -196,6 +186,10 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
 
   return (
     <div className="flex flex-col gap-3">
+      <p className="text-[11px] text-muted-foreground">
+        Previsto = soma das N.S. vigentes por sub-bacia. Realizado = produção registrada no SaneGest.
+      </p>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <CardResumo
           titulo="Avanço Físico — POV"
@@ -219,83 +213,10 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
       </div>
 
-      {podeEditar && (
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={abrirEdicao}>
-            <Pencil size={12} /> Editar quantidades contratuais
-          </Button>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-        <TabelaAvanco
-          titulo="Rede por sub-bacia"
-          linhas={avanco.rede}
-          unidade="m"
-          totalLabel="Total"
-          formatar={fmtM}
-        />
-        <TabelaAvanco
-          titulo="Ramais por sub-bacia"
-          linhas={avanco.ramais}
-          unidade="un."
-          totalLabel="Total"
-          formatar={(n) => fmtUn(Math.round(n))}
-        />
+        <AvancoSecao titulo="Rede por sub-bacia" linhas={avanco.rede} unidade="m" formatar={fmtM} />
+        <AvancoSecao titulo="Ramais por sub-bacia" linhas={avanco.ramais} unidade="un." formatar={fmtUn} />
       </div>
-
-      <Dialog open={aberto} onOpenChange={setAberto}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Quantidades contratuais por sub-bacia</DialogTitle>
-            <DialogDescription>
-              Quantidade contratual informada manualmente por sub-bacia. Não é valor em R$ e não altera produção, ligações, O.S. ou dados históricos.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs">Sub-bacia</Label>
-              <select
-                className="mt-1 w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
-                value={selecionada}
-                onChange={(e) => trocarSubBacia(e.target.value)}
-              >
-                {subBacias.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label className="text-xs">Quantidade contratual de rede (m)</Label>
-              <Input
-                className="mt-1"
-                type="number"
-                min={0}
-                step="0.01"
-                value={rede}
-                onChange={(e) => setRede(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Quantidade contratual de ramais (un.)</Label>
-              <Input
-                className="mt-1"
-                type="number"
-                min={0}
-                step="1"
-                value={ramais}
-                onChange={(e) => setRamais(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setAberto(false)}>Cancelar</Button>
-            <Button onClick={salvar} disabled={salvando}>
-              {salvando ? 'Salvando…' : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

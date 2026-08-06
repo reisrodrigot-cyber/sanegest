@@ -388,8 +388,7 @@ const OrdensPage = () => {
                       {locatableOsIds.has(os.id) && (
                         <button
                           onClick={() => navigate('/dashboard', { state: { focusOsId: os.id } })}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium hover:bg-primary/10 transition-colors"
-                          style={{ color: '#4dd9ac' }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[hsl(var(--heca-blue-bright))] hover:bg-primary/10 transition-colors"
                           title="Localizar As Built"
                         >
                           <MapPin size={14} /> <span className="hidden lg:inline">As Built</span>

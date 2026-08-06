@@ -1435,6 +1435,35 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   </div>
                   {filteredRede.length === 0 ? (
                     <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
+                  ) : isMobileLayout ? (
+                    <ul className="overflow-y-auto flex-1 min-h-0 flex flex-col gap-2 pr-0.5">
+                      {filteredRede.map((b) => {
+                        const base = b.totalBase > 0 ? b.totalBase : b.executado;
+                        const pctExec = base > 0 ? Math.min(100, (b.executado / base) * 100) : 0;
+                        return (
+                          <li key={b.trecho} className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-[13px] font-semibold text-white break-words">{b.trecho}</span>
+                              <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: TEAL }}>{b.pct}%</span>
+                            </div>
+                            <div className="mt-2 h-3 w-full rounded-full overflow-hidden flex bg-white/10">
+                              <div style={{ width: `${pctExec}%`, backgroundColor: GREEN_EXEC }} />
+                              <div style={{ width: `${100 - pctExec}%`, backgroundColor: RED_PEND }} />
+                            </div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+                              <div>
+                                <div className="text-white/60">Executado</div>
+                                <div className="tabular-nums font-medium" style={{ color: GREEN_EXEC }}>{fmtM(b.executado)} m</div>
+                              </div>
+                              <div>
+                                <div className="text-white/60">Pendente</div>
+                                <div className="tabular-nums font-medium" style={{ color: RED_PEND }}>{fmtM(b.pendente)} m</div>
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   ) : (
                     <div className="overflow-y-auto flex-1 min-h-0">
                       <ChartFrame className="dc-chart-box" mobileHeight={mobileBaciaHeight} desktopHeight={innerHeight}>

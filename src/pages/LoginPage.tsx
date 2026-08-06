@@ -100,7 +100,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[linear-gradient(160deg,hsl(var(--heca-navy))_0%,hsl(var(--heca-navy-deep))_65%,hsl(var(--background))_100%)] p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-brand-surface mb-4 shadow-lg">
@@ -157,7 +157,7 @@ const LoginPage = () => {
                   <button
                     type="button"
                     onClick={openForgot}
-                    className="min-h-[44px] inline-flex items-center px-1 text-sm font-medium text-status-green hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                    className="min-h-[44px] inline-flex items-center px-1 text-sm font-medium text-[hsl(var(--heca-blue-bright))] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                   >
                     Esqueci minha senha
                   </button>

@@ -11,7 +11,8 @@
  *  - Sub-bacia: `obra_nome` da view; fallback para a bacia da O.S.; caso
  *    contrário "Sem sub-bacia" (nunca atribuída a outra sub-bacia).
  *  - PV final assentado: marca a O.S. como concluída (não gera pendência).
- *  - Previsto: SEMPRE referência manual (quantitativos_referencia).
+ *  - Previsto: soma das N.S. vigentes da sub-bacia (ordens.comprimento_previsto
+ *    e ordens.ligacoes_previstas). Nenhuma fonte manual/contratual.
  */
 
 export const SEM_SUB_BACIA = 'Sem sub-bacia';
@@ -58,6 +59,8 @@ export interface RelatorioLike {
 export interface OrdemLike {
   id: string;
   bacia: string | null;
+  comprimento_previsto?: number | null;
+  ligacoes_previstas?: number | null;
 }
 
 export interface Periodo {

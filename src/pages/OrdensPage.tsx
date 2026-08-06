@@ -294,7 +294,7 @@ const OrdensPage = () => {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/30">
+            <tr className="border-b border-border bg-secondary">
               {canLiberar && (
                 <th className="px-3 py-3 w-10">
                   <Checkbox

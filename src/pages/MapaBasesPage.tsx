@@ -33,10 +33,10 @@ interface Divergencia {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  processando: 'bg-sky-500/15 text-sky-300 border border-sky-400/30',
-  preview: 'bg-amber-500/15 text-amber-300 border border-amber-400/30',
-  falha: 'bg-red-500/15 text-red-300 border border-red-400/30',
-  ativa: 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/30',
+  processando: 'bg-sky-500/15 text-sky-700 border border-sky-400/30',
+  preview: 'bg-amber-500/15 text-amber-700 border border-amber-400/30',
+  falha: 'bg-red-500/15 text-red-700 border border-red-400/30',
+  ativa: 'bg-emerald-500/15 text-emerald-700 border border-emerald-400/30',
   arquivada: 'bg-muted text-muted-foreground border border-border',
 };
 
@@ -202,7 +202,7 @@ const MapaBasesPage = () => {
         <div className="grid md:grid-cols-3 gap-3 mb-3">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Arquivo ZIP *</label>
-            <label className={`mt-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border bg-background text-sm cursor-pointer hover:bg-muted/40 ${importing ? 'opacity-60 pointer-events-none' : ''}`}>
+            <label className={`mt-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border bg-background text-sm cursor-pointer hover:bg-secondary ${importing ? 'opacity-60 pointer-events-none' : ''}`}>
               <Upload size={14} />
               <span className="truncate">{arquivo ? arquivo.name : 'Selecionar ZIP...'}</span>
               <input type="file" accept=".zip" onChange={handlePickFile} className="hidden" disabled={importing} />
@@ -219,7 +219,7 @@ const MapaBasesPage = () => {
               value={ssDetectada ?? ''}
               readOnly
               placeholder="— aguardando arquivo —"
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-muted/40 text-sm font-semibold text-foreground cursor-not-allowed"
+              className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-secondary text-sm font-semibold text-foreground cursor-not-allowed"
             />
             {ssDetectada && proximaVersao != null && (
               <p className="text-[11px] text-emerald-700 mt-1">
@@ -290,7 +290,7 @@ const MapaBasesPage = () => {
         ) : (
           <div className="overflow-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+              <thead className="bg-secondary text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="text-left p-3">Camada</th>
                   <th className="text-left p-3">Status</th>
@@ -303,7 +303,7 @@ const MapaBasesPage = () => {
               </thead>
               <tbody>
                 {bases.map((b) => (
-                  <tr key={b.id} className="border-t border-border hover:bg-muted/30">
+                  <tr key={b.id} className="border-t border-border hover:bg-secondary">
                     <td className="p-3">
                       <div className="font-semibold text-foreground whitespace-nowrap">{b.ss} • v{b.versao}</div>
                     </td>

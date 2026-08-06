@@ -388,7 +388,7 @@ const ImportarPage = () => {
               {showDiff && (
                 <div className="max-h-96 overflow-auto border border-border rounded-lg">
                   <table className="w-full text-xs">
-                    <thead className="bg-muted/50 sticky top-0">
+                    <thead className="bg-secondary sticky top-0">
                       <tr><th className="text-left p-2">Trecho</th><th className="text-left p-2">Campo</th><th className="text-left p-2">Atual</th><th className="text-left p-2">Novo</th></tr>
                     </thead>
                     <tbody>

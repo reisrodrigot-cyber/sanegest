@@ -55,7 +55,7 @@ const ImportHistoricoPage = () => {
       ) : (
         <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-muted/30">
+            <thead className="bg-secondary">
               <tr>
                 <th className="px-2 py-3 w-8"></th>
                 <th className="text-left px-3 py-3 font-medium text-muted-foreground">Data</th>
@@ -91,7 +91,7 @@ const ImportHistoricoPage = () => {
                               <summary className="text-sm font-medium cursor-pointer mb-2">Alterações ({l.changes.length})</summary>
                               <div className="max-h-72 overflow-auto border border-border rounded">
                                 <table className="w-full text-xs">
-                                  <thead className="bg-muted/40"><tr><th className="text-left p-2">Trecho</th><th className="text-left p-2">Campo</th><th className="text-left p-2">Antigo</th><th className="text-left p-2">Novo</th></tr></thead>
+                                  <thead className="bg-secondary"><tr><th className="text-left p-2">Trecho</th><th className="text-left p-2">Campo</th><th className="text-left p-2">Antigo</th><th className="text-left p-2">Novo</th></tr></thead>
                                   <tbody>
                                     {l.changes.flatMap((c: any) =>
                                       (c.diffs || []).map((d: any, i: number) => (

@@ -1418,7 +1418,7 @@ ${placemarks.join('\n')}
               {buscaDebounced.trim() === '' ? (
                 <div className="text-[11px] text-muted-foreground py-1">Digite ao menos um caractere do trecho.</div>
               ) : resultadosBusca.length === 0 ? (
-                <div className="text-[11px] text-amber-400 py-1">Trecho ainda não vinculado ao mapa</div>
+                <div className="text-[11px] text-amber-700 py-1">Trecho ainda não vinculado ao mapa</div>
               ) : (
                 <ul className="space-y-1">
                   {resultadosBusca.map((r) => {
@@ -1506,7 +1506,7 @@ ${placemarks.join('\n')}
             {canViewPreviewBase && (
               <div className="mb-3 border border-amber-500/40 bg-amber-500/10 rounded p-2">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-[10px] uppercase tracking-wide text-amber-300 font-semibold">Bases geográficas</div>
+                  <div className="text-[10px] uppercase tracking-wide text-amber-700 font-semibold">Bases geográficas</div>
                   {(effectiveRole === 'admin' || effectiveRole === 'sala_tecnica') && (
                     <Link to="/mapa/bases" onClick={() => setLayersOpen(false)} className="text-[11px] text-primary hover:underline whitespace-nowrap">Gerenciar</Link>
                   )}

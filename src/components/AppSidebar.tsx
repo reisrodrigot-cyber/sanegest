@@ -2,12 +2,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS, UserRole } from '@/types/sanegest';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ClipboardList, HardHat, Package, Map, MapPin, BarChart3, LogOut, Menu, X, Droplets, Users, UserCircle, Pencil
+  LayoutDashboard, ClipboardList, HardHat, Package, Map, MapPin, BarChart3, LogOut, Menu, X, Users, UserCircle, Pencil
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ViewAsSelector } from './ViewAsSelector';
 import { usePendingMateriaisCount } from '@/hooks/usePendingMateriais';
 import { supabase } from '@/integrations/supabase/client';
+import { BrandMark } from '@/components/BrandMark';
 
 interface NavItem {
   label: string;
@@ -79,13 +80,16 @@ export const AppSidebar = () => {
   const sidebarContent = (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2">
-          <Droplets size={28} className="text-sidebar-primary" />
-          <div>
-            <h1 className="text-lg font-bold text-sidebar-primary">SaneGest</h1>
-            <p className="text-xs text-sidebar-foreground/60">Gestão de Obras</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="rounded-lg bg-brand-surface p-1 shrink-0 flex items-center justify-center">
+            <BrandMark variant="symbol" size={26} />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-sidebar-primary truncate">SaneGest</h1>
+            <p className="text-xs text-sidebar-foreground/60 truncate">Gestão de Obras</p>
           </div>
         </div>
+
       </div>
 
       {user.role === 'admin' && <ViewAsSelector />}

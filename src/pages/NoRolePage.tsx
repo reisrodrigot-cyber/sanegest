@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { Droplets, LogOut, Clock } from 'lucide-react';
+import { LogOut, Clock } from 'lucide-react';
+import { BrandMark } from '@/components/BrandMark';
 
 const NoRolePage = () => {
   const { logout, supabaseUser } = useAuth();
@@ -7,9 +8,11 @@ const NoRolePage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary p-4">
       <div className="w-full max-w-md text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-foreground/10 mb-4">
-          <Droplets size={36} className="text-primary-foreground" />
+        <div className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-brand-surface mb-4 shadow-lg">
+
+          <BrandMark variant="full" size={32} />
         </div>
+
         <h1 className="text-3xl font-bold text-primary-foreground mb-2">SaneGest</h1>
 
         <div className="bg-card rounded-xl shadow-xl p-6 mt-6">

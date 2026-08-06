@@ -307,12 +307,23 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
       });
     }
     setSaving(true);
+    if (!editData) {
+      setSaving(false);
+      toast({ title: 'Data obrigatória', description: 'Informe a data da produção.', variant: 'destructive' });
+      return;
+    }
+    if (editData > hojeMaceio()) {
+      setSaving(false);
+      toast({ title: 'Data inválida', description: 'A data da produção não pode ser futura.', variant: 'destructive' });
+      return;
+    }
     const valor_anterior = {
       comprimento_dia: editing.comprimento_dia,
       ligacoes_dia: editing.ligacoes_dia,
       observacao: editing.observacao,
+      data_registro: editing.data_registro,
     };
-    const valor_novo = { comprimento_dia: novoComp, ligacoes_dia: novoLig, observacao: editObs || null };
+    const valor_novo = { comprimento_dia: novoComp, ligacoes_dia: novoLig, observacao: editObs || null, data_registro: editData };
     const { data: updated, error } = await supabase
       .from('registros_producao')
       .update(valor_novo)

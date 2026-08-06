@@ -42,6 +42,11 @@ interface RegistroRow {
 }
 
 const fmtN = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// "Hoje" em America/Maceio (mesma regra do cadastro de produção)
+const hojeMaceio = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Maceio', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
 const fmtData = (d: string) => {
   const [y, m, dd] = d.split('-');
   return `${dd}/${m}/${y}`;
@@ -65,6 +70,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
   const [ajComp, setAjComp] = useState('');
   const [ajLig, setAjLig] = useState('');
   const [ajMotivo, setAjMotivo] = useState('');
+  const [ajData, setAjData] = useState('');
   const [savingAj, setSavingAj] = useState(false);
   // Ligações do registro em ajuste
   interface LigRow {
@@ -135,6 +141,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
     const ligCount = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia ?? 0) || 0;
     setAjLig(String(ligCount));
     setAjMotivo(r.motivo_ajuste ?? '');
+    setAjData(r.data_registro);
     setLigRows([]);
     if (ligCount > 0) {
       setLoadingLig(true);
@@ -195,16 +202,21 @@ export function RegistrosProducaoOS({ osId }: Props) {
     const compRede = Number(String(ajComp).replace(',', '.'));
     if (isNaN(compRede) || compRede < 0) { toast.error('Comprimento inválido'); return; }
 
+    if (!ajData) { toast.error('Informe a data da produção'); return; }
+    if (ajData > hojeMaceio()) { toast.error('A data da produção não pode ser futura'); return; }
+
     setSavingAj(true);
     const valor_anterior = {
       comprimento_ajustado: ajustando.comprimento_ajustado,
       ligacoes_ajustadas: ajustando.ligacoes_ajustadas,
       motivo_ajuste: ajustando.motivo_ajuste,
+      data_registro: ajustando.data_registro,
     };
     const valor_novo: any = {
       comprimento_ajustado: compRede,
       ligacoes_ajustadas: lig,
       motivo_ajuste: ajMotivo.trim(),
+      data_registro: ajData,
       ajustado_por: user.id,
       ajustado_em: new Date().toISOString(),
     };
@@ -494,6 +506,22 @@ export function RegistrosProducaoOS({ osId }: Props) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+            <div>
+              <Label htmlFor="aj-data">Data da produção *</Label>
+              <Input
+                id="aj-data"
+                type="date"
+                value={ajData}
+                max={hojeMaceio()}
+                onChange={(e) => setAjData(e.target.value)}
+                className="h-11 text-base"
+              />
+              {ajustando && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Data original do registro: {fmtData(ajustando.data_registro)}
+                </p>
+              )}
+            </div>
             <div>
               <Label htmlFor="aj-comp">Comprimento final (m)</Label>
               <Input id="aj-comp" inputMode="decimal" value={ajComp} onChange={(e) => setAjComp(e.target.value)} className="h-11" />

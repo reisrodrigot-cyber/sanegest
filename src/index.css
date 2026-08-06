@@ -7,91 +7,104 @@
 @layer base {
   :root {
     /* ============================================================
-       Identidade institucional HECA Construtora
-       navy #0C447C · azul #185FA5 · derivados para superfícies
+       Identidade institucional HECA Construtora — TEMA CLARO
+       navy #0C447C · azul #185FA5 · superfícies brancas
        ============================================================ */
     --heca-navy: 210 82% 27%;        /* #0C447C */
     --heca-blue: 209 75% 37%;        /* #185FA5 */
-    --heca-blue-soft: 209 62% 46%;   /* hover / superfícies ativas */
-    --heca-blue-bright: 205 85% 62%; /* destaque legível sobre fundo escuro */
-    --heca-navy-deep: 211 70% 8%;    /* fundo institucional */
-    --heca-surface: 211 52% 13%;     /* card institucional */
-    --heca-surface-raised: 211 50% 17%; /* superfície elevada */
+    --heca-blue-soft: 209 70% 94%;   /* hover / superfícies ativas claras */
+    --heca-blue-bright: 205 85% 45%; /* destaque institucional */
+    --heca-navy-deep: 211 66% 12%;   /* sidebar institucional */
+    --heca-surface: 0 0% 100%;       /* card institucional */
+    --heca-surface-raised: 210 40% 97%; /* superfície secundária */
 
-    /* Superfície clara reservada para a marca HECA (contraste garantido) */
+    /* Superfície clara reservada para a marca HECA */
     --brand-surface: 0 0% 100%;
 
-    --background: 211 70% 8%;
-    --foreground: 208 30% 95%;
+    --background: 210 40% 98%;
+    --foreground: 213 40% 15%;
 
-    --card: 211 52% 13%;
-    --card-foreground: 208 30% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 213 40% 15%;
 
-    --popover: 211 50% 17%;
-    --popover-foreground: 208 30% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 40% 15%;
 
-    /* Primary = azul HECA (clareado para contraste em tema escuro) */
-    --primary: 209 72% 46%;
+    /* Primary = azul institucional HECA */
+    --primary: 209 75% 37%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary = painel azul-marinho HECA */
-    --secondary: 210 55% 21%;
-    --secondary-foreground: 205 80% 82%;
+    /* Secondary = superfície azul/cinza muito clara */
+    --secondary: 210 45% 96%;
+    --secondary-foreground: 209 70% 27%;
 
-    --muted: 211 46% 18%;
-    --muted-foreground: 209 26% 73%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 212 18% 45%;
 
-    --accent: 210 58% 24%;
-    --accent-foreground: 205 85% 78%;
+    --accent: 209 70% 94%;
+    --accent-foreground: 209 75% 30%;
 
-    --destructive: 355 78% 56%;
+    --destructive: 355 72% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Bordas institucionais com contraste perceptível */
-    --border: 210 38% 26%;
-    --input: 211 46% 18%;
-    --ring: 205 85% 62%;
+    /* Bordas finas azul/cinza claro */
+    --border: 213 30% 88%;
+    --input: 213 30% 85%;
+    --ring: 209 75% 45%;
 
     --radius: 0.5rem;
 
     /* SaneGest custom tokens (institucionais) */
     --sane-blue-dark: 210 82% 27%;
     --sane-blue: 209 75% 37%;
-    --sane-blue-light: 205 85% 62%;
-    --sane-gray: 209 22% 58%;
-    --sane-gray-light: 210 38% 26%;
-    --sane-cream: 211 52% 13%;
+    --sane-blue-light: 205 85% 45%;
+    --sane-gray: 212 18% 45%;
+    --sane-gray-light: 213 30% 88%;
+    --sane-cream: 210 40% 97%;
 
     /* Séries neutras/institucionais de gráfico (sem significado operacional) */
-    --chart-1: 205 85% 62%;
-    --chart-2: 209 75% 45%;
-    --chart-3: 210 82% 32%;
-    --chart-4: 200 40% 70%;
-    --chart-5: 209 22% 58%;
+    --chart-1: 209 75% 45%;
+    --chart-2: 210 82% 27%;
+    --chart-3: 205 70% 60%;
+    --chart-4: 212 30% 62%;
+    --chart-5: 209 22% 45%;
 
-    /* Status badges (dark) — OPERACIONAIS, NÃO ALTERAR */
+    /* Status — OPERACIONAIS. Hue/cor de linha, ponto e mapa INALTERADOS.
+       Apenas os fundos (*-bg) e o texto de badge (*-fg) foram adaptados
+       para leitura sobre superfícies claras. */
     --status-gray: 212 26% 54%;
-    --status-gray-bg: 217 64% 14%;
+    --status-gray-bg: 213 30% 95%;
+    --status-gray-fg: 212 26% 34%;
     --status-red: 355 78% 56%;
-    --status-red-bg: 348 60% 12%;
+    --status-red-bg: 355 90% 96%;
+    --status-red-fg: 355 70% 38%;
     --status-orange: 33 100% 50%;
-    --status-orange-bg: 26 100% 9%;
+    --status-orange-bg: 33 100% 95%;
+    --status-orange-fg: 27 90% 34%;
     --status-yellow: 48 100% 48%;
-    --status-yellow-bg: 48 100% 9%;
+    --status-yellow-bg: 48 100% 93%;
+    --status-yellow-fg: 40 95% 28%;
     --status-green: 135 64% 47%;
-    --status-green-bg: 143 100% 9%;
+    --status-green-bg: 138 70% 95%;
+    --status-green-fg: 138 70% 25%;
     --status-blue: 217 91% 60%;
-    --status-blue-bg: 220 70% 12%;
+    --status-blue-bg: 217 100% 96%;
+    --status-blue-fg: 217 80% 38%;
 
-    /* Sidebar institucional (mais profunda que os cards) */
-    --sidebar-background: 211 66% 10%;
-    --sidebar-foreground: 209 28% 78%;
-    --sidebar-primary: 209 72% 46%;
+    /* Sidebar azul-marinho HECA */
+    --sidebar-background: 211 66% 12%;
+    --sidebar-foreground: 209 30% 82%;
+    --sidebar-primary: 205 85% 62%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 58% 22%;
-    --sidebar-accent-foreground: 208 30% 95%;
-    --sidebar-border: 210 38% 24%;
+    --sidebar-accent: 209 62% 26%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 40% 22%;
     --sidebar-ring: 205 85% 62%;
+
+    /* Sombras discretas */
+    --shadow-card: 0 1px 2px hsl(213 30% 20% / 0.06), 0 1px 3px hsl(213 30% 20% / 0.08);
+    --shadow-raised: 0 4px 12px hsl(213 30% 20% / 0.10);
+
   }
 }
 

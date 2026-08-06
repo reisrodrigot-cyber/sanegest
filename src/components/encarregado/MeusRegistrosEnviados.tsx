@@ -85,6 +85,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
   const [editComp, setEditComp] = useState('');
   const [editLig, setEditLig] = useState('');
   const [editObs, setEditObs] = useState('');
+  const [editData, setEditData] = useState('');
   const [saving, setSaving] = useState(false);
   // Ligações do registro em edição
   type LigItem = {

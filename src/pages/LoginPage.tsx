@@ -103,7 +103,7 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-primary p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-primary-foreground mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-brand-surface mb-4 shadow-lg">
             <BrandMark variant="full" size={36} />
           </div>
 

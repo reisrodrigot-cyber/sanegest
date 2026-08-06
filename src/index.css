@@ -7,6 +7,9 @@
 @layer base {
   :root {
     /* App background #0a1628 */
+    /* Superfície clara reservada para a marca HECA (contraste garantido) */
+    --brand-surface: 0 0% 100%;
+
     --background: 214 61% 10%;
     /* Primary text #e8edf2 */
     --foreground: 213 24% 93%;

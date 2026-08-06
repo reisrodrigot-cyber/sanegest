@@ -507,6 +507,22 @@ export function RegistrosProducaoOS({ osId }: Props) {
           </DialogHeader>
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
             <div>
+              <Label htmlFor="aj-data">Data da produção *</Label>
+              <Input
+                id="aj-data"
+                type="date"
+                value={ajData}
+                max={hojeMaceio()}
+                onChange={(e) => setAjData(e.target.value)}
+                className="h-11 text-base"
+              />
+              {ajustando && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Data original do registro: {fmtData(ajustando.data_registro)}
+                </p>
+              )}
+            </div>
+            <div>
               <Label htmlFor="aj-comp">Comprimento final (m)</Label>
               <Input id="aj-comp" inputMode="decimal" value={ajComp} onChange={(e) => setAjComp(e.target.value)} className="h-11" />
               {ajustando && (

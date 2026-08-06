@@ -6,6 +6,8 @@ import { QuantidadesContratuaisModal } from './QuantidadesContratuaisModal';
 import { useAvancoFisico } from '@/hooks/useAvancoFisico';
 import type { LinhaAvanco, OrdemLike } from '@/lib/avancoFisico';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 const fmtM = (n: number) =>
   n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

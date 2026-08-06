@@ -235,6 +235,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
     setEditComp(String(r.comprimento_dia ?? ''));
     setEditLig(String(r.ligacoes_dia ?? ''));
     setEditObs(r.observacao ?? '');
+    setEditData(r.data_registro);
     setEditLigItems([]);
     setLoadingLigs(true);
     const { data: ligs } = await supabase

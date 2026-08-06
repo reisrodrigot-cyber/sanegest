@@ -65,6 +65,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
   const [ajComp, setAjComp] = useState('');
   const [ajLig, setAjLig] = useState('');
   const [ajMotivo, setAjMotivo] = useState('');
+  const [ajData, setAjData] = useState('');
   const [savingAj, setSavingAj] = useState(false);
   // Ligações do registro em ajuste
   interface LigRow {

@@ -907,11 +907,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   };
 
   // Dark chart palette
-  const DARK_BG = '#0d1b2a';
-  const DARK_BORDER = 'rgba(255,255,255,0.1)';
-  const DARK_GRID = 'rgba(255,255,255,0.1)';
-  const DARK_AXIS = 'rgba(255,255,255,0.7)';
-  const TEAL = '#4dd9ac';
+  const DARK_BG = 'hsl(211 52% 13%)';           /* card institucional HECA */
+  const DARK_BORDER = 'rgba(255,255,255,0.18)';
+  const DARK_GRID = 'rgba(255,255,255,0.12)';
+  const DARK_AXIS = 'rgba(255,255,255,0.75)';
+  /* Série neutra/institucional HECA (não é As Built nem status operacional) */
+  const TEAL = '#4FB0EF';
   const RED_PEND = '#e63946';
   const GREEN_EXEC = '#2dc653';
 
@@ -1182,7 +1183,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
           <div className="dc-chart dc-chart-daily rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
             <h3 className="text-sm font-semibold text-white mb-1">
-              Produção Diária <span className="text-[10px] text-white/60 font-normal">(30d)</span>
+              Produção Diária <span className="text-[10px] text-white/70 font-normal">(30d)</span>
             </h3>
             <ChartFrame className="dc-chart-box h-[150px]" mobileHeight={180}>
               {(chartWidth, chartHeight) => (
@@ -1209,7 +1210,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           </div>
           <div className="dc-chart dc-chart-monthly rounded-lg shadow-sm p-3 flex-1 min-h-0" style={darkCardStyle}>
             <h3 className="text-sm font-semibold text-white mb-1">
-              Produção Mensal <span className="text-[10px] text-white/60 font-normal">(4 meses)</span>
+              Produção Mensal <span className="text-[10px] text-white/70 font-normal">(4 meses)</span>
             </h3>
             <ChartFrame className="dc-chart-box h-[150px]" mobileHeight={160}>
               {(chartWidth, chartHeight) => (
@@ -1395,7 +1396,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           const ligBarHeight = Math.max(160, filteredLig.length * 22 + 30);
           const mobileLigHeight = Math.max(200, Math.min(360, ligBarHeight));
           const tabBtn = (active: boolean) =>
-            `h-7 px-2 text-[11px] rounded border ${active ? 'bg-[#4dd9ac] text-[#0d1b2a] border-[#4dd9ac]' : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'}`;
+            `h-7 px-2 text-[11px] rounded border ${active ? 'bg-primary text-primary-foreground border-primary' : 'bg-white/[0.07] text-white/85 border-white/20 hover:bg-white/15'}`;
           return (
             <div className="dc-bacia col-span-10 xl:col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-auto max-h-[520px] md:h-[420px]" style={darkCardStyle}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
@@ -1434,29 +1435,29 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     </span>
                   </div>
                   {filteredRede.length === 0 ? (
-                    <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
+                    <p className="text-xs text-white/70 text-center py-6">Sem dados.</p>
                   ) : isMobileLayout ? (
                     <ul className="overflow-y-auto flex-1 min-h-0 flex flex-col gap-2 pr-0.5">
                       {filteredRede.map((b) => {
                         const base = b.totalBase > 0 ? b.totalBase : b.executado;
                         const pctExec = base > 0 ? Math.min(100, (b.executado / base) * 100) : 0;
                         return (
-                          <li key={b.trecho} className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+                          <li key={b.trecho} className="rounded-lg border border-white/20 bg-white/[0.07] p-3">
                             <div className="flex items-start justify-between gap-3">
                               <span className="text-[13px] font-semibold text-white break-words">{b.trecho}</span>
                               <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: TEAL }}>{b.pct}%</span>
                             </div>
-                            <div className="mt-2 h-3 w-full rounded-full overflow-hidden flex bg-white/10">
+                            <div className="mt-2 h-3 w-full rounded-full overflow-hidden flex bg-white/15">
                               <div style={{ width: `${pctExec}%`, backgroundColor: GREEN_EXEC }} />
                               <div style={{ width: `${100 - pctExec}%`, backgroundColor: RED_PEND }} />
                             </div>
                             <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
                               <div>
-                                <div className="text-white/60">Executado</div>
+                                <div className="text-white/70">Executado</div>
                                 <div className="tabular-nums font-medium" style={{ color: GREEN_EXEC }}>{fmtM(b.executado)} m</div>
                               </div>
                               <div>
-                                <div className="text-white/60">Pendente</div>
+                                <div className="text-white/70">Pendente</div>
                                 <div className="tabular-nums font-medium" style={{ color: RED_PEND }}>{fmtM(b.pendente)} m</div>
                               </div>
                             </div>
@@ -1490,7 +1491,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                             </Bar>
                             <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente" barSize={14}>
                               <LabelList dataKey="pendente" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
-                              <LabelList dataKey="pct" position="right" formatter={(v: number) => `${v}%`} fill="#4dd9ac" fontSize={11} offset={8} />
+                              <LabelList dataKey="pct" position="right" formatter={(v: number) => `${v}%`} fill="#4FB0EF" fontSize={11} offset={8} />
                             </Bar>
                           </BarChart>
                         )}
@@ -1498,7 +1499,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     </div>
                   )}
                   {filteredRede.length > 0 && (
-                    <div className="mt-1 pt-1 border-t border-white/10 flex items-center justify-between text-[11px] text-white/80">
+                    <div className="mt-1 pt-1 border-t border-white/20 flex items-center justify-between text-[11px] text-white/80">
                       <span>
                         Total executado
                         {temSemSubBacia && (
@@ -1510,7 +1511,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       <span className="tabular-nums font-semibold" style={{ color: GREEN_EXEC }}>
                         {fmtM(totalExecRede)} m
                         {totalPrevRede > 0 && (
-                          <span className="ml-1 font-normal text-white/60">
+                          <span className="ml-1 font-normal text-white/70">
                             / {fmtM(totalPrevRede)} m ({Math.round((totalExecRede / totalPrevRede) * 100)}%)
                           </span>
                         )}
@@ -1523,17 +1524,17 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
               {subBaciaTab === 'ligacoes' && (
                 <>
-                  <p className="text-[11px] text-white/60 mb-1">
+                  <p className="text-[11px] text-white/70 mb-1">
                     Somente produção executada. Ligações não têm previsto confiável.
                   </p>
                   {filteredLig.length === 0 ? (
-                    <p className="text-xs text-white/60 text-center py-6">Nenhuma ligação executada.</p>
+                    <p className="text-xs text-white/70 text-center py-6">Nenhuma ligação executada.</p>
                   ) : (
                     <div className="overflow-auto flex-1 min-h-0">
                       <div className="min-w-[300px]">
                       <table className="w-full text-xs text-white/90">
                         <thead className="sticky top-0" style={{ backgroundColor: DARK_BG }}>
-                          <tr className="text-left text-white/60 border-b border-white/10">
+                          <tr className="text-left text-white/70 border-b border-white/20">
                             <th className="py-1 pr-2 font-medium">Sub-bacia</th>
                             <th className="py-1 px-2 font-medium text-right">Ligações (un)</th>
                             <th className="py-1 pl-2 font-medium text-right">Comprimento (m)</th>
@@ -1541,7 +1542,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                         </thead>
                         <tbody>
                           {filteredLig.map((b) => (
-                            <tr key={b.trecho} className="border-b border-white/5">
+                            <tr key={b.trecho} className="border-b border-white/20">
                               <td className="py-1 pr-2">{b.trecho}</td>
                               <td className="py-1 px-2 text-right tabular-nums font-semibold" style={{ color: TEAL }}>
                                 {b.ligQtd.toLocaleString('pt-BR')}
@@ -1561,16 +1562,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
               {subBaciaTab === 'resumo' && (
                 <>
-                  <p className="text-[11px] text-white/60 mb-1">
+                  <p className="text-[11px] text-white/70 mb-1">
                     Total em metros = rede + comprimento das ligações. Não é avanço físico total (ligações não têm previsto confiável).
                   </p>
                   {filtered.length === 0 ? (
-                    <p className="text-xs text-white/60 text-center py-6">Sem dados.</p>
+                    <p className="text-xs text-white/70 text-center py-6">Sem dados.</p>
                   ) : (
                     <div className="overflow-auto flex-1 min-h-0">
                       <table className="w-full min-w-[520px] text-xs text-white/90 whitespace-nowrap">
                         <thead className="sticky top-0" style={{ backgroundColor: DARK_BG }}>
-                          <tr className="text-left text-white/60 border-b border-white/10">
+                          <tr className="text-left text-white/70 border-b border-white/20">
                             <th className="py-1 pr-2 font-medium">Sub-bacia</th>
                             <th className="py-1 px-2 font-medium text-right">Rede exec. (m)</th>
                             <th className="py-1 px-2 font-medium text-right">Avanço rede</th>
@@ -1581,7 +1582,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                         </thead>
                         <tbody>
                           {filtered.map((b) => (
-                            <tr key={b.trecho} className="border-b border-white/5">
+                            <tr key={b.trecho} className="border-b border-white/20">
                               <td className="py-1 pr-2">{b.trecho}</td>
                               <td className="py-1 px-2 text-right tabular-nums">{fmtM(b.executado)}</td>
                               <td className="py-1 px-2 text-right tabular-nums" style={{ color: b.total > 0 ? TEAL : 'rgba(255,255,255,0.4)' }}>

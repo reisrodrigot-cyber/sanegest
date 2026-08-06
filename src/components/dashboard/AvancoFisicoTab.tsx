@@ -261,20 +261,6 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
 
   return (
     <div className="flex flex-col gap-3">
-      {podeEditar && (
-        <div className="flex justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setModalAberto(true)}
-          >
-            <Pencil size={13} className="mr-1" />
-            Editar quantidades contratuais
-          </Button>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <CardResumo
           titulo="Avanço Físico — POV"
@@ -306,6 +292,8 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           formatar={fmtM}
           contratualPorChave={contratualRede}
           formatarContratual={fmtM}
+          podeEditar={podeEditar}
+          onEditar={() => setModalAberto(true)}
         />
         <AvancoSecao
           titulo="Ramais por sub-bacia"
@@ -314,8 +302,11 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           formatar={fmtUn}
           contratualPorChave={contratualRamais}
           formatarContratual={fmtUn}
+          podeEditar={podeEditar}
+          onEditar={() => setModalAberto(true)}
         />
       </div>
+
 
       <QuantidadesContratuaisModal
         open={modalAberto}

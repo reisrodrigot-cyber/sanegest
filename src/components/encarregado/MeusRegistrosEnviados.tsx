@@ -54,6 +54,15 @@ const fmtDataCurta = (key: string) => {
   return label;
 };
 const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+// "Hoje" em America/Maceio (mesma regra do cadastro de produção)
+const hojeMaceio = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Maceio', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+const formatBRData = (iso: string) => {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+};
 const fmtMetros = (n: number) => `${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
 
 interface Props {

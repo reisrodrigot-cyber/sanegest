@@ -31,8 +31,8 @@ export function useQuantitativosContratuais() {
         (data ?? []).map((r: any) => ({
           chave: normalizarBaciaChave(r.bacia_chave),
           exibicao: r.bacia_exibicao ?? r.bacia_chave,
-          redeM: r.rede_prevista_metros == null ? null : Number(r.rede_prevista_metros),
-          ramaisUn: r.ramais_previstos_unidades == null ? null : Number(r.ramais_previstos_unidades),
+          redeM: Number(r.rede_prevista_metros) > 0 ? Number(r.rede_prevista_metros) : null,
+          ramaisUn: Number(r.ramais_previstos_unidades) > 0 ? Number(r.ramais_previstos_unidades) : null,
         })),
       );
       setLoading(false);

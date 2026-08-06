@@ -42,6 +42,11 @@ interface RegistroRow {
 }
 
 const fmtN = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// "Hoje" em America/Maceio (mesma regra do cadastro de produção)
+const hojeMaceio = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Maceio', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
 const fmtData = (d: string) => {
   const [y, m, dd] = d.split('-');
   return `${dd}/${m}/${y}`;

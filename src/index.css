@@ -383,3 +383,16 @@
   .dc-root, .dc-root * { max-width: 100%; }
   .dc-root .truncate { overflow: visible !important; text-overflow: clip !important; white-space: normal !important; }
 }
+
+/* ============================================================
+   Zebra striping institucional HECA — apenas fundo das linhas de dados.
+   Fica em @layer base para que utilitários (hover:, bg-*) prevaleçam.
+   ============================================================ */
+@layer base {
+  table tbody > tr:nth-child(even):not([data-no-zebra]) {
+    background-color: hsl(var(--secondary) / 0.6);
+  }
+  table tbody > tr:hover {
+    background-color: hsl(var(--accent) / 0.7);
+  }
+}

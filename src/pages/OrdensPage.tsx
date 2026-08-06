@@ -6,7 +6,7 @@ import { statusLabel, vinculoDisplayStatus, toDisplayStatus, type OSDisplayStatu
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PlanilhaoConsulta } from '@/components/ordens/PlanilhaoConsulta';
-import { Search, Plus, Loader2, FileSpreadsheet, AlertTriangle, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
@@ -202,11 +202,6 @@ const OrdensPage = () => {
     return base.filter(os => statusEfetivo(os) === toDisplayStatus(status)).length;
   };
 
-  const daysSince = (iso?: string) => {
-    if (!iso) return 0;
-    return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
-  };
-
   const handleExport = async () => {
     try {
       await downloadPlanilhao(ordens);
@@ -292,11 +287,11 @@ const OrdensPage = () => {
     return (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-[13px] sm:text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary">
               {canLiberar && (
-                <th className="px-3 py-3 w-10">
+                <th className="px-2 sm:px-3 py-3 w-8 sm:w-10">
                   <Checkbox
                     checked={allSelected ? true : someSelected ? 'indeterminate' : false}
                     onCheckedChange={(c) => toggleAll(data, c === true)}
@@ -304,15 +299,15 @@ const OrdensPage = () => {
                   />
                 </th>
               )}
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Trecho</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Bacia</th>
+              <th className="text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Trecho</th>
+              <th className="text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Bacia</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Comp. (m)</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Prof. Média (m)</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Executado (m)</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell w-[160px]">%</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Responsável</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-              <th className="px-2 py-3 w-[180px]"></th>
+              <th className="text-right sm:text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Status</th>
+              <th className="px-1 sm:px-2 py-3 w-auto sm:w-[180px]"></th>
             </tr>
           </thead>
           <tbody>
@@ -320,21 +315,18 @@ const OrdensPage = () => {
               const executado = producaoByOs[os.id] || 0;
               const total = Number(os.comprimento_previsto || 0);
               const pct = total > 0 ? Math.min(100, (executado / total) * 100) : 0;
-              const since = statusSinceByOs[os.id] || os.updated_at;
-              const dias = daysSince(since);
-              const parado = dias >= 5;
               const isSel = selected.has(os.id);
               return (
                 <tr key={os.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${isSel ? 'bg-primary/5' : ''}`}>
                   {canLiberar && (
-                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 sm:px-3 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={isSel} onCheckedChange={() => toggleOne(os.id)} aria-label={`Selecionar ${os.trecho}`} />
                     </td>
                   )}
-                  <td className="px-4 py-3">
-                    <Link to={`/ordens/${os.id}`} className="font-medium text-primary hover:underline">{os.trecho}</Link>
+                  <td className="px-2 sm:px-4 py-3 align-middle">
+                    <Link to={`/ordens/${os.id}`} className="font-medium text-primary hover:underline break-words">{os.trecho}</Link>
                   </td>
-                  <td className="px-4 py-3 text-foreground">{os.bacia}</td>
+                  <td className="px-2 sm:px-4 py-3 align-middle text-foreground whitespace-nowrap">{os.bacia}</td>
                   <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.comprimento_previsto ?? '—'}</td>
                   <td className="px-4 py-3 text-foreground hidden md:table-cell">{os.prof_media_prevista != null ? Number(os.prof_media_prevista).toFixed(2) : '—'}</td>
                   <td className="px-4 py-3 text-foreground hidden md:table-cell">{executado.toFixed(2).replace('.', ',')}</td>
@@ -347,25 +339,13 @@ const OrdensPage = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.liberado_para || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                  <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-right sm:text-left">
+                    <div className="flex items-center gap-2 justify-end sm:justify-start">
                       <StatusBadge status={statusEfetivo(os)} size="sm" shortLabel />
-                      {parado && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center text-amber-500" aria-label={`Parado há ${dias} dias`}>
-                                <AlertTriangle size={14} />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent><span>⚠️ Parado há {dias} dias</span></TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
                     </div>
                   </td>
-                  <td className="px-2 py-3">
-                    <div className="flex items-center gap-1 justify-end">
+                  <td className="px-1 sm:px-2 py-3 align-middle">
+                    <div className="flex items-center gap-0.5 sm:gap-1 justify-end">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>

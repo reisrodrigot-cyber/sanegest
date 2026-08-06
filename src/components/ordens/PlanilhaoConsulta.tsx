@@ -179,10 +179,18 @@ export const PlanilhaoConsulta = () => {
           />
         </div>
 
+        {/* Mobile: quatro ações compactas em uma faixa; desktop: inalterado */}
+        <div className="grid grid-cols-4 gap-2 lg:flex lg:items-center lg:gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <button className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
-              <Columns3 size={16} /> Colunas ({visibleColumns.length}/{PLANILHAO_COLUMNS.length})
+            <button
+              aria-label="Colunas visíveis"
+              title="Colunas visíveis"
+              className="inline-flex items-center justify-center lg:justify-start gap-1.5 px-2 lg:px-3 py-2.5 rounded-lg border border-border bg-card text-xs lg:text-sm font-medium hover:bg-muted transition-colors"
+            >
+              <Columns3 size={16} />
+              <span className="hidden lg:inline">Colunas ({visibleColumns.length}/{PLANILHAO_COLUMNS.length})</span>
+              <span className="lg:hidden">Colunas</span>
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-72 p-0">
@@ -213,8 +221,18 @@ export const PlanilhaoConsulta = () => {
         </Popover>
 
         <button
+          onClick={() => { setBusca(''); setPrefs(p => ({ ...p, filters: {} })); }}
+          disabled={!temFiltro}
+          aria-label="Limpar filtros"
+          title="Limpar filtros"
+          className="inline-flex lg:hidden items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg border border-border bg-card text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
+        >
+          <X size={16} /> Limpar
+        </button>
+
+        <button
           onClick={() => { setPrefs(defaultPrefs()); setBusca(''); }}
-          className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted transition-colors"
+          className="hidden lg:inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted transition-colors"
           title="Restaurar grade padrão"
         >
           <RotateCcw size={16} /> <span className="hidden sm:inline">Restaurar</span>
@@ -223,17 +241,22 @@ export const PlanilhaoConsulta = () => {
         <button
           onClick={exportarExcel}
           disabled={exportando !== null || dados.length === 0}
-          className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
+          aria-label="Exportar Excel"
+          title="Exportar Excel"
+          className="inline-flex items-center justify-center lg:justify-start gap-1.5 px-2 lg:px-3 py-2.5 rounded-lg border border-border bg-card text-xs lg:text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
         >
           {exportando === 'xlsx' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} Excel
         </button>
         <button
           onClick={exportarPDF}
           disabled={exportando !== null || dados.length === 0}
-          className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          aria-label="Exportar PDF"
+          title="Exportar PDF"
+          className="inline-flex items-center justify-center lg:justify-start gap-1.5 px-2 lg:px-3 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {exportando === 'pdf' ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />} PDF
         </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 text-sm text-muted-foreground">

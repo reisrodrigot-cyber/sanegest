@@ -1306,7 +1306,7 @@ ${placemarks.join('\n')}
 
   return (
     <div
-      className={expanded ? 'fixed inset-0 z-[2000] bg-background p-2 sm:p-3' : `relative ${className}`}
+      className={expanded ? 'fixed inset-0 z-[2000] bg-background p-2 sm:p-3' : `relative isolate ${className}`}
       style={expanded ? undefined : { height }}
     >
       <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 200, borderRadius: '0.75rem', overflow: 'hidden', position: 'relative' }} />

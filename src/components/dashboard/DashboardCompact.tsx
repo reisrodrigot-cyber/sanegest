@@ -226,7 +226,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // Leaflet container initializes inside a flex parent whose height isn't
   // resolved on the first paint, leaving the map stuck with 0×0 panes
   // (drag/zoom locked, no markers).
-  const [dashTab, setDashTab] = useState<'mapa' | 'avanco' | 'producao'>('mapa');
+  const [dashTab, setDashTab] = useState<'mapa' | 'avanco' | 'producao' | 'monitoramento'>('mapa');
   const [isMobileLayout, setIsMobileLayout] = useState<boolean | null>(null);
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 1023px)');
@@ -1082,9 +1082,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
 
   const DASH_TABS = [
-    { id: 'mapa' as const, label: 'Mapa geral' },
-    { id: 'avanco' as const, label: 'Avanço físico' },
-    { id: 'producao' as const, label: 'Produção e produtividade' },
+    { id: 'mapa' as const, label: 'Mapa Geral' },
+    { id: 'avanco' as const, label: 'Avanço Físico' },
+    { id: 'producao' as const, label: 'Produção e Produtividade' },
+    { id: 'monitoramento' as const, label: 'Monitoramento' },
   ];
 
   return (
@@ -1260,16 +1261,17 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="pb-1 font-medium">Encarregado</th>
-                    <th className="pb-1 font-medium text-right">Rede (m)</th>
-                    <th className="pb-1 font-medium text-right">Lig. (m)</th>
-                    <th className="pb-1 font-medium text-right">Lig. (un)</th>
-                    <th className="pb-1 font-medium text-right">Total (m)</th>
+                    <th className="pb-1 pr-2 font-medium">Encarregado</th>
+                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Rede (m)</th>
+                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Lig. (m)</th>
+                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Lig. (un)</th>
+                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Total (m)</th>
                     <th
-                      className="pb-1 font-medium text-right"
+                      className="pb-1 pl-2 font-medium text-right"
                       title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
                     >
-                      Produtividade de rede (m/dia)
+                      <span className="sm:hidden">Prod. de Rede (m/dia)</span>
+                      <span className="hidden sm:inline">Produtividade de rede (m/dia)</span>
                     </th>
                   </tr>
                 </thead>
@@ -1282,19 +1284,19 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     <tr><td colSpan={6} className="text-center text-muted-foreground py-3">Sem produção lançada no período</td></tr>
                   ) : porEncarregado.map((e) => (
                     <tr key={e.nome} className="border-b border-border/40">
-                      <td className="py-1 text-foreground">{e.nome}</td>
-                      <td className="py-1 text-right tabular-nums">
+                      <td className="py-1 pr-2 text-foreground">{e.nome}</td>
+                      <td className="py-1 px-2 text-right tabular-nums whitespace-nowrap">
                         {e.rede.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
-                      <td className="py-1 text-right tabular-nums">
+                      <td className="py-1 px-2 text-right tabular-nums whitespace-nowrap">
                         {e.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
-                      <td className="py-1 text-right tabular-nums text-muted-foreground">{e.ligUn}</td>
-                      <td className="py-1 text-right font-semibold tabular-nums">
+                      <td className="py-1 px-2 text-right tabular-nums text-muted-foreground whitespace-nowrap">{e.ligUn}</td>
+                      <td className="py-1 px-2 text-right font-semibold tabular-nums whitespace-nowrap">
                         {e.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
                       <td
-                        className="py-1 text-right tabular-nums text-foreground"
+                        className="py-1 pl-2 text-right tabular-nums text-foreground whitespace-nowrap"
                         title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
                       >
                         {e.media == null ? '—' : e.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
@@ -1374,9 +1376,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         </div>
       </div>
 
-      {/* Row 3 — Bacia (50%) + NS em Execução (20%) + Activity Feed (30%) */}
-      <div className="dc-row3 grid grid-cols-10 gap-3 items-stretch">
-        {/* Avanço por Sub-bacia — 50% */}
+      </div>
+
+      {/* Aba: Avanço físico — gráfico Avanço por Sub-bacia */}
+      <div className={dashTab === 'avanco' ? 'dc-row3 grid grid-cols-10 gap-3 items-stretch' : 'hidden'}>
         {(() => {
           const filtered = porTrecho.filter(b => {
             const temExec = b.executado > 0 || b.ligQtd > 0 || b.ligComp > 0;
@@ -1401,7 +1404,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           const tabBtn = (active: boolean) =>
             `h-7 px-2 text-[11px] rounded border ${active ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary text-foreground border-border hover:bg-secondary'}`;
           return (
-            <div className="dc-bacia col-span-10 xl:col-span-5 rounded-lg shadow-sm p-3 flex flex-col h-auto max-h-[520px] md:h-[420px]" style={darkCardStyle}>
+            <div className="dc-bacia col-span-10 rounded-lg shadow-sm p-3 flex flex-col h-auto max-h-[520px] md:h-[420px]" style={darkCardStyle}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <h3 className="text-sm font-semibold text-foreground">Avanço por Sub-bacia</h3>
                 <div className="flex items-center gap-2">
@@ -1609,11 +1612,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
             </div>
           );
         })()}
+      </div>
 
-
-
-        {/* NS em Execução — 20% */}
-        <div className="dc-ns col-span-10 md:col-span-5 xl:col-span-2 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-[420px]">
+      {/* Aba: Monitoramento — NS em Execução + O que está acontecendo? */}
+      <div className={dashTab === 'monitoramento' ? 'dc-row3 grid grid-cols-10 gap-3 items-stretch' : 'hidden'}>
+        {/* NS em Execução */}
+        <div className="dc-ns col-span-10 md:col-span-4 bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-[420px]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-foreground">NS em Execução</h3>
             <Link to="/ordens" className="text-xs text-secondary hover:underline">Ver todas</Link>
@@ -1647,12 +1651,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         </div>
 
         {/* Activity Feed — 30% */}
-        <div className="dc-activity col-span-10 md:col-span-5 xl:col-span-3 h-[420px]">
+        <div className="dc-activity col-span-10 md:col-span-6 h-[420px]">
           {/* Filtro de período PRÓPRIO — independente do card "Produção por Encarregado". */}
           <ActivityFeed minDate={firstProducaoDate} />
 
         </div>
-      </div>
       </div>
     </div>
   );

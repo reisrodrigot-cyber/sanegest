@@ -395,8 +395,8 @@ export function RegistrosProducaoOS({ osId }: Props) {
 
       {trechoConcluido && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
-          <CheckCircle2 size={16} className="mt-0.5 text-emerald-400 shrink-0" />
-          <div className="text-xs text-emerald-200">
+          <CheckCircle2 size={16} className="mt-0.5 text-emerald-700 shrink-0" />
+          <div className="text-xs text-emerald-700">
             <p className="font-semibold">Trecho concluído pelo encarregado</p>
             <p className="mt-0.5">
               PV final assentado por <span className="font-medium">{nomes[trechoConcluido.pv_final_assentado_por ?? ''] ?? nomes[trechoConcluido.user_id] ?? '—'}</span>
@@ -441,7 +441,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
                     <td className="px-3 py-2 text-right font-semibold text-foreground">
                       {fmtN(compFinal)}
                       {temAjuste && (
-                        <span className="ml-1 inline-block text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300" title={r.motivo_ajuste ?? undefined}>ajustado</span>
+                        <span className="ml-1 inline-block text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-700" title={r.motivo_ajuste ?? undefined}>ajustado</span>
                       )}
                     </td>
                     <td className="px-3 py-2 text-right text-foreground">{ligFinal}</td>
@@ -451,11 +451,11 @@ export function RegistrosProducaoOS({ osId }: Props) {
                       ) : r.status === 'cancelado' ? (
                         <span className="inline-flex items-center gap-1 text-xs text-destructive" title={r.motivo_cancelamento ?? undefined}><Ban size={12} /> Cancelado</span>
                       ) : (
-                        <span className="text-xs text-emerald-400">Ativo</span>
+                        <span className="text-xs text-emerald-700">Ativo</span>
                       )}
                       {r.pv_final_assentado && !inativo && (
                         <div
-                          className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300"
+                          className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700"
                           title={r.pv_final_assentado_em ? `Marcado em ${new Date(r.pv_final_assentado_em).toLocaleString('pt-BR')}` : undefined}
                         >
                           <CheckCircle2 size={10} /> PV final assentado

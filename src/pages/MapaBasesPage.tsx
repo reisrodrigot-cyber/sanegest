@@ -33,10 +33,10 @@ interface Divergencia {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  processando: 'bg-sky-500/15 text-sky-300 border border-sky-400/30',
-  preview: 'bg-amber-500/15 text-amber-300 border border-amber-400/30',
-  falha: 'bg-red-500/15 text-red-300 border border-red-400/30',
-  ativa: 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/30',
+  processando: 'bg-sky-500/15 text-sky-700 border border-sky-400/30',
+  preview: 'bg-amber-500/15 text-amber-700 border border-amber-400/30',
+  falha: 'bg-red-500/15 text-red-700 border border-red-400/30',
+  ativa: 'bg-emerald-500/15 text-emerald-700 border border-emerald-400/30',
   arquivada: 'bg-muted text-muted-foreground border border-border',
 };
 

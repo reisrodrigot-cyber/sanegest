@@ -99,7 +99,7 @@ export function LiberarLoteModal({ open, onClose, selectedOS, onDone }: Props) {
             <div className="flex justify-between"><span>Total selecionadas:</span><strong>{selectedOS.length}</strong></div>
             <div className="flex justify-between text-status-green"><span>Serão liberadas:</span><strong>{liberaveis.length}</strong></div>
             {reatribuir.length > 0 && (
-              <div className="flex justify-between text-amber-400">
+              <div className="flex justify-between text-amber-700">
                 <span className="flex items-center gap-1"><AlertTriangle size={14}/> Já liberadas (serão reatribuídas):</span>
                 <strong>{reatribuir.length}</strong>
               </div>

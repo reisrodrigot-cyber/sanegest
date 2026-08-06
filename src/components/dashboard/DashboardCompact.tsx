@@ -1261,16 +1261,17 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="pb-1 font-medium">Encarregado</th>
-                    <th className="pb-1 font-medium text-right">Rede (m)</th>
-                    <th className="pb-1 font-medium text-right">Lig. (m)</th>
-                    <th className="pb-1 font-medium text-right">Lig. (un)</th>
-                    <th className="pb-1 font-medium text-right">Total (m)</th>
+                    <th className="pb-1 pr-2 font-medium">Encarregado</th>
+                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Rede (m)</th>
+                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Lig. (m)</th>
+                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Lig. (un)</th>
+                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Total (m)</th>
                     <th
-                      className="pb-1 font-medium text-right"
+                      className="pb-1 pl-2 font-medium text-right"
                       title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
                     >
-                      Produtividade de rede (m/dia)
+                      <span className="sm:hidden">Prod. de Rede (m/dia)</span>
+                      <span className="hidden sm:inline">Produtividade de rede (m/dia)</span>
                     </th>
                   </tr>
                 </thead>
@@ -1283,19 +1284,19 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     <tr><td colSpan={6} className="text-center text-muted-foreground py-3">Sem produção lançada no período</td></tr>
                   ) : porEncarregado.map((e) => (
                     <tr key={e.nome} className="border-b border-border/40">
-                      <td className="py-1 text-foreground">{e.nome}</td>
-                      <td className="py-1 text-right tabular-nums">
+                      <td className="py-1 pr-2 text-foreground">{e.nome}</td>
+                      <td className="py-1 px-2 text-right tabular-nums whitespace-nowrap">
                         {e.rede.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
-                      <td className="py-1 text-right tabular-nums">
+                      <td className="py-1 px-2 text-right tabular-nums whitespace-nowrap">
                         {e.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
-                      <td className="py-1 text-right tabular-nums text-muted-foreground">{e.ligUn}</td>
-                      <td className="py-1 text-right font-semibold tabular-nums">
+                      <td className="py-1 px-2 text-right tabular-nums text-muted-foreground whitespace-nowrap">{e.ligUn}</td>
+                      <td className="py-1 px-2 text-right font-semibold tabular-nums whitespace-nowrap">
                         {e.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
                       <td
-                        className="py-1 text-right tabular-nums text-foreground"
+                        className="py-1 pl-2 text-right tabular-nums text-foreground whitespace-nowrap"
                         title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
                       >
                         {e.media == null ? '—' : e.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}

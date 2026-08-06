@@ -109,8 +109,9 @@ const ResetPasswordPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-primary p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-foreground/10 mb-4">
-            <Droplets size={36} className="text-primary-foreground" />
+          <div className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-primary-foreground mb-4 shadow-lg">
+            <BrandMark variant="full" size={32} />
+
           </div>
           <h1 className="text-3xl font-bold text-primary-foreground">SaneGest</h1>
           <p className="text-primary-foreground/60 mt-1">Redefinição de senha</p>

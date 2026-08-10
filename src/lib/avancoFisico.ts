@@ -56,9 +56,14 @@ export interface RelatorioLike {
   pv_final_assentado: boolean | null;
 }
 
+/** Uma O.S. é Linha de Recalque quando o trecho é exatamente "LINHA DE RECALQUE". */
+export const isLinhaRecalque = (trecho: string | null | undefined): boolean =>
+  normalizarTrecho(trecho) === 'LINHA DE RECALQUE';
+
 export interface OrdemLike {
   id: string;
   bacia: string | null;
+  trecho?: string | null;
   comprimento_previsto?: number | null;
   ligacoes_previstas?: number | null;
 }
@@ -74,6 +79,7 @@ export interface RealizadoSubBacia {
   redeM: number;
   ligacoesM: number;
   ramaisUn: number;
+  lrM: number;
 }
 
 /** Realizado por sub-bacia — rede (m), ligações (m) e ramais (un). */
@@ -83,7 +89,11 @@ export function calcularRealizadoPorSubBacia(
   periodo: Periodo = {},
 ): Map<string, RealizadoSubBacia> {
   const baciaPorOs = new Map<string, string>();
-  ordens.forEach((o) => baciaPorOs.set(o.id, o.bacia || ''));
+  const lrPorOs = new Map<string, boolean>();
+  ordens.forEach((o) => {
+    baciaPorOs.set(o.id, o.bacia || '');
+    lrPorOs.set(o.id, isLinhaRecalque(o.trecho));
+  });
 
   const out = new Map<string, RealizadoSubBacia>();
   // Dedup de ligações em metros: chave grupo -> { chaveBacia, max }
@@ -100,7 +110,7 @@ export function calcularRealizadoPorSubBacia(
     const chave = normalizarBaciaChave(exibicao) || normalizarBaciaChave(SEM_SUB_BACIA);
     let b = out.get(chave);
     if (!b) {
-      b = { chave, exibicao, redeM: 0, ligacoesM: 0, ramaisUn: 0 };
+      b = { chave, exibicao, redeM: 0, ligacoesM: 0, ramaisUn: 0, lrM: 0 };
       out.set(chave, b);
     }
     return b;
@@ -116,12 +126,19 @@ export function calcularRealizadoPorSubBacia(
       SEM_SUB_BACIA;
     const chave = normalizarBaciaChave(exibicao);
 
+    const nt = normalizarTrecho(row.trecho);
+    const ehLR = (row.os_id ? lrPorOs.get(row.os_id) : undefined) ?? isLinhaRecalque(row.trecho);
+
     const rede = Number(row.comprimento_trecho_executado) || 0;
     const ramais = Number(row.quantidade_ligacoes_realizadas) || 0;
+    if (ehLR) {
+      // Linha de Recalque: grupo exclusivo — não entra em Rede nem em Ramais
+      if (rede !== 0) bucket(exibicao).lrM += rede;
+      continue;
+    }
     if (rede !== 0) bucket(exibicao).redeM += rede;
     if (ramais !== 0) bucket(exibicao).ramaisUn += ramais;
 
-    const nt = normalizarTrecho(row.trecho);
     const grupo = row.os_id ? `os:${row.os_id}` : nt ? `tr:${nt}` : null;
     const ligTot = Number(row.comprimento_total_ligacoes) || 0;
     if (grupo && ligTot > 0) {
@@ -149,6 +166,7 @@ export interface PrevistoSubBacia {
   exibicao: string;
   redeM: number;
   ramaisUn: number;
+  lrM: number;
   ns: number;
 }
 
@@ -160,8 +178,13 @@ export function calcularPrevistoPorSubBacia(ordens: OrdemLike[]): Map<string, Pr
     const chave = normalizarBaciaChave(exibicao);
     let b = out.get(chave);
     if (!b) {
-      b = { chave, exibicao, redeM: 0, ramaisUn: 0, ns: 0 };
+      b = { chave, exibicao, redeM: 0, ramaisUn: 0, lrM: 0, ns: 0 };
       out.set(chave, b);
+    }
+    if (isLinhaRecalque(o.trecho)) {
+      b.lrM += Number(o.comprimento_previsto) || 0;
+      b.ns += 1;
+      return;
     }
     b.redeM += Number(o.comprimento_previsto) || 0;
     b.ramaisUn += Number(o.ligacoes_previstas) || 0;
@@ -184,13 +207,16 @@ export interface LinhaAvanco {
 export interface AvancoConsolidado {
   rede: LinhaAvanco[];
   ramais: LinhaAvanco[];
+  linhaRecalque: LinhaAvanco[];
   totais: {
     rede: { previsto: number; realizado: number; saldo: number; pct: number | null };
     ramais: { previsto: number; realizado: number; saldo: number; pct: number | null };
+    linhaRecalque: { previsto: number; realizado: number; saldo: number; pct: number | null };
   };
   porClasse: Record<'POV' | 'SEDE', {
     redePrevisto: number; redeRealizado: number; redePct: number | null;
     ramaisPrevisto: number; ramaisRealizado: number; ramaisPct: number | null;
+    lrPrevisto: number; lrRealizado: number; lrPct: number | null;
   }>;
 }
 
@@ -207,10 +233,13 @@ export function consolidarAvanco(
 
   const rede: LinhaAvanco[] = [];
   const ramais: LinhaAvanco[] = [];
-  const porClasse = {
-    POV: { redePrevisto: 0, redeRealizado: 0, redePct: null as number | null, ramaisPrevisto: 0, ramaisRealizado: 0, ramaisPct: null as number | null },
-    SEDE: { redePrevisto: 0, redeRealizado: 0, redePct: null as number | null, ramaisPrevisto: 0, ramaisRealizado: 0, ramaisPct: null as number | null },
-  };
+  const linhaRecalque: LinhaAvanco[] = [];
+  const zeroClasse = () => ({
+    redePrevisto: 0, redeRealizado: 0, redePct: null as number | null,
+    ramaisPrevisto: 0, ramaisRealizado: 0, ramaisPct: null as number | null,
+    lrPrevisto: 0, lrRealizado: 0, lrPct: null as number | null,
+  });
+  const porClasse = { POV: zeroClasse(), SEDE: zeroClasse() };
 
   Array.from(chaves.entries())
     .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
@@ -221,6 +250,8 @@ export function consolidarAvanco(
       const ramaisReal = real?.ramaisUn ?? 0;
       const redePrev = Math.round((prev?.redeM ?? 0) * 100) / 100;
       const ramaisPrev = Math.round(prev?.ramaisUn ?? 0);
+      const lrReal = Math.round((real?.lrM ?? 0) * 100) / 100;
+      const lrPrev = Math.round((prev?.lrM ?? 0) * 100) / 100;
 
       rede.push({
         chave, exibicao,
@@ -239,18 +270,32 @@ export function consolidarAvanco(
         temPrevisto: ramaisPrev > 0,
       });
 
+      if (lrPrev > 0 || lrReal > 0) {
+        linhaRecalque.push({
+          chave, exibicao,
+          previsto: lrPrev,
+          realizado: lrReal,
+          saldo: saldo(lrPrev, lrReal),
+          pct: percentualSeguro(lrReal, lrPrev),
+          temPrevisto: lrPrev > 0,
+        });
+      }
+
       const cls = classificarPovSede(exibicao);
       if (cls) {
         porClasse[cls].redePrevisto += redePrev;
         porClasse[cls].redeRealizado += redeReal;
         porClasse[cls].ramaisPrevisto += ramaisPrev;
         porClasse[cls].ramaisRealizado += ramaisReal;
+        porClasse[cls].lrPrevisto += lrPrev;
+        porClasse[cls].lrRealizado += lrReal;
       }
     });
 
   (['POV', 'SEDE'] as const).forEach((c) => {
     porClasse[c].redePct = percentualSeguro(porClasse[c].redeRealizado, porClasse[c].redePrevisto);
     porClasse[c].ramaisPct = percentualSeguro(porClasse[c].ramaisRealizado, porClasse[c].ramaisPrevisto);
+    porClasse[c].lrPct = percentualSeguro(porClasse[c].lrRealizado, porClasse[c].lrPrevisto);
   });
 
   const somar = (arr: LinhaAvanco[]) => {
@@ -264,5 +309,11 @@ export function consolidarAvanco(
     };
   };
 
-  return { rede, ramais, totais: { rede: somar(rede), ramais: somar(ramais) }, porClasse };
+  return {
+    rede,
+    ramais,
+    linhaRecalque,
+    totais: { rede: somar(rede), ramais: somar(ramais), linhaRecalque: somar(linhaRecalque) },
+    porClasse,
+  };
 }

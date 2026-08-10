@@ -14,16 +14,21 @@ const fmtM = (n: number) =>
 const fmtUn = (n: number) => Math.round(n).toLocaleString('pt-BR');
 const fmtPct = (p: number | null) =>
   p == null ? '—' : `${p.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
+/** Percentual que nunca exibe vazio (usado na Linha de Recalque). */
+const fmtPct0 = (p: number | null) =>
+  `${(p ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 
 interface Props {
   ordens: OrdemLike[];
 }
 
 const CardResumo = ({
-  titulo, redePrev, redeReal, redePct, ramaisPrev, ramaisReal, ramaisPct, accent,
+  titulo, redePrev, redeReal, redePct, ramaisPrev, ramaisReal, ramaisPct,
+  lrPrev, lrReal, lrPct, accent,
 }: {
   titulo: string; redePrev: number; redeReal: number; redePct: number | null;
-  ramaisPrev: number; ramaisReal: number; ramaisPct: number | null; accent: string;
+  ramaisPrev: number; ramaisReal: number; ramaisPct: number | null;
+  lrPrev: number; lrReal: number; lrPct: number | null; accent: string;
 }) => (
   <div
     className="bg-card rounded-lg border border-border shadow-sm p-4 flex flex-col gap-3"
@@ -33,10 +38,10 @@ const CardResumo = ({
       <span className="text-xs font-semibold uppercase tracking-wide">{titulo}</span>
       <TrendingUp size={16} style={{ color: accent }} />
     </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div className="min-w-0">
         <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Rede</div>
-        <div className="text-3xl font-bold text-foreground leading-tight tabular-nums">{fmtPct(redePct)}</div>
+        <div className="text-2xl font-bold text-foreground leading-tight tabular-nums break-words">{fmtPct(redePct)}</div>
         <dl className="mt-1 space-y-0.5 text-xs text-muted-foreground">
           <div className="flex justify-between gap-2"><dt>Previsto</dt><dd className="tabular-nums text-foreground">{fmtM(redePrev)} m</dd></div>
           <div className="flex justify-between gap-2"><dt>Realizado</dt><dd className="tabular-nums text-foreground">{fmtM(redeReal)} m</dd></div>
@@ -45,11 +50,20 @@ const CardResumo = ({
       </div>
       <div className="min-w-0">
         <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Ramais</div>
-        <div className="text-3xl font-bold text-foreground leading-tight tabular-nums">{fmtPct(ramaisPct)}</div>
+        <div className="text-2xl font-bold text-foreground leading-tight tabular-nums break-words">{fmtPct(ramaisPct)}</div>
         <dl className="mt-1 space-y-0.5 text-xs text-muted-foreground">
           <div className="flex justify-between gap-2"><dt>Previsto</dt><dd className="tabular-nums text-foreground">{fmtUn(ramaisPrev)} un.</dd></div>
           <div className="flex justify-between gap-2"><dt>Realizado</dt><dd className="tabular-nums text-foreground">{fmtUn(ramaisReal)} un.</dd></div>
           <div className="flex justify-between gap-2"><dt>Saldo</dt><dd className="tabular-nums text-foreground">{fmtUn(ramaisPrev - ramaisReal)} un.</dd></div>
+        </dl>
+      </div>
+      <div className="min-w-0">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Linha de Recalque</div>
+        <div className="text-2xl font-bold text-foreground leading-tight tabular-nums break-words">{fmtPct0(lrPct)}</div>
+        <dl className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+          <div className="flex justify-between gap-2"><dt>Previsto</dt><dd className="tabular-nums text-foreground">{fmtM(lrPrev)} m</dd></div>
+          <div className="flex justify-between gap-2"><dt>Realizado</dt><dd className="tabular-nums text-foreground">{fmtM(lrReal)} m</dd></div>
+          <div className="flex justify-between gap-2"><dt>Saldo</dt><dd className="tabular-nums text-foreground">{fmtM(lrPrev - lrReal)} m</dd></div>
         </dl>
       </div>
     </div>
@@ -67,6 +81,7 @@ const BarraPct = ({ pct }: { pct: number | null }) => (
 
 const AvancoSecao = ({
   titulo, linhas, unidade, formatar, contratualPorChave, formatarContratual, podeEditar, onEditar,
+  mostrarContratual = true,
 }: {
   titulo: string;
   linhas: LinhaAvanco[];
@@ -76,6 +91,8 @@ const AvancoSecao = ({
   formatarContratual: (n: number) => string;
   podeEditar: boolean;
   onEditar: () => void;
+  /** Quando false, a seção mostra apenas Previsto/Realizado/Saldo/% (sem contratual). */
+  mostrarContratual?: boolean;
 }) => {
   const contratualTexto = (chave: string) => {
     const v = contratualPorChave.get(chave);
@@ -126,10 +143,12 @@ const AvancoSecao = ({
         <>
           {/* Mobile: cartões empilhados por sub-bacia */}
           <div className="md:hidden">
-            <div className="flex items-center gap-1 pb-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-              <span>Qnt. Contratual ({unidade})</span>
-              {podeEditar && BotaoLapis}
-            </div>
+            {mostrarContratual && (
+              <div className="flex items-center gap-1 pb-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                <span>Qnt. Contratual ({unidade})</span>
+                {podeEditar && BotaoLapis}
+              </div>
+            )}
             <ul className="flex flex-col gap-2">
               {linhas.map((l) => (
                 <li key={l.chave} className="rounded-lg border border-border p-3">
@@ -139,14 +158,23 @@ const AvancoSecao = ({
                   </div>
                   <div className="mt-2"><BarraPct pct={l.pct} /></div>
                   <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                    <div className="min-w-0">
-                      <dt className="text-muted-foreground">Qnt. Contratual</dt>
-                      <dd className="tabular-nums font-medium text-foreground">{contratualTexto(l.chave)} {unidade}</dd>
-                    </div>
-                    <div className="min-w-0">
-                      <dt className="text-muted-foreground">Saldo contratual</dt>
-                      <dd className="tabular-nums font-medium text-foreground">{saldoContratualTexto(l.chave, l.realizado)} {unidade}</dd>
-                    </div>
+                    {mostrarContratual ? (
+                      <>
+                        <div className="min-w-0">
+                          <dt className="text-muted-foreground">Qnt. Contratual</dt>
+                          <dd className="tabular-nums font-medium text-foreground">{contratualTexto(l.chave)} {unidade}</dd>
+                        </div>
+                        <div className="min-w-0">
+                          <dt className="text-muted-foreground">Saldo contratual</dt>
+                          <dd className="tabular-nums font-medium text-foreground">{saldoContratualTexto(l.chave, l.realizado)} {unidade}</dd>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="min-w-0">
+                        <dt className="text-muted-foreground">Saldo</dt>
+                        <dd className="tabular-nums font-medium text-foreground">{formatar(l.saldo)} {unidade}</dd>
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <dt className="text-muted-foreground">Previsto</dt>
                       <dd className="tabular-nums font-medium text-foreground">{formatar(l.previsto)} {unidade}</dd>
@@ -167,8 +195,14 @@ const AvancoSecao = ({
                   <span className="text-base font-bold text-foreground tabular-nums">{fmtPct(pctTotal)}</span>
                 </div>
                 <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                  <div><dt className="text-muted-foreground">Qnt. Contratual</dt><dd className="tabular-nums font-medium text-foreground">{contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma)} ${unidade}`}</dd></div>
-                  <div><dt className="text-muted-foreground">Saldo contratual</dt><dd className="tabular-nums font-medium text-foreground">{contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma - realizadoComContratual)} ${unidade}`}</dd></div>
+                  {mostrarContratual ? (
+                    <>
+                      <div><dt className="text-muted-foreground">Qnt. Contratual</dt><dd className="tabular-nums font-medium text-foreground">{contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma)} ${unidade}`}</dd></div>
+                      <div><dt className="text-muted-foreground">Saldo contratual</dt><dd className="tabular-nums font-medium text-foreground">{contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma - realizadoComContratual)} ${unidade}`}</dd></div>
+                    </>
+                  ) : (
+                    <div><dt className="text-muted-foreground">Saldo</dt><dd className="tabular-nums font-medium text-foreground">{formatar(previsto - realizado)} {unidade}</dd></div>
+                  )}
                   <div><dt className="text-muted-foreground">Previsto</dt><dd className="tabular-nums font-medium text-foreground">{formatar(previsto)} {unidade}</dd></div>
                   <div><dt className="text-muted-foreground">Realizado</dt><dd className="tabular-nums font-medium text-foreground">{formatar(realizado)} {unidade}</dd></div>
                 </dl>
@@ -182,13 +216,19 @@ const AvancoSecao = ({
               <thead className="sticky top-0 bg-card">
                 <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="pb-1 pr-2 font-medium whitespace-nowrap">Sub-bacia</th>
-                  <th className="pb-1 px-2 text-right whitespace-nowrap font-normal">
-                    <span className="inline-flex items-center gap-1 justify-end">
-                      Qnt. Contratual ({unidade})
-                      {podeEditar && BotaoLapis}
-                    </span>
-                  </th>
-                  <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo contratual ({unidade})</th>
+                  {mostrarContratual ? (
+                    <>
+                      <th className="pb-1 px-2 text-right whitespace-nowrap font-normal">
+                        <span className="inline-flex items-center gap-1 justify-end">
+                          Qnt. Contratual ({unidade})
+                          {podeEditar && BotaoLapis}
+                        </span>
+                      </th>
+                      <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo contratual ({unidade})</th>
+                    </>
+                  ) : (
+                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo ({unidade})</th>
+                  )}
                   <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Previsto ({unidade})</th>
                   <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Realizado ({unidade})</th>
                   <th className="pb-1 pl-2 font-medium text-right whitespace-nowrap">% Executado</th>
@@ -198,8 +238,14 @@ const AvancoSecao = ({
                 {linhas.map((l) => (
                   <tr key={l.chave} className="border-b border-border/40">
                     <td className="py-1.5 pr-2 text-foreground">{l.exibicao}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">{contratualTexto(l.chave)}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">{saldoContratualTexto(l.chave, l.realizado)}</td>
+                    {mostrarContratual ? (
+                      <>
+                        <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">{contratualTexto(l.chave)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{saldoContratualTexto(l.chave, l.realizado)}</td>
+                      </>
+                    ) : (
+                      <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.saldo)}</td>
+                    )}
                     <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.previsto)}</td>
                     <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.realizado)}</td>
                     <td className="py-1.5 pl-2 text-right tabular-nums font-semibold">{fmtPct(l.pct)}</td>
@@ -209,12 +255,18 @@ const AvancoSecao = ({
               <tfoot>
                 <tr className="border-t border-border font-semibold">
                   <td className="py-1.5 pr-2 text-foreground">Total</td>
-                  <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">
-                    {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma)}
-                  </td>
-                  <td className="py-1.5 px-2 text-right tabular-nums">
-                    {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma - realizadoComContratual)}
-                  </td>
+                  {mostrarContratual ? (
+                    <>
+                      <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">
+                        {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma)}
+                      </td>
+                      <td className="py-1.5 px-2 text-right tabular-nums">
+                        {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma - realizadoComContratual)}
+                      </td>
+                    </>
+                  ) : (
+                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto - realizado)}</td>
+                  )}
                   <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto)}</td>
                   <td className="py-1.5 px-2 text-right tabular-nums">{formatar(realizado)}</td>
                   <td className="py-1.5 pl-2 text-right tabular-nums">{fmtPct(pctTotal)}</td>
@@ -272,6 +324,9 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           ramaisPrev={avanco.porClasse.POV.ramaisPrevisto}
           ramaisReal={avanco.porClasse.POV.ramaisRealizado}
           ramaisPct={avanco.porClasse.POV.ramaisPct}
+          lrPrev={avanco.porClasse.POV.lrPrevisto}
+          lrReal={avanco.porClasse.POV.lrRealizado}
+          lrPct={avanco.porClasse.POV.lrPct}
           accent="#0C447C"
         />
         <CardResumo
@@ -282,6 +337,9 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           ramaisPrev={avanco.porClasse.SEDE.ramaisPrevisto}
           ramaisReal={avanco.porClasse.SEDE.ramaisRealizado}
           ramaisPct={avanco.porClasse.SEDE.ramaisPct}
+          lrPrev={avanco.porClasse.SEDE.lrPrevisto}
+          lrReal={avanco.porClasse.SEDE.lrRealizado}
+          lrPct={avanco.porClasse.SEDE.lrPct}
           accent="#185FA5"
         />
       </div>
@@ -306,6 +364,17 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           formatarContratual={fmtUn}
           podeEditar={podeEditar}
           onEditar={() => setModalAberto(true)}
+        />
+        <AvancoSecao
+          titulo="Linha de Recalque por sub-bacia"
+          linhas={avanco.linhaRecalque}
+          unidade="m"
+          formatar={fmtM}
+          contratualPorChave={new Map()}
+          formatarContratual={fmtM}
+          podeEditar={false}
+          onEditar={() => {}}
+          mostrarContratual={false}
         />
       </div>
 

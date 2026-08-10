@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Layers } from 'lucide-react';
 import { STATUS_ORDER, STATUS_META, type OSDisplayStatus } from '@/lib/osStatus';
+import { PV_PROF_FAIXAS } from '@/lib/pvProfundidade';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Props {
@@ -39,6 +40,27 @@ const Linhas = ({ counts }: { counts?: Partial<Record<string, number>> }) => (
   </>
 );
 
+const Profundidades = () => (
+  <>
+    {PV_PROF_FAIXAS.map((f) => (
+      <div key={f.key} className="flex items-center gap-1.5 leading-tight" title={`PV — ${f.label}`}>
+        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: f.hex }} />
+        <span className="text-foreground truncate">{f.label}</span>
+      </div>
+    ))}
+  </>
+);
+
+const Conteudo = ({ counts }: { counts?: Partial<Record<string, number>> }) => (
+  <>
+    <div className="font-semibold text-foreground mb-0.5">Status dos trechos</div>
+    <Linhas counts={counts} />
+    <div className="my-1 border-t border-border" />
+    <div className="font-semibold text-foreground mb-0.5">Profundidade dos PVs</div>
+    <Profundidades />
+  </>
+);
+
 /** Legenda oficial de status de N.S./trechos. Compacta no desktop, colapsável no mobile. */
 export const StatusLegenda = ({ counts, className = '' }: Props) => {
   const isMobile = useIsMobile();
@@ -60,8 +82,7 @@ export const StatusLegenda = ({ counts, className = '' }: Props) => {
   if (!isMobile) {
     return (
       <div className={`${card} ${className}`}>
-        <div className="font-semibold text-foreground mb-0.5">Status</div>
-        <Linhas counts={counts} />
+        <Conteudo counts={counts} />
       </div>
     );
   }
@@ -69,19 +90,19 @@ export const StatusLegenda = ({ counts, className = '' }: Props) => {
   return (
     <div ref={ref} className={`flex flex-col items-start gap-1 ${className}`}>
       {open && (
-        <div className={`${card} max-w-[190px] max-h-[35%] overflow-hidden`}>
-          <Linhas counts={counts} />
+        <div className={`${card} max-w-[200px] max-h-[55vh] overflow-y-auto`}>
+          <Conteudo counts={counts} />
         </div>
       )}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label="Legenda de status"
+        aria-label="Legenda do mapa"
         className="flex items-center gap-1 bg-card/90 backdrop-blur border border-border rounded-md shadow-md px-2 py-1 text-[11px] text-foreground"
       >
         <Layers className="w-3.5 h-3.5" />
-        Status
+        Legenda
       </button>
     </div>
   );

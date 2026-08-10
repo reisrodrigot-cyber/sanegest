@@ -35,6 +35,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { ColumnFilterMenu } from '@/components/tabela/ColumnFilterMenu';
+import { isFilterActive, passesFilter, type CellValue, type ColFilterType, type ColumnFilterValue } from '@/lib/columnFilter';
 
 // Natural sort comparator: "1.2" < "1.10"
 function naturalCompare(a: string, b: string) {
@@ -52,7 +54,8 @@ const OrdensPage = () => {
   const canPlanilhao = role === 'admin' || role === 'sala_tecnica';
   const location = useLocation();
   const planilhaoView = location.pathname.startsWith('/ordens/planilhao');
-  const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
+  const [colFilters, setColFiltros] = useState<Record<string, ColumnFilterValue>>({});
+  const [colSort, setColSort] = useState<{ id: string; dir: 'asc' | 'desc' } | null>(null);
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [responsavelFilter, setResponsavelFilter] = useState('TODOS');
   const [search, setSearch] = useState('');
@@ -171,11 +174,10 @@ const OrdensPage = () => {
         if (!matchSearch(os)) return false;
         if (!matchBacia(os)) return false;
         if (!matchResponsavel(os)) return false;
-        if (faseFilter !== 'TODAS' && statusEfetivo(os) !== toDisplayStatus(faseFilter)) return false;
         return true;
       })
       .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
-    [ordens, search, baciaFilter, responsavelFilter, faseFilter, executadasOsIds]
+    [ordens, search, baciaFilter, responsavelFilter, executadasOsIds]
   );
 
   const executadas = useMemo(
@@ -185,22 +187,15 @@ const OrdensPage = () => {
         if (!matchSearch(os)) return false;
         if (!matchBacia(os)) return false;
         if (!matchResponsavel(os)) return false;
-        if (faseFilter !== 'TODAS' && statusEfetivo(os) !== toDisplayStatus(faseFilter)) return false;
         return true;
       })
       .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
-    [ordens, search, baciaFilter, responsavelFilter, faseFilter, executadasOsIds]
+    [ordens, search, baciaFilter, responsavelFilter, executadasOsIds]
   );
 
   const liberadasBaseCount = ordens.filter(os => os.liberado && !executadasOsIds.has(os.id)).length;
   const executadasBaseCount = ordens.filter(os => executadasOsIds.has(os.id)).length;
 
-  const countByStatus = (status: OSStatus) => {
-    const base = activeTab === 'executadas'
-      ? ordens.filter(os => executadasOsIds.has(os.id))
-      : ordens.filter(os => os.liberado && !executadasOsIds.has(os.id));
-    return base.filter(os => statusEfetivo(os) === toDisplayStatus(status)).length;
-  };
 
   const handleExport = async () => {
     try {
@@ -281,9 +276,66 @@ const OrdensPage = () => {
 
   const selectedOS = useMemo(() => ordens.filter(o => selected.has(o.id)), [ordens, selected]);
 
-  const OSTable = ({ data }: { data: typeof ordens }) => {
+  /** Metadados das colunas filtráveis (padrão Excel). */
+  const OS_COLS: { id: string; label: string; type: ColFilterType; className: string; align?: string }[] = [
+    { id: 'trecho', label: 'Trecho', type: 'text', className: 'text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap' },
+    { id: 'bacia', label: 'Bacia', type: 'text', className: 'text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap' },
+    { id: 'comprimento', label: 'Comp. (m)', type: 'number', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell' },
+    { id: 'prof', label: 'Prof. Média (m)', type: 'number', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell' },
+    { id: 'executado', label: 'Executado (m)', type: 'number', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell' },
+    { id: 'pct', label: '%', type: 'number', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell w-[160px]' },
+    { id: 'responsavel', label: 'Responsável', type: 'text', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell' },
+    { id: 'status', label: 'Status', type: 'text', className: 'text-right sm:text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap' },
+  ];
+
+  /** Valor comparável de cada coluna para uma O.S. */
+  const osCellValue = (os: typeof ordens[0], colId: string): CellValue => {
+    const executado = producaoByOs[os.id] || 0;
+    const total = Number(os.comprimento_previsto || 0);
+    const pct = total > 0 ? Math.min(100, (executado / total) * 100) : 0;
+    switch (colId) {
+      case 'trecho': return { text: os.trecho || '—' };
+      case 'bacia': return { text: os.bacia || '—' };
+      case 'comprimento': return { text: os.comprimento_previsto != null ? String(os.comprimento_previsto) : '—', num: os.comprimento_previsto != null ? Number(os.comprimento_previsto) : null };
+      case 'prof': return { text: os.prof_media_prevista != null ? Number(os.prof_media_prevista).toFixed(2) : '—', num: os.prof_media_prevista != null ? Number(os.prof_media_prevista) : null };
+      case 'executado': return { text: executado.toFixed(2), num: executado };
+      case 'pct': return { text: `${pct.toFixed(0)}%`, num: pct };
+      case 'responsavel': return { text: os.liberado_para || '—' };
+      case 'status': return { text: statusLabel(statusEfetivo(os)) };
+      default: return { text: '' };
+    }
+  };
+
+  const aplicarColunas = (data: typeof ordens) => {
+    const ativos = OS_COLS.filter(c => isFilterActive(colFilters[c.id]));
+    let out = ativos.length
+      ? data.filter(os => ativos.every(c => passesFilter(colFilters[c.id], c.type, osCellValue(os, c.id))))
+      : data;
+    if (colSort) {
+      const col = OS_COLS.find(c => c.id === colSort.id);
+      if (col) {
+        const mult = colSort.dir === 'asc' ? 1 : -1;
+        out = [...out].sort((a, b) => {
+          const va = osCellValue(a, col.id);
+          const vb = osCellValue(b, col.id);
+          if (col.type === 'number') {
+            const na = va.num ?? Number.NEGATIVE_INFINITY;
+            const nb = vb.num ?? Number.NEGATIVE_INFINITY;
+            return (na - nb) * mult;
+          }
+          return naturalCompare(va.text, vb.text) * mult;
+        });
+      }
+    }
+    return out;
+  };
+
+  const OSTable = ({ data: base }: { data: typeof ordens }) => {
+    const data = aplicarColunas(base);
     const allSelected = data.length > 0 && data.every(o => selected.has(o.id));
     const someSelected = data.some(o => selected.has(o.id)) && !allSelected;
+    const valoresCol = (colId: string) =>
+      [...new Set(base.map(os => osCellValue(os, colId).text))].sort(naturalCompare);
     return (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -299,14 +351,22 @@ const OrdensPage = () => {
                   />
                 </th>
               )}
-              <th className="text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Trecho</th>
-              <th className="text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Bacia</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Comp. (m)</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Prof. Média (m)</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Executado (m)</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell w-[160px]">%</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Responsável</th>
-              <th className="text-right sm:text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Status</th>
+              {OS_COLS.map(c => (
+                <th key={c.id} className={c.className}>
+                  <div className={`flex items-center gap-1 ${c.id === 'status' ? 'justify-end sm:justify-start' : ''}`}>
+                    <span className="truncate">{c.label}</span>
+                    <ColumnFilterMenu
+                      label={c.label}
+                      type={c.type}
+                      values={valoresCol(c.id)}
+                      filter={colFilters[c.id]}
+                      onChange={f => setColFiltros(prev => ({ ...prev, [c.id]: f }))}
+                      sortDir={colSort?.id === c.id ? colSort.dir : null}
+                      onSort={dir => setColSort(dir ? { id: c.id, dir } : null)}
+                    />
+                  </div>
+                </th>
+              ))}
               <th className="px-1 sm:px-2 py-3 w-auto sm:w-[180px]"></th>
             </tr>
           </thead>
@@ -406,21 +466,34 @@ const OrdensPage = () => {
   };
 
   const topTabs = (
-    <div className="flex items-center gap-1 mb-4 border-b border-border">
-      <button
-        onClick={() => navigate('/ordens')}
-        className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${!planilhaoView ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-      >
-        Ordens de Serviço
-      </button>
-      {canPlanilhao && (
+    <div className="mb-4 border-b border-border">
+      <div className="inline-flex items-stretch gap-2 rounded-t-lg">
         <button
-          onClick={() => navigate('/ordens/planilhao')}
-          className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${planilhaoView ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          onClick={() => navigate('/ordens')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg border border-b-2 transition-colors ${
+            !planilhaoView
+              ? 'bg-card border-border border-b-primary text-primary shadow-sm'
+              : 'border-transparent border-b-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+          }`}
         >
-          Planilhão
+          Ordens de Serviço
         </button>
-      )}
+        {canPlanilhao && (
+          <>
+            <span className="self-center w-px h-5 bg-border" aria-hidden />
+            <button
+              onClick={() => navigate('/ordens/planilhao')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg border border-b-2 transition-colors ${
+                planilhaoView
+                  ? 'bg-card border-border border-b-primary text-primary shadow-sm'
+                  : 'border-transparent border-b-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              Planilhão
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 
@@ -519,7 +592,7 @@ const OrdensPage = () => {
           <Loader2 className="animate-spin text-muted-foreground" size={24} />
         </div>
       ) : (
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); setFaseFilter('TODAS'); }} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); setColFiltros({}); setColSort(null); }} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="liberadas">
               Liberadas ({liberadasBaseCount})
@@ -532,30 +605,6 @@ const OrdensPage = () => {
             </TabsTrigger>
           </TabsList>
 
-          {(activeTab === 'liberadas' || activeTab === 'executadas') && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {([
-                { key: 'TODAS' as const, label: 'Todas as fases' },
-                { key: 'CINZA' as const, label: `${statusLabel('CINZA')} (${countByStatus('CINZA')})` },
-                { key: 'VERMELHO' as const, label: `${statusLabel('VERMELHO')} (${countByStatus('VERMELHO')})` },
-                { key: 'LARANJA' as const, label: `${statusLabel('LARANJA')} · material entregue (${countByStatus('LARANJA')})` },
-                { key: 'AMARELO' as const, label: `${statusLabel('AMARELO')} (${countByStatus('AMARELO')})` },
-                { key: 'VERDE' as const, label: `${statusLabel('VERDE')} (${countByStatus('VERDE')})` },
-              ]).map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setFaseFilter(f.key)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    faseFilter === f.key
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card text-muted-foreground border-border hover:border-foreground/20'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          )}
 
           <TabsContent value="liberadas">
             <OSTable data={liberadas} />

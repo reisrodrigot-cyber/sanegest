@@ -1,5 +1,6 @@
 import type { OSDisplayStatus } from '@/lib/osStatus';
 import { statusLabel, vinculoDisplayStatus, STATUS_PRIORITY_DESC } from '@/lib/osStatus';
+import { passesFilter, type CellValue, type ColFilterType, type ColumnFilterValue, isFilterActive } from '@/lib/columnFilter';
 
 /** Uma linha consolidada da grade: exatamente uma por Bacia + Trecho. */
 export interface PlanilhaoRow {
@@ -345,4 +346,55 @@ export function calcularTotais(rows: PlanilhaoRow[], visible: string[]): Record<
     totals.saldo_m = prev - real;
   }
   return totals;
+}
+
+// ---------------------------------------------------------------------------
+// Filtros padrão Excel por coluna
+// ---------------------------------------------------------------------------
+
+/** Tipo de filtro de uma coluna (datas são texto ISO na linha). */
+export function colFilterType(col: PlanilhaoColumn): ColFilterType {
+  if (col.id === 'primeira_data' || col.id === 'ultima_data') return 'date';
+  return col.type === 'number' ? 'number' : 'text';
+}
+
+/** Valor comparável de uma célula para o motor de filtros. */
+export function cellValue(row: PlanilhaoRow, col: PlanilhaoColumn): CellValue {
+  const raw = row[col.id];
+  const text = cellText(row, col);
+  if (colFilterType(col) === 'date') {
+    return { text, date: raw ? String(raw).slice(0, 10) : null };
+  }
+  if (col.type === 'number') {
+    return { text, num: raw === null || raw === undefined ? null : Number(raw) };
+  }
+  return { text };
+}
+
+/** Valores distintos exibidos de uma coluna (ordenados naturalmente). */
+export function valoresDistintos(rows: PlanilhaoRow[], col: PlanilhaoColumn): string[] {
+  return [...new Set(rows.map(r => cellText(r, col)))].sort(naturalCompare);
+}
+
+/** Aplica busca global + filtros de coluna (combináveis entre colunas). */
+export function aplicarFiltrosColuna(
+  rows: PlanilhaoRow[],
+  colFilters: Record<string, ColumnFilterValue>,
+  busca: string,
+  visible: string[],
+): PlanilhaoRow[] {
+  const q = busca.trim().toLowerCase();
+  const ativos = Object.entries(colFilters || {})
+    .filter(([id, f]) => COLUMN_BY_ID[id] && isFilterActive(f))
+    .map(([id, f]) => ({ col: COLUMN_BY_ID[id], f }));
+  return rows.filter(r => {
+    for (const { col, f } of ativos) {
+      if (!passesFilter(f, colFilterType(col), cellValue(r, col))) return false;
+    }
+    if (!q) return true;
+    return visible.some(id => {
+      const col = COLUMN_BY_ID[id];
+      return col ? cellText(r, col).toLowerCase().includes(q) : false;
+    });
+  });
 }

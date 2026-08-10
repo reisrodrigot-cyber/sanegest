@@ -10,12 +10,14 @@ import {
   type PlanilhaoRow,
   type ProducaoRaw,
 } from '@/lib/planilhaoTabela';
+import { sanitizeFilter, type ColumnFilterValue } from '@/lib/columnFilter';
 
 export interface PlanilhaoPrefs {
   visible: string[];
   order: string[];
   widths: Record<string, number>;
-  filters: Record<string, string>;
+  /** Filtros padrão Excel por coluna. */
+  colFilters: Record<string, ColumnFilterValue>;
   sort: { id: string; dir: 'asc' | 'desc' } | null;
 }
 
@@ -23,7 +25,7 @@ export const defaultPrefs = (): PlanilhaoPrefs => ({
   visible: [...DEFAULT_VISIBLE],
   order: PLANILHAO_COLUMNS.map(c => c.id),
   widths: Object.fromEntries(PLANILHAO_COLUMNS.map(c => [c.id, c.width])),
-  filters: {},
+  colFilters: {},
   sort: null,
 });
 
@@ -37,11 +39,17 @@ function sanitize(raw: unknown): PlanilhaoPrefs {
   const known = (ids?: string[]) => (ids || []).filter(id => !!COLUMN_BY_ID[id]);
   const order = [...new Set([...known(p.order), ...base.order])];
   const visible = known(p.visible);
+  const colFilters: Record<string, ColumnFilterValue> = {};
+  if (p.colFilters && typeof p.colFilters === 'object') {
+    for (const [id, f] of Object.entries(p.colFilters)) {
+      if (COLUMN_BY_ID[id]) colFilters[id] = sanitizeFilter(f);
+    }
+  }
   return {
     visible: visible.length ? visible : base.visible,
     order,
     widths: { ...base.widths, ...(p.widths || {}) },
-    filters: p.filters && typeof p.filters === 'object' ? p.filters : {},
+    colFilters,
     sort: p.sort && COLUMN_BY_ID[p.sort.id] ? p.sort : null,
   };
 }

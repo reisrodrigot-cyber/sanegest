@@ -314,6 +314,14 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
 
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const sateliteLayerRef = useRef<L.TileLayer | null>(null);
+  const padraoLayerRef = useRef<L.TileLayer | null>(null);
+  const [baseMapa, setBaseMapa] = useState<'satelite' | 'padrao'>(() => {
+    try {
+      return localStorage.getItem(BASE_MAPA_STORAGE_KEY) === 'padrao' ? 'padrao' : 'satelite';
+    } catch { return 'satelite'; }
+  });
+  const baseMapaRef = useRef(baseMapa);
   const mapRef = useRef<L.Map | null>(null);
   const redeLayerRef = useRef<L.LayerGroup | null>(null);
   const ligacoesLayerRef = useRef<L.LayerGroup | null>(null);
@@ -340,6 +348,7 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
 
   // Visibilidade persistida em localStorage por NOME da camada
   const VIS_STORAGE_KEY = 'sangest_map_layers_visibility';
+const BASE_MAPA_STORAGE_KEY = 'sanegest.mapa.base';
   const readVisStorage = (): Record<string, boolean> => {
     try {
       const raw = localStorage.getItem(VIS_STORAGE_KEY);
@@ -414,7 +423,17 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
         maxNativeZoom: ZOOM_VALIDO,
       }
     );
-    sateliteLayer.addTo(map);
+    const padraoLayer = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: ZOOM_VALIDO,
+        maxNativeZoom: ZOOM_VALIDO,
+      }
+    );
+    sateliteLayerRef.current = sateliteLayer;
+    padraoLayerRef.current = padraoLayer;
+    (baseMapaRef.current === 'padrao' ? padraoLayer : sateliteLayer).addTo(map);
 
     map.setMaxZoom(ZOOM_VALIDO);
     if (map.getZoom() > ZOOM_VALIDO) map.setZoom(ZOOM_VALIDO);
@@ -650,6 +669,21 @@ export const MapaInterativo = ({ showLocation = false, height = 520, preferCanva
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
+
+  // Troca do mapa-base (Satélite/Padrão) — não afeta camadas, geometrias ou filtros
+  useEffect(() => {
+    baseMapaRef.current = baseMapa;
+    try { localStorage.setItem(BASE_MAPA_STORAGE_KEY, baseMapa); } catch { /* ignore */ }
+    const map = mapRef.current;
+    const sat = sateliteLayerRef.current;
+    const pad = padraoLayerRef.current;
+    if (!map || !sat || !pad) return;
+    const ativa = baseMapa === 'padrao' ? pad : sat;
+    const inativa = baseMapa === 'padrao' ? sat : pad;
+    if (!map.hasLayer(ativa)) ativa.addTo(map);
+    if (map.hasLayer(inativa)) map.removeLayer(inativa);
+    try { ativa.bringToBack(); } catch { /* ignore */ }
+  }, [baseMapa, loading]);
 
   // ======= Render rede (polylines por OS + vértices) =======
   useEffect(() => {

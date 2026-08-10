@@ -1,5 +1,6 @@
 import type { OSDisplayStatus } from '@/lib/osStatus';
 import { statusLabel, vinculoDisplayStatus, STATUS_PRIORITY_DESC } from '@/lib/osStatus';
+import { passesFilter, type CellValue, type ColFilterType, type ColumnFilterValue, isFilterActive } from '@/lib/columnFilter';
 
 /** Uma linha consolidada da grade: exatamente uma por Bacia + Trecho. */
 export interface PlanilhaoRow {

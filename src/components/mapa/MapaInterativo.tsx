@@ -1808,6 +1808,28 @@ ${placemarks.join('\n')}
             )}
           </PopoverContent>
         </Popover>
+
+        {/* Seletor de base do mapa (Satélite / Padrão) */}
+        <div
+          className="bg-card border border-border shadow-md rounded-md p-0.5 flex flex-col gap-0.5"
+          role="group"
+          aria-label="Base do mapa"
+        >
+          {([['satelite', 'Satélite'], ['padrao', 'Padrão']] as const).map(([v, label]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setBaseMapa(v)}
+              aria-pressed={baseMapa === v}
+              title={`Base do mapa: ${label}`}
+              className={`px-1.5 py-1 rounded text-[11px] leading-none font-medium transition-colors ${
+                baseMapa === v ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-accent'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {!loading && redePoints.length === 0 && ligacoesPoints.length === 0 && camadas.length === 0 && previewBase.bases.length === 0 && (

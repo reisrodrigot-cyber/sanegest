@@ -579,7 +579,7 @@ const OrdensPage = () => {
           <Loader2 className="animate-spin text-muted-foreground" size={24} />
         </div>
       ) : (
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); setFaseFilter('TODAS'); }} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); setColFiltros({}); setColSort(null); }} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="liberadas">
               Liberadas ({liberadasBaseCount})
@@ -592,25 +592,6 @@ const OrdensPage = () => {
             </TabsTrigger>
           </TabsList>
 
-          {(activeTab === 'liberadas' || activeTab === 'executadas') && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {([
-                { key: 'TODAS' as const, label: 'Todas as fases' },
-                { key: 'CINZA' as const, label: `${statusLabel('CINZA')} (${countByStatus('CINZA')})` },
-                { key: 'VERMELHO' as const, label: `${statusLabel('VERMELHO')} (${countByStatus('VERMELHO')})` },
-                { key: 'LARANJA' as const, label: `${statusLabel('LARANJA')} · material entregue (${countByStatus('LARANJA')})` },
-                { key: 'AMARELO' as const, label: `${statusLabel('AMARELO')} (${countByStatus('AMARELO')})` },
-                { key: 'VERDE' as const, label: `${statusLabel('VERDE')} (${countByStatus('VERDE')})` },
-              ]).map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setFaseFilter(f.key)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    faseFilter === f.key
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card text-muted-foreground border-border hover:border-foreground/20'
-                  }`}
-                >
                   {f.label}
                 </button>
               ))}

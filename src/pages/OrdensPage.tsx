@@ -35,6 +35,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { ColumnFilterMenu } from '@/components/tabela/ColumnFilterMenu';
+import { isFilterActive, passesFilter, type CellValue, type ColFilterType, type ColumnFilterValue } from '@/lib/columnFilter';
 
 // Natural sort comparator: "1.2" < "1.10"
 function naturalCompare(a: string, b: string) {
@@ -52,7 +54,8 @@ const OrdensPage = () => {
   const canPlanilhao = role === 'admin' || role === 'sala_tecnica';
   const location = useLocation();
   const planilhaoView = location.pathname.startsWith('/ordens/planilhao');
-  const [faseFilter, setFaseFilter] = useState<OSStatus | 'TODAS'>('TODAS');
+  const [colFilters, setColFiltros] = useState<Record<string, ColumnFilterValue>>({});
+  const [colSort, setColSort] = useState<{ id: string; dir: 'asc' | 'desc' } | null>(null);
   const [baciaFilter, setBaciaFilter] = useState('TODAS');
   const [responsavelFilter, setResponsavelFilter] = useState('TODOS');
   const [search, setSearch] = useState('');

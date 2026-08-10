@@ -174,11 +174,10 @@ const OrdensPage = () => {
         if (!matchSearch(os)) return false;
         if (!matchBacia(os)) return false;
         if (!matchResponsavel(os)) return false;
-        if (faseFilter !== 'TODAS' && statusEfetivo(os) !== toDisplayStatus(faseFilter)) return false;
         return true;
       })
       .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
-    [ordens, search, baciaFilter, responsavelFilter, faseFilter, executadasOsIds]
+    [ordens, search, baciaFilter, responsavelFilter, executadasOsIds]
   );
 
   const executadas = useMemo(
@@ -188,22 +187,15 @@ const OrdensPage = () => {
         if (!matchSearch(os)) return false;
         if (!matchBacia(os)) return false;
         if (!matchResponsavel(os)) return false;
-        if (faseFilter !== 'TODAS' && statusEfetivo(os) !== toDisplayStatus(faseFilter)) return false;
         return true;
       })
       .sort((a, b) => naturalCompare(a.trecho, b.trecho)),
-    [ordens, search, baciaFilter, responsavelFilter, faseFilter, executadasOsIds]
+    [ordens, search, baciaFilter, responsavelFilter, executadasOsIds]
   );
 
   const liberadasBaseCount = ordens.filter(os => os.liberado && !executadasOsIds.has(os.id)).length;
   const executadasBaseCount = ordens.filter(os => executadasOsIds.has(os.id)).length;
 
-  const countByStatus = (status: OSStatus) => {
-    const base = activeTab === 'executadas'
-      ? ordens.filter(os => executadasOsIds.has(os.id))
-      : ordens.filter(os => os.liberado && !executadasOsIds.has(os.id));
-    return base.filter(os => statusEfetivo(os) === toDisplayStatus(status)).length;
-  };
 
   const handleExport = async () => {
     try {

@@ -7,12 +7,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { usePlanilhaoTabela, defaultPrefs } from '@/hooks/usePlanilhaoTabela';
+import { ColumnFilterMenu } from '@/components/tabela/ColumnFilterMenu';
+import { isFilterActive, type ColumnFilterValue } from '@/lib/columnFilter';
 import {
-  aplicarFiltros,
+  aplicarFiltrosColuna,
   calcularTotais,
   cellText,
+  colFilterType,
   fmtNumber,
   ordenar,
+  valoresDistintos,
   PLANILHAO_COLUMNS,
   type PlanilhaoColumn,
 } from '@/lib/planilhaoTabela';
@@ -29,14 +33,17 @@ export const PlanilhaoConsulta = () => {
   const dragCol = useRef<string | null>(null);
 
   const filtradas = useMemo(
-    () => aplicarFiltros(rows, prefs.filters, busca, prefs.visible),
-    [rows, prefs.filters, prefs.visible, busca],
+    () => aplicarFiltrosColuna(rows, prefs.colFilters, busca, prefs.visible),
+    [rows, prefs.colFilters, prefs.visible, busca],
   );
   const dados = useMemo(() => ordenar(filtradas, prefs.sort), [filtradas, prefs.sort]);
   const totais = useMemo(() => calcularTotais(dados, prefs.visible), [dados, prefs.visible]);
 
-  const setFiltro = (id: string, value: string) =>
-    setPrefs(p => ({ ...p, filters: { ...p.filters, [id]: value } }));
+  const setColFiltro = (id: string, f: ColumnFilterValue) =>
+    setPrefs(p => ({ ...p, colFilters: { ...p.colFilters, [id]: f } }));
+
+  const setOrdenacao = (id: string, dir: 'asc' | 'desc' | null) =>
+    setPrefs(p => ({ ...p, sort: dir ? { id, dir } : null }));
 
   const toggleColuna = (id: string) =>
     setPrefs(p => ({

@@ -281,9 +281,66 @@ const OrdensPage = () => {
 
   const selectedOS = useMemo(() => ordens.filter(o => selected.has(o.id)), [ordens, selected]);
 
-  const OSTable = ({ data }: { data: typeof ordens }) => {
+  /** Metadados das colunas filtráveis (padrão Excel). */
+  const OS_COLS: { id: string; label: string; type: ColFilterType; className: string; align?: string }[] = [
+    { id: 'trecho', label: 'Trecho', type: 'text', className: 'text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap' },
+    { id: 'bacia', label: 'Bacia', type: 'text', className: 'text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap' },
+    { id: 'comprimento', label: 'Comp. (m)', type: 'number', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell' },
+    { id: 'prof', label: 'Prof. Média (m)', type: 'number', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell' },
+    { id: 'executado', label: 'Executado (m)', type: 'number', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell' },
+    { id: 'pct', label: '%', type: 'number', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell w-[160px]' },
+    { id: 'responsavel', label: 'Responsável', type: 'text', className: 'text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell' },
+    { id: 'status', label: 'Status', type: 'text', className: 'text-right sm:text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap' },
+  ];
+
+  /** Valor comparável de cada coluna para uma O.S. */
+  const osCellValue = (os: typeof ordens[0], colId: string): CellValue => {
+    const executado = producaoByOs[os.id] || 0;
+    const total = Number(os.comprimento_previsto || 0);
+    const pct = total > 0 ? Math.min(100, (executado / total) * 100) : 0;
+    switch (colId) {
+      case 'trecho': return { text: os.trecho || '—' };
+      case 'bacia': return { text: os.bacia || '—' };
+      case 'comprimento': return { text: os.comprimento_previsto != null ? String(os.comprimento_previsto) : '—', num: os.comprimento_previsto != null ? Number(os.comprimento_previsto) : null };
+      case 'prof': return { text: os.prof_media_prevista != null ? Number(os.prof_media_prevista).toFixed(2) : '—', num: os.prof_media_prevista != null ? Number(os.prof_media_prevista) : null };
+      case 'executado': return { text: executado.toFixed(2), num: executado };
+      case 'pct': return { text: `${pct.toFixed(0)}%`, num: pct };
+      case 'responsavel': return { text: os.liberado_para || '—' };
+      case 'status': return { text: statusLabel(statusEfetivo(os)) };
+      default: return { text: '' };
+    }
+  };
+
+  const aplicarColunas = (data: typeof ordens) => {
+    const ativos = OS_COLS.filter(c => isFilterActive(colFilters[c.id]));
+    let out = ativos.length
+      ? data.filter(os => ativos.every(c => passesFilter(colFilters[c.id], c.type, osCellValue(os, c.id))))
+      : data;
+    if (colSort) {
+      const col = OS_COLS.find(c => c.id === colSort.id);
+      if (col) {
+        const mult = colSort.dir === 'asc' ? 1 : -1;
+        out = [...out].sort((a, b) => {
+          const va = osCellValue(a, col.id);
+          const vb = osCellValue(b, col.id);
+          if (col.type === 'number') {
+            const na = va.num ?? Number.NEGATIVE_INFINITY;
+            const nb = vb.num ?? Number.NEGATIVE_INFINITY;
+            return (na - nb) * mult;
+          }
+          return naturalCompare(va.text, vb.text) * mult;
+        });
+      }
+    }
+    return out;
+  };
+
+  const OSTable = ({ data: base }: { data: typeof ordens }) => {
+    const data = aplicarColunas(base);
     const allSelected = data.length > 0 && data.every(o => selected.has(o.id));
     const someSelected = data.some(o => selected.has(o.id)) && !allSelected;
+    const valoresCol = (colId: string) =>
+      [...new Set(base.map(os => osCellValue(os, colId).text))].sort(naturalCompare);
     return (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -299,14 +356,22 @@ const OrdensPage = () => {
                   />
                 </th>
               )}
-              <th className="text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Trecho</th>
-              <th className="text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Bacia</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Comp. (m)</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Prof. Média (m)</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Executado (m)</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell w-[160px]">%</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Responsável</th>
-              <th className="text-right sm:text-left px-2 sm:px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">Status</th>
+              {OS_COLS.map(c => (
+                <th key={c.id} className={c.className}>
+                  <div className={`flex items-center gap-1 ${c.id === 'status' ? 'justify-end sm:justify-start' : ''}`}>
+                    <span className="truncate">{c.label}</span>
+                    <ColumnFilterMenu
+                      label={c.label}
+                      type={c.type}
+                      values={valoresCol(c.id)}
+                      filter={colFilters[c.id]}
+                      onChange={f => setColFiltros(prev => ({ ...prev, [c.id]: f }))}
+                      sortDir={colSort?.id === c.id ? colSort.dir : null}
+                      onSort={dir => setColSort(dir ? { id: c.id, dir } : null)}
+                    />
+                  </div>
+                </th>
+              ))}
               <th className="px-1 sm:px-2 py-3 w-auto sm:w-[180px]"></th>
             </tr>
           </thead>

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import type { MapaTrechoPreview, MapaPontoPreview } from '@/hooks/useMapaBasePreview';
+import { corProfundidadePV } from '@/lib/pvProfundidade';
 import { getStatusMeta, aggregateVinculosStatus, vinculoDisplayStatus, statusHex, statusLabel } from '@/lib/osStatus';
 
 
@@ -49,12 +50,20 @@ function hitWeight(): number {
 
 /** Raio visual dos PVs por faixa de zoom. `null` = ocultar pontos individuais. */
 function pvRadiusForZoom(zoom: number): number | null {
-  if (zoom < 14) return null;   // zoom distante: esconder PVs
-  if (zoom < 15) return 2;
-  if (zoom < 16) return 2.5;
-  if (zoom < 17) return 3;
-  if (zoom < 18) return 3.5;
-  return 4;                     // zoom próximo: tamanho atual
+  if (zoom < 13) return null;   // zoom muito distante: esconder PVs
+  if (zoom < 14) return 1.5;
+  if (zoom < 15) return 2.5;
+  if (zoom < 16) return 3.5;
+  if (zoom < 17) return 4.5;
+  if (zoom < 18) return 5.5;
+  return 6.5;                   // zoom próximo: boa leitura
+}
+
+/** Raio de toque/clique: nunca menor que o mínimo confortável no celular. */
+function pvHitRadius(r: number): number {
+  const coarse = typeof window !== 'undefined'
+    && (window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth < 768);
+  return Math.max(r, coarse ? 10 : 7);
 }
 
 
@@ -63,6 +72,7 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
   const layerRef = useRef<L.LayerGroup | null>(null);
   const pvLayerRef = useRef<L.LayerGroup | null>(null);
   const pvMarkersRef = useRef<L.CircleMarker[]>([]);
+  const pvHitsRef = useRef<L.CircleMarker[]>([]);
 
 
   useEffect(() => {
@@ -148,27 +158,38 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
     const pvGroup = L.layerGroup();
     pvLayerRef.current = pvGroup;
     const markers: L.CircleMarker[] = [];
+    const hitMarkers: L.CircleMarker[] = [];
     const zoom = map0.getZoom();
     const r = pvRadiusForZoom(zoom);
 
     for (const p of pontos) {
       if (p.lon == null || p.lat == null) continue;
-      const cor = p.tipo_no === 'PV' ? '#0C447C' : p.tipo_no === 'TL' ? '#7c3aed' : p.tipo_no === 'TQ' ? '#dc2626' : '#525252';
+      // Cor exclusivamente pela profundidade própria do PV
+      const cor = corProfundidadePV(p.prof);
+      const raio = r ?? 4;
+      const hit = L.circleMarker([p.lat, p.lon], {
+        radius: pvHitRadius(raio), opacity: 0, fillOpacity: 0, interactive: true,
+      });
       const marker = L.circleMarker([p.lat, p.lon], {
-        radius: r ?? 4, color: '#fff', weight: 1.5,
+        radius: raio, color: '#fff', weight: 1.5,
         fillColor: cor, fillOpacity: 0.95,
       });
-      marker.bindPopup(`
+      const popupPv = `
         <div style="min-width:160px;font-size:12px;">
           <div style="font-weight:700">${esc(p.rotulo_original)} <span style="color:#888;font-weight:400">(${esc(p.tipo_no)})</span></div>
           ${p.cota_marg != null ? `<div>Cota margem: ${p.cota_marg}</div>` : ''}
           ${p.cota_inv != null ? `<div>Cota inv.: ${p.cota_inv}</div>` : ''}
-          ${p.prof != null ? `<div>Profundidade: ${p.prof} m</div>` : ''}
-        </div>`);
+          <div>Profundidade: ${p.prof != null ? `${p.prof} m` : 'não cadastrada'}</div>
+        </div>`;
+      marker.bindPopup(popupPv);
+      hit.bindPopup(popupPv);
+      hit.addTo(pvGroup);
       marker.addTo(pvGroup);
       markers.push(marker);
+      hitMarkers.push(hit);
     }
     pvMarkersRef.current = markers;
+    pvHitsRef.current = hitMarkers;
     if (r != null) pvGroup.addTo(group);
   }, [map, trechos, pontos, visible]);
 
@@ -187,6 +208,7 @@ export const MapaBasePreviewLayer = ({ map, trechos, pontos, visible }: Props) =
         return;
       }
       for (const m of pvMarkersRef.current) m.setRadius(r);
+      for (const h of pvHitsRef.current) h.setRadius(pvHitRadius(r));
       if (!group.hasLayer(pvGroup)) pvGroup.addTo(group);
     };
     map0.on('zoomend', apply);

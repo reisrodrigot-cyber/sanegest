@@ -466,21 +466,34 @@ const OrdensPage = () => {
   };
 
   const topTabs = (
-    <div className="flex items-center gap-1 mb-4 border-b border-border">
-      <button
-        onClick={() => navigate('/ordens')}
-        className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${!planilhaoView ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-      >
-        Ordens de Serviço
-      </button>
-      {canPlanilhao && (
+    <div className="mb-4 border-b border-border">
+      <div className="inline-flex items-stretch gap-2 rounded-t-lg">
         <button
-          onClick={() => navigate('/ordens/planilhao')}
-          className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${planilhaoView ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          onClick={() => navigate('/ordens')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg border border-b-2 transition-colors ${
+            !planilhaoView
+              ? 'bg-card border-border border-b-primary text-primary shadow-sm'
+              : 'border-transparent border-b-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+          }`}
         >
-          Planilhão
+          Ordens de Serviço
         </button>
-      )}
+        {canPlanilhao && (
+          <>
+            <span className="self-center w-px h-5 bg-border" aria-hidden />
+            <button
+              onClick={() => navigate('/ordens/planilhao')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg border border-b-2 transition-colors ${
+                planilhaoView
+                  ? 'bg-card border-border border-b-primary text-primary shadow-sm'
+                  : 'border-transparent border-b-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              Planilhão
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 

@@ -169,7 +169,15 @@ export const PlanilhaoConsulta = () => {
   const colunasBusca = PLANILHAO_COLUMNS.filter(c =>
     c.label.toLowerCase().includes(buscaColuna.trim().toLowerCase()),
   );
-  const temFiltro = busca.trim() !== '' || Object.values(prefs.filters).some(v => v.trim() !== '');
+  const temFiltro = busca.trim() !== '' || Object.values(prefs.colFilters).some(isFilterActive);
+  const limparFiltros = () => { setBusca(''); setPrefs(p => ({ ...p, colFilters: {} })); };
+  /** Valores distintos por coluna visível (base da seleção do menu de filtro). */
+  const valoresPorColuna = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    visibleColumns.forEach(c => { map[c.id] = valoresDistintos(rows, c); });
+    return map;
+  }, [rows, visibleColumns]);
+  const larguraTotal = visibleColumns.reduce((s, c) => s + (prefs.widths[c.id] ?? c.width), 0);
 
   return (
     <div className="space-y-3">
@@ -228,7 +236,7 @@ export const PlanilhaoConsulta = () => {
         </Popover>
 
         <button
-          onClick={() => { setBusca(''); setPrefs(p => ({ ...p, filters: {} })); }}
+          onClick={limparFiltros}
           disabled={!temFiltro}
           aria-label="Limpar filtros"
           title="Limpar filtros"
@@ -270,7 +278,7 @@ export const PlanilhaoConsulta = () => {
         <span>{dados.length} de {rows.length} trechos</span>
         {temFiltro && (
           <button
-            onClick={() => { setBusca(''); setPrefs(p => ({ ...p, filters: {} })); }}
+            onClick={limparFiltros}
             className="inline-flex items-center gap-1 text-foreground hover:underline"
           >
             <X size={13} /> limpar filtros
@@ -280,8 +288,8 @@ export const PlanilhaoConsulta = () => {
 
       {/* Grade */}
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="text-sm" style={{ tableLayout: 'fixed', minWidth: '100%' }}>
+        <div className="overflow-x-auto overflow-y-visible max-w-full">
+          <table className="text-sm" style={{ tableLayout: 'fixed', width: Math.max(larguraTotal, 320), minWidth: '100%' }}>
             <thead>
               <tr className="border-b border-border bg-secondary">
                 {visibleColumns.map((c: PlanilhaoColumn) => (
@@ -292,23 +300,27 @@ export const PlanilhaoConsulta = () => {
                     onDragOver={e => e.preventDefault()}
                     onDrop={() => soltarColuna(c.id)}
                     style={{ width: prefs.widths[c.id] ?? c.width }}
-                    className="relative px-3 py-2 text-left align-top font-semibold text-foreground select-none"
+                    className="relative px-3 py-2 text-left align-middle font-semibold text-foreground select-none"
                   >
-                    <button
-                      onClick={() => alternarOrdenacao(c.id)}
-                      className="w-full text-left truncate hover:text-primary"
-                      title={`Ordenar por ${c.label}`}
-                    >
-                      {c.label}
-                      {prefs.sort?.id === c.id ? (prefs.sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
-                    </button>
-                    <input
-                      type="text"
-                      value={prefs.filters[c.id] ?? ''}
-                      onChange={e => setFiltro(c.id, e.target.value)}
-                      placeholder="Filtrar..."
-                      className="mt-1 w-full px-2 py-1 rounded border border-border bg-background text-xs font-normal"
-                    />
+                    <div className="flex items-center gap-1 pr-2">
+                      <button
+                        onClick={() => alternarOrdenacao(c.id)}
+                        className="flex-1 min-w-0 text-left truncate hover:text-primary"
+                        title={`Ordenar por ${c.label}`}
+                      >
+                        {c.label}
+                        {prefs.sort?.id === c.id ? (prefs.sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
+                      </button>
+                      <ColumnFilterMenu
+                        label={c.label}
+                        type={colFilterType(c)}
+                        values={valoresPorColuna[c.id] ?? []}
+                        filter={prefs.colFilters[c.id]}
+                        onChange={f => setColFiltro(c.id, f)}
+                        sortDir={prefs.sort?.id === c.id ? prefs.sort.dir : null}
+                        onSort={dir => setOrdenacao(c.id, dir)}
+                      />
+                    </div>
                     <span
                       onMouseDown={e => iniciarResize(e, c.id)}
                       className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40"

@@ -592,11 +592,6 @@ const OrdensPage = () => {
             </TabsTrigger>
           </TabsList>
 
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          )}
 
           <TabsContent value="liberadas">
             <OSTable data={liberadas} />

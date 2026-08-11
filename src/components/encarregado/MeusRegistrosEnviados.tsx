@@ -96,6 +96,9 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
     dirty?: boolean;
   };
   const [editLigItems, setEditLigItems] = useState<LigItem[]>([]);
+  /** Comprimentos das ligações no momento da abertura da edição — usado só na auditoria. */
+  const [ligSnapshotAntes, setLigSnapshotAntes] = useState<number[]>([]);
+
   const [loadingLigs, setLoadingLigs] = useState(false);
 
   // Exclusão

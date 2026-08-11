@@ -45,7 +45,7 @@ function naturalCompare(a: string, b: string) {
 
 const OrdensPage = () => {
   const { ordens, loading, refetch } = useOrdensServico();
-  const { user, effectiveRole } = useAuth();
+  const { user, effectiveRole, actingUserId, actingUserName } = useAuth();
   const navigate = useNavigate();
   const role = effectiveRole || user?.role;
   const canImport = role === 'admin' || role === 'sala_tecnica';
@@ -201,8 +201,8 @@ const OrdensPage = () => {
     try {
       await downloadPlanilhao(ordens);
       await supabase.from('export_logs').insert({
-        actor: user?.email || user?.id || 'unknown',
-        user_id: user?.id ?? null,
+        actor: actingUserName || user?.email || user?.id || 'unknown',
+        user_id: actingUserId ?? user?.id ?? null,
         source: 'manual',
         registros_count: ordens.length,
         status: 'success',
@@ -210,8 +210,8 @@ const OrdensPage = () => {
       });
     } catch (e: any) {
       await supabase.from('export_logs').insert({
-        actor: user?.email || user?.id || 'unknown',
-        user_id: user?.id ?? null,
+        actor: actingUserName || user?.email || user?.id || 'unknown',
+        user_id: actingUserId ?? user?.id ?? null,
         source: 'manual',
         registros_count: ordens.length,
         status: 'error',

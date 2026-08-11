@@ -241,8 +241,6 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
           const resumo = partes.join(' • ') || 'sem quantitativo';
 
           const createdMs = r.created_at ? new Date(r.created_at).getTime() : 0;
-          const updatedMs = r.updated_at ? new Date(r.updated_at).getTime() : createdMs;
-          const editado = updatedMs - createdMs > 60_000 || r.status === 'cancelado';
 
           const base = {
             dataProducao: (r.data_registro as string) || null,
@@ -255,16 +253,6 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
             ligComp,
           };
 
-          if (editado) {
-            const sit = r.status === 'cancelado' ? 'produção cancelada' : 'contabilizada na produção';
-            all.push({
-              ...base,
-              id: `pe-${r.id}`,
-              tipo: 'producao_edicao',
-              ts: new Date(updatedMs),
-              descricao: `editou produção${os?.trecho ? ` — ${os.trecho}` : ''} — ${resumo} — ${sit}`,
-            });
-          }
           all.push({
             ...base,
             id: `p-${r.id}`,
@@ -273,6 +261,32 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
             descricao: `registrou produção${os?.trecho ? ` — ${os.trecho}` : ''} — ${resumo}`,
           });
         });
+
+        // Eventos de auditoria — edição de produção (nunca contabilizam produção nova).
+        edicoes.forEach((ed) => {
+          const reg = regMap[ed.registroId];
+          const os = reg ? oMap[reg.os_id] : undefined;
+          const resumoAlt = ed.alteracoes.length
+            ? ed.alteracoes.map((a) => a.campo).join(', ')
+            : 'sem detalhe disponível';
+          all.push({
+            id: ed.id,
+            tipo: 'producao_edicao',
+            ts: ed.ts,
+            dataProducao: ed.dataProducao ?? reg?.data_registro ?? null,
+            quemId: ed.usuarioId,
+            quem: (ed.usuarioId && uMap[ed.usuarioId]) || 'Usuário',
+            trecho: os?.trecho ?? null,
+            bacia: os?.bacia ?? null,
+            rede: null,
+            ligacoes: null,
+            ligComp: null,
+            descricao: `editou produção${os?.trecho ? ` — ${os.trecho}` : ''} — ${resumoAlt}`,
+            alteracoes: ed.alteracoes,
+            snapshotIndisponivel: ed.snapshotIndisponivel,
+          });
+        });
+
 
         (topo.data || []).forEach((r: any) => {
           const os = oMap[r.os_id];

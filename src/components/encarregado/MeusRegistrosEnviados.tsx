@@ -251,6 +251,8 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
       comprimento: l.comprimento != null ? String(l.comprimento).replace('.', ',') : '',
       comprimento_original: l.comprimento_original,
     }));
+    setLigSnapshotAntes((ligs ?? []).map((l: any) => Number(l.comprimento) || 0));
+
     // Ajusta para bater com ligacoes_dia (mantém valores existentes)
     const alvo = Math.max(0, Number(r.ligacoes_dia) || 0);
     while (items.length < alvo) items.push({ comprimento: '', comprimento_original: null, isNew: true });

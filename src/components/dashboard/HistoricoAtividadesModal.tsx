@@ -153,7 +153,9 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
             .lte('created_at', endIso)
             .order('created_at', { ascending: false })
             .limit(LIMITE),
+          buscarEdicoesProducao(startIso, endIso, LIMITE),
         ]);
+
 
         const qErr = prod.error || topo.error || mat.error || status.error;
         if (qErr) throw qErr;

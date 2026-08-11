@@ -35,6 +35,14 @@ interface AuthContextType {
   effectiveRole: UserRole | undefined;
   /** Effective user — used for data filters. When admin simulates a user, returns that user's id+nome+role; otherwise the real user. */
   effectiveUser: EffectiveUser | null;
+  /**
+   * Identidade ativa para AUTORIA de novas ações.
+   * - Com perspectiva de um usuário específico: o id desse usuário.
+   * - Sem perspectiva (ex.: admin atuando pela Sala Técnica): o id da própria conta.
+   */
+  actingUserId: string | null;
+  actingUserName: string | null;
+
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);

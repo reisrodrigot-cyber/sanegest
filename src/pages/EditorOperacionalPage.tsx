@@ -262,7 +262,7 @@ const EditorOperacionalPage = () => {
       geom: { type: 'Point', coordinates: [orig.lon, orig.lat] },
       lat: orig.lat, lon: orig.lon,
       cota: orig.cota_marg ?? orig.cota_inv, profundidade: orig.prof,
-      updated_by: user!.id,
+      updated_by: actingUserId ?? user!.id,
     }).select('id').single();
     if (error) throw error;
     return (data as any).id;
@@ -303,7 +303,7 @@ const EditorOperacionalPage = () => {
       pv_inicial_id: iniOp, pv_final_id: fimOp,
       geom: { type: 'LineString', coordinates: coords },
       extensao_m: ext, dn: orig.dn, material: orig.material,
-      updated_by: user!.id,
+      updated_by: actingUserId ?? user!.id,
     }).select('id').single();
     if (error) throw error;
     // Migrar vínculos existentes (trecho_id) → também referenciar trecho_operacional_id
@@ -520,7 +520,7 @@ const EditorOperacionalPage = () => {
     if (conectados.length === 0) {
       try {
         const opId = await ensurePvOperacional(selectedPv.id);
-        await supabase.from('mapa_pv_operacional' as any).update({ tipo: 'suprimido', motivo: 'Sem trechos ativos', updated_by: user!.id }).eq('id', opId);
+        await supabase.from('mapa_pv_operacional' as any).update({ tipo: 'suprimido', motivo: 'Sem trechos ativos', updated_by: actingUserId ?? user!.id }).eq('id', opId);
         toast.success('PV suprimido');
         setSelectedPvId(null); await reload();
       } catch (e: any) { toast.error(e.message); }
@@ -561,11 +561,11 @@ const EditorOperacionalPage = () => {
         pv_inicial_id: start, pv_final_id: end,
         geom: { type: 'LineString', coordinates: coords }, extensao_m: lineLength(coords),
         dn: a.dn ?? b.dn, material: a.material ?? b.material,
-        motivo: 'União de trechos', updated_by: user!.id,
+        motivo: 'União de trechos', updated_by: actingUserId ?? user!.id,
       });
       if (eIns) throw eIns;
       await supabase.from('mapa_trecho_operacional' as any).delete().in('id', [a.op_id, b.op_id]);
-      await supabase.from('mapa_pv_operacional' as any).update({ tipo: 'suprimido', motivo: 'União de trechos', updated_by: user!.id }).eq('id', pvOpId);
+      await supabase.from('mapa_pv_operacional' as any).update({ tipo: 'suprimido', motivo: 'União de trechos', updated_by: actingUserId ?? user!.id }).eq('id', pvOpId);
       toast.success('Trechos unidos');
       setSelectedPvId(null); setSuprimirPvOpen(null);
       await reload();

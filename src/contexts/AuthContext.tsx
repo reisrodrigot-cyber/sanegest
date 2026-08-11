@@ -192,6 +192,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       viewAsRole, setViewAsRole,
       viewAsUserId, viewAsUserName, setViewAsUser,
       effectiveRole, effectiveUser,
+      actingUserId: effectiveUser?.id ?? user?.id ?? null,
+      actingUserName: effectiveUser?.nome ?? user?.nome ?? null,
     }}>
       {children}
     </AuthContext.Provider>

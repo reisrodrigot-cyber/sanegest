@@ -4,6 +4,7 @@ import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { Loader2, CheckCircle2, ChevronDown, ChevronUp, PackageCheck } from 'lucide-react';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { OSDetalhesTrecho } from '@/components/OSDetalhesTrecho';
 
@@ -22,6 +23,7 @@ const MateriaisPage = () => {
   const pendentes = ordens.filter(os => os.liberado && os.status === 'VERMELHO');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const { actingUserId } = useAuth();
   const [savingId, setSavingId] = useState<string | null>(null);
   const toggleExpand = (osId: string) => {
     setExpandedId(prev => prev === osId ? null : osId);
@@ -34,7 +36,7 @@ const MateriaisPage = () => {
       .from('ordens_servico')
       .update({
         material_entregue_em: new Date().toISOString(),
-        material_entregue_por: userData.user?.id ?? null,
+        material_entregue_por: actingUserId ?? userData.user?.id ?? null,
       } as any)
       .eq('id', osId);
     if (error) {

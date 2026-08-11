@@ -57,7 +57,7 @@ interface Props {
 }
 
 export function RegistrosProducaoOS({ osId }: Props) {
-  const { user, effectiveRole } = useAuth();
+  const { user, effectiveRole, actingUserId } = useAuth();
   const [rows, setRows] = useState<RegistroRow[]>([]);
   const [nomes, setNomes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -217,7 +217,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
       ligacoes_ajustadas: lig,
       motivo_ajuste: ajMotivo.trim(),
       data_registro: ajData,
-      ajustado_por: user.id,
+      ajustado_por: actingUserId ?? user.id,
       ajustado_em: new Date().toISOString(),
     };
     const { error } = await supabase
@@ -249,7 +249,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
           if (!row.jaAjustada && row.comprimentoAtual != null) {
             patch.comprimento_original = row.comprimentoAtual;
           }
-          patch.ajustado_por = user.id;
+          patch.ajustado_por = actingUserId ?? user.id;
           patch.ajustado_em = new Date().toISOString();
         }
         const { error: e } = await supabase
@@ -265,7 +265,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
             registro_producao_id: ajustando.id,
             encarregado_id: ajustando.user_id,
             comprimento: novoComp,
-            ajustado_por: user.id,
+            ajustado_por: actingUserId ?? user.id,
             ajustado_em: new Date().toISOString(),
           });
         if (e) { setSavingAj(false); toast.error('Erro ao criar ligação ' + (i + 1) + ': ' + e.message); return; }
@@ -280,7 +280,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
 
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: ajustando.id,
-      usuario_id: user.id,
+      usuario_id: actingUserId ?? user.id,
       acao: 'ajuste',
       valor_anterior: { ...valor_anterior, ligacoes: anterioresLig },
       valor_novo: { ...valor_novo, ligacoes_comprimentos: ligComprimentos },
@@ -313,7 +313,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
     if (error) { toast.error('Erro: ' + error.message); return; }
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: r.id,
-      usuario_id: user.id,
+      usuario_id: actingUserId ?? user.id,
       acao: 'remocao_ajuste',
       valor_anterior,
       valor_novo,
@@ -329,7 +329,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
     const valor_novo: any = {
       status: 'cancelado',
       motivo_cancelamento: cancMotivo.trim(),
-      cancelado_por: user.id,
+      cancelado_por: actingUserId ?? user.id,
       cancelado_em: new Date().toISOString(),
     };
     const { error } = await supabase
@@ -339,7 +339,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
     if (error) { setSavingCanc(false); toast.error('Erro: ' + error.message); return; }
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: cancelando.id,
-      usuario_id: user.id,
+      usuario_id: actingUserId ?? user.id,
       acao: 'cancelamento',
       valor_anterior: { status: cancelando.status },
       valor_novo,
@@ -369,7 +369,7 @@ export function RegistrosProducaoOS({ osId }: Props) {
     if (error) { toast.error('Erro: ' + error.message); return; }
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: r.id,
-      usuario_id: user.id,
+      usuario_id: actingUserId ?? user.id,
       acao: 'restauracao',
       valor_anterior: { status: r.status, excluido: r.excluido },
       valor_novo,

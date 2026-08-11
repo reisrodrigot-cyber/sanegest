@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function DesatribuirModal({ open, onClose, selectedOS, onDone }: Props) {
-  const { user } = useAuth();
+  const { user, actingUserId } = useAuth();
   const [working, setWorking] = useState(false);
 
   // Só faz sentido desatribuir OS que estão liberadas
@@ -49,7 +49,7 @@ export function DesatribuirModal({ open, onClose, selectedOS, onDone }: Props) {
       os_id: os.id,
       status_anterior: os.status,
       status_novo: os.status,
-      user_id: user?.id ?? null,
+      user_id: actingUserId ?? user?.id ?? null,
       observacao: `Desatribuída de ${os.liberado_para || '—'} e devolvida para "Não liberadas".`,
     }));
     await supabase.from('os_status_historico').insert(historico);

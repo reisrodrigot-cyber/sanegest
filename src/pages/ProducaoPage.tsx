@@ -91,7 +91,7 @@ const ReadField = ({ label, value }: { label: string; value: unknown }) => (
 );
 
 const OSPanel = ({ os }: { os: OrdemServico }) => {
-  const { user, effectiveUser } = useAuth();
+  const { user, effectiveUser, actingUserId } = useAuth();
   const isEncarregado = effectiveUser?.role === 'encarregado';
   const [registros, setRegistros] = useState<RegistroDia[]>([]);
   const [ligacoesAll, setLigacoesAll] = useState<LigacaoRow[]>([]);
@@ -220,7 +220,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       .from('registros_producao')
       .insert({
         os_id: os.id,
-        user_id: user.id,
+        user_id: actingUserId ?? user.id,
         // data real de execução (calendário), fonte de verdade dos relatórios
         data_registro: dataProducao,
         data_retroativa_confirmada: retroativa,
@@ -229,7 +229,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
         tipo_pavimento: tipoPavimento || null,
         pv_final_assentado: pvFinalAssentado,
         pv_final_assentado_em: pvFinalAssentado ? new Date().toISOString() : null,
-        pv_final_assentado_por: pvFinalAssentado ? user.id : null,
+        pv_final_assentado_por: pvFinalAssentado ? (actingUserId ?? user.id) : null,
       } as any)
       .select('id')
       .single();
@@ -244,7 +244,7 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       const ligRows = ligacoes.map((l) => ({
         os_id: os.id,
         registro_producao_id: reg.id,
-        encarregado_id: user.id,
+        encarregado_id: actingUserId ?? user.id,
         comprimento: l.comprimento ? Number(l.comprimento) : null,
         referencia: l.referencia.trim() || null,
       }));

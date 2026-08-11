@@ -362,9 +362,11 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
       registro_producao_id: editing.id,
       usuario_id: userId,
       acao: 'edicao',
-      valor_anterior,
-      valor_novo,
+      // Snapshots incluem os comprimentos das ligações para permitir auditoria de extensão.
+      valor_anterior: { ...valor_anterior, ligacoes_comprimentos: ligSnapshotAntes },
+      valor_novo: { ...valor_novo, ligacoes_comprimentos: ligsParsed.map((l) => l.comprimento) },
     });
+
 
     // Sincroniza ligacoes (comprimentos individuais) com auditoria
     try {

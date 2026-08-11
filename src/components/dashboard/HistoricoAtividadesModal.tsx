@@ -120,7 +120,7 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
 
     (async () => {
       try {
-        const [prod, topo, mat, status] = await Promise.all([
+        const [prod, topo, mat, status, edicoes] = await Promise.all([
           supabase
             .from('registros_producao')
             .select(

@@ -1664,7 +1664,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
 };
 
-type EventType = 'producao' | 'topografia' | 'ns' | 'almoxarifado';
+type EventType = 'producao' | 'producao_edicao' | 'topografia' | 'ns' | 'almoxarifado';
 
 interface FeedEvent {
   id: string;
@@ -1672,14 +1672,21 @@ interface FeedEvent {
   ts: Date;
   who: string;
   description: string;
+  /** Edição de produção: campos alterados (auditoria). */
+  alteracoes?: CampoAlterado[];
+  snapshotIndisponivel?: boolean;
+  /** Data de produção (yyyy-mm-dd) associada ao evento de edição. */
+  dataProducao?: string | null;
 }
 
 const EVENT_META: Record<EventType, { label: string; color: string; bg: string; dot: string }> = {
-  producao:     { label: 'Produção',     color: '#16A34A', bg: 'rgba(22,163,74,0.10)',  dot: '🟢' },
-  topografia:   { label: 'Topografia',   color: '#185FA5', bg: 'rgba(24,95,165,0.10)',  dot: '🔵' },
-  ns:           { label: 'NS Aplicada',  color: '#CA8A04', bg: 'rgba(202,138,4,0.12)',  dot: '🟡' },
-  almoxarifado: { label: 'Almoxarifado', color: '#EA580C', bg: 'rgba(234,88,12,0.10)',  dot: '🟠' },
+  producao:        { label: 'Produção',     color: '#16A34A', bg: 'rgba(22,163,74,0.10)',  dot: '🟢' },
+  producao_edicao: { label: 'Edição de produção', color: '#7C3AED', bg: 'rgba(124,58,237,0.10)', dot: '🟣' },
+  topografia:      { label: 'Topografia',   color: '#185FA5', bg: 'rgba(24,95,165,0.10)',  dot: '🔵' },
+  ns:              { label: 'NS Aplicada',  color: '#CA8A04', bg: 'rgba(202,138,4,0.12)',  dot: '🟡' },
+  almoxarifado:    { label: 'Almoxarifado', color: '#EA580C', bg: 'rgba(234,88,12,0.10)',  dot: '🟠' },
 };
+
 
 const useRealEvents = (inicio: string, fim: string) => {
   const [events, setEvents] = useState<FeedEvent[]>([]);

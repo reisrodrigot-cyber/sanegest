@@ -473,9 +473,60 @@ const Chip = ({ texto, onRemove }: { texto: string; onRemove: () => void }) => (
  * Item de evento
  * ------------------------------------------------------------------ */
 
+/** Linha "Campo: antes → depois (diferença)" — cor + sinal explícito. */
+export const AlteracaoLinha = ({ a }: { a: CampoAlterado }) => {
+  const cor =
+    a.direcao === 'aumento'
+      ? 'text-emerald-700'
+      : a.direcao === 'reducao'
+        ? 'text-red-700'
+        : 'text-foreground';
+  return (
+    <div className="text-[11px] leading-snug flex flex-wrap items-baseline gap-x-1">
+      <span className="font-semibold text-foreground">{a.campo}:</span>
+      <span className="text-muted-foreground line-through decoration-muted-foreground/50">{a.antes}</span>
+      <span className="text-muted-foreground">→</span>
+      <span className="font-semibold text-foreground">{a.depois}</span>
+      {a.diferenca && <span className={`font-semibold ${cor}`}>({a.diferenca})</span>}
+    </div>
+  );
+};
+
+export const AlteracoesRealizadas = ({
+  alteracoes,
+  indisponivel,
+}: {
+  alteracoes: CampoAlterado[];
+  indisponivel?: boolean;
+}) => {
+  const soData = alteracoes.length === 1 && alteracoes[0].reclassificacaoData;
+  return (
+    <div className="mt-1.5 rounded-md border border-border bg-muted/30 p-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+        Alterações realizadas
+      </p>
+      {indisponivel || alteracoes.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground italic">{SEM_SNAPSHOT}</p>
+      ) : (
+        <div className="space-y-0.5">
+          {alteracoes.map((a, i) => (
+            <AlteracaoLinha key={`${a.campo}-${i}`} a={a} />
+          ))}
+        </div>
+      )}
+      {soData && (
+        <p className="mt-1 text-[10.5px] font-semibold text-amber-700">
+          Produção reclassificada para outro dia — não houve nova produção física.
+        </p>
+      )}
+    </div>
+  );
+};
+
 const EventoItem = ({ e }: { e: HistoricoEvento }) => {
   const meta = TIPO_META[e.tipo];
   const Icon = meta.Icon;
+  const edicao = e.tipo === 'producao_edicao';
   const retroativa = !!e.dataProducao && e.dataProducao !== diaLocal(e.ts);
 
   return (
@@ -491,7 +542,10 @@ const EventoItem = ({ e }: { e: HistoricoEvento }) => {
           <Icon size={11} />
           {meta.label}
         </span>
-        <span className="text-[11px] text-foreground font-medium">Lançado em: {fmtLancamento(e.ts)}</span>
+        <span className="text-[11px] text-foreground font-medium">
+          {edicao ? 'Editado em: ' : 'Lançado em: '}
+          {fmtLancamento(e.ts)}
+        </span>
         <span className="text-[10px] text-muted-foreground">({fmtRelativo(e.ts)})</span>
         {retroativa && (
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300">
@@ -518,9 +572,14 @@ const EventoItem = ({ e }: { e: HistoricoEvento }) => {
         {e.ligacoes != null && e.ligacoes > 0 && <span>Ligações: <span className="text-foreground">{e.ligacoes} un.</span></span>}
         {e.ligComp != null && e.ligComp > 0 && <span>Ext. ligações: <span className="text-foreground">{num(e.ligComp)} m</span></span>}
       </div>
+
+      {edicao && (
+        <AlteracoesRealizadas alteracoes={e.alteracoes ?? []} indisponivel={e.snapshotIndisponivel} />
+      )}
     </li>
   );
 };
+
 
 /* ------------------------------------------------------------------ *
  * Modal

@@ -629,7 +629,9 @@ export const HistoricoAtividadesModal = ({ open, onOpenChange, inicioInicial, fi
       if (tipos.length && !tipos.includes(e.tipo)) return false;
       if (usuarios.length && (!e.quemId || !usuarios.includes(e.quemId))) return false;
       if (q) {
-        const alvo = `${e.trecho ?? ''} ${e.bacia ?? ''} ${e.descricao}`.toLowerCase();
+        const alt = (e.alteracoes ?? []).map((a) => `${a.campo} ${a.antes} ${a.depois}`).join(' ');
+        const alvo = `${e.trecho ?? ''} ${e.bacia ?? ''} ${e.descricao} ${alt}`.toLowerCase();
+
         if (!alvo.includes(q)) return false;
       }
       return true;

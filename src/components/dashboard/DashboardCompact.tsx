@@ -25,6 +25,7 @@ import {
   Loader2,
   Radio,
   Cable,
+  Maximize2,
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { AvancoFisicoTab } from '@/components/dashboard/AvancoFisicoTab';
@@ -35,6 +36,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 import { PeriodoPicker } from '@/components/dashboard/PeriodoPicker';
+import { HistoricoAtividadesModal } from '@/components/dashboard/HistoricoAtividadesModal';
 
 
 import type { OrdemServico } from '@/types/sanegest';

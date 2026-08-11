@@ -1847,21 +1847,39 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
   }, [minDate]);
 
   const { events, loading, error, recarregar } = useRealEvents(inicio, fim);
+  const [historicoOpen, setHistoricoOpen] = useState(false);
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col h-full">
-      <div className="flex items-center justify-between gap-2 mb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
           <Radio size={14} className="text-secondary" />
           O que está acontecendo?
         </h3>
-        <PeriodoPicker
-          inicio={inicio}
-          fim={fim}
-          minDate={minDate}
-          ariaLabel="Selecionar período das atividades"
-          onChange={(i, f) => { setInicio(i); setFim(f); }}
-        />
+        <div className="flex items-center gap-1.5">
+          <PeriodoPicker
+            inicio={inicio}
+            fim={fim}
+            minDate={minDate}
+            ariaLabel="Selecionar período das atividades"
+            onChange={(i, f) => { setInicio(i); setFim(f); }}
+          />
+          <button
+            type="button"
+            onClick={() => setHistoricoOpen(true)}
+            className="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-secondary/40 bg-secondary/10 hover:bg-secondary/20 text-[11px] font-medium text-secondary transition-colors"
+          >
+            <Maximize2 size={11} />
+            Ver histórico completo
+          </button>
+        </div>
       </div>
+      <HistoricoAtividadesModal
+        open={historicoOpen}
+        onOpenChange={setHistoricoOpen}
+        inicioInicial={inicio}
+        fimInicial={fim}
+        minDate={minDate}
+      />
       <div className="overflow-y-auto flex-1 min-h-0 pr-1">
         {loading ? (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground">

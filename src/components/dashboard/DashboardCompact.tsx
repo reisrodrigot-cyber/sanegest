@@ -1746,6 +1746,16 @@ const useRealEvents = (inicio: string, fim: string) => {
       (mat.data || []).forEach((r: any) => { r.registrado_por && userIds.add(r.registrado_por); r.os_id && osIds.add(r.os_id); });
       (status.data || []).forEach((r: any) => { r.user_id && userIds.add(r.user_id); r.os_id && osIds.add(r.os_id); });
 
+      // Edições de produção: fonte oficial é a auditoria (snapshot antes/depois).
+      edicoes.forEach((e) => { if (e.usuarioId) userIds.add(e.usuarioId); });
+      const edIds = Array.from(new Set(edicoes.map((e) => e.registroId).filter(Boolean)));
+      const regsEdicao = edIds.length
+        ? (await supabase.from('registros_producao').select('id, os_id, user_id, data_registro').in('id', edIds)).data || []
+        : [];
+      const regEdMap: Record<string, any> = {};
+      (regsEdicao as any[]).forEach((r: any) => { regEdMap[r.id] = r; if (r.os_id) osIds.add(r.os_id); });
+
+
       const [profs, oss] = await Promise.all([
         userIds.size ? supabase.from('profiles').select('user_id, display_name, email, apelido').in('user_id', Array.from(userIds)) : Promise.resolve({ data: [] as any[] }),
         osIds.size ? supabase.from('ordens_servico').select('id, trecho, liberado_para').in('id', Array.from(osIds)) : Promise.resolve({ data: [] as any[] }),

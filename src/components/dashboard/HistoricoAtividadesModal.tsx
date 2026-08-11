@@ -181,6 +181,26 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
           r.os_id && osIds.add(r.os_id);
         });
 
+        // Edições de produção vêm da auditoria (snapshot antes/depois), não de heurística de updated_at.
+        edicoes.forEach((e) => {
+          if (e.usuarioId) userIds.add(e.usuarioId);
+        });
+        const edicaoRegIds = Array.from(new Set(edicoes.map((e) => e.registroId).filter(Boolean)));
+        const regsEdicao = edicaoRegIds.length
+          ? (
+              await supabase
+                .from('registros_producao')
+                .select('id, os_id, user_id, data_registro')
+                .in('id', edicaoRegIds)
+            ).data || []
+          : [];
+        const regMap: Record<string, any> = {};
+        (regsEdicao as any[]).forEach((r: any) => {
+          regMap[r.id] = r;
+          if (r.os_id) osIds.add(r.os_id);
+        });
+
+
         const [profs, oss, ligs] = await Promise.all([
           userIds.size
             ? supabase.from('profiles').select('user_id, display_name, email, apelido').in('user_id', Array.from(userIds))

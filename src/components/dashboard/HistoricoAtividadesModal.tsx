@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PeriodoPicker, toISODate, fmtDateBR } from '@/components/dashboard/PeriodoPicker';
 import {
+  buscarEdicoesProducao,
+  SEM_SNAPSHOT,
+  type CampoAlterado,
+} from '@/lib/auditProducao';
+import {
   Loader2,
   Search,
   X,
@@ -18,6 +23,7 @@ import {
   Ruler,
   Package,
 } from 'lucide-react';
+
 
 /* ------------------------------------------------------------------ *
  * Tipos

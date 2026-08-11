@@ -96,6 +96,9 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
     dirty?: boolean;
   };
   const [editLigItems, setEditLigItems] = useState<LigItem[]>([]);
+  /** Comprimentos das ligações no momento da abertura da edição — usado só na auditoria. */
+  const [ligSnapshotAntes, setLigSnapshotAntes] = useState<number[]>([]);
+
   const [loadingLigs, setLoadingLigs] = useState(false);
 
   // Exclusão
@@ -248,6 +251,8 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
       comprimento: l.comprimento != null ? String(l.comprimento).replace('.', ',') : '',
       comprimento_original: l.comprimento_original,
     }));
+    setLigSnapshotAntes((ligs ?? []).map((l: any) => Number(l.comprimento) || 0));
+
     // Ajusta para bater com ligacoes_dia (mantém valores existentes)
     const alvo = Math.max(0, Number(r.ligacoes_dia) || 0);
     while (items.length < alvo) items.push({ comprimento: '', comprimento_original: null, isNew: true });
@@ -357,9 +362,11 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
       registro_producao_id: editing.id,
       usuario_id: userId,
       acao: 'edicao',
-      valor_anterior,
-      valor_novo,
+      // Snapshots incluem os comprimentos das ligações para permitir auditoria de extensão.
+      valor_anterior: { ...valor_anterior, ligacoes_comprimentos: ligSnapshotAntes },
+      valor_novo: { ...valor_novo, ligacoes_comprimentos: ligsParsed.map((l) => l.comprimento) },
     });
+
 
     // Sincroniza ligacoes (comprimentos individuais) com auditoria
     try {

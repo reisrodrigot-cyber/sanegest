@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PeriodoPicker, toISODate, fmtDateBR } from '@/components/dashboard/PeriodoPicker';
 import {
+  buscarEdicoesProducao,
+  SEM_SNAPSHOT,
+  type CampoAlterado,
+} from '@/lib/auditProducao';
+import {
   Loader2,
   Search,
   X,
@@ -18,6 +23,7 @@ import {
   Ruler,
   Package,
 } from 'lucide-react';
+
 
 /* ------------------------------------------------------------------ *
  * Tipos
@@ -45,7 +51,12 @@ export interface HistoricoEvento {
   ligacoes: number | null;
   ligComp: number | null;
   descricao: string;
+  /** Campos alterados (apenas eventos de edição de produção). */
+  alteracoes?: CampoAlterado[];
+  /** Edição histórica sem snapshot anterior utilizável. */
+  snapshotIndisponivel?: boolean;
 }
+
 
 export const TIPO_META: Record<
   HistoricoTipo,
@@ -109,7 +120,7 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
 
     (async () => {
       try {
-        const [prod, topo, mat, status] = await Promise.all([
+        const [prod, topo, mat, status, edicoes] = await Promise.all([
           supabase
             .from('registros_producao')
             .select(
@@ -142,7 +153,9 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
             .lte('created_at', endIso)
             .order('created_at', { ascending: false })
             .limit(LIMITE),
+          buscarEdicoesProducao(startIso, endIso, LIMITE),
         ]);
+
 
         const qErr = prod.error || topo.error || mat.error || status.error;
         if (qErr) throw qErr;
@@ -167,6 +180,26 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
           r.user_id && userIds.add(r.user_id);
           r.os_id && osIds.add(r.os_id);
         });
+
+        // Edições de produção vêm da auditoria (snapshot antes/depois), não de heurística de updated_at.
+        edicoes.forEach((e) => {
+          if (e.usuarioId) userIds.add(e.usuarioId);
+        });
+        const edicaoRegIds = Array.from(new Set(edicoes.map((e) => e.registroId).filter(Boolean)));
+        const regsEdicao = edicaoRegIds.length
+          ? (
+              await supabase
+                .from('registros_producao')
+                .select('id, os_id, user_id, data_registro')
+                .in('id', edicaoRegIds)
+            ).data || []
+          : [];
+        const regMap: Record<string, any> = {};
+        (regsEdicao as any[]).forEach((r: any) => {
+          regMap[r.id] = r;
+          if (r.os_id) osIds.add(r.os_id);
+        });
+
 
         const [profs, oss, ligs] = await Promise.all([
           userIds.size
@@ -208,8 +241,6 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
           const resumo = partes.join(' • ') || 'sem quantitativo';
 
           const createdMs = r.created_at ? new Date(r.created_at).getTime() : 0;
-          const updatedMs = r.updated_at ? new Date(r.updated_at).getTime() : createdMs;
-          const editado = updatedMs - createdMs > 60_000 || r.status === 'cancelado';
 
           const base = {
             dataProducao: (r.data_registro as string) || null,
@@ -222,16 +253,6 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
             ligComp,
           };
 
-          if (editado) {
-            const sit = r.status === 'cancelado' ? 'produção cancelada' : 'contabilizada na produção';
-            all.push({
-              ...base,
-              id: `pe-${r.id}`,
-              tipo: 'producao_edicao',
-              ts: new Date(updatedMs),
-              descricao: `editou produção${os?.trecho ? ` — ${os.trecho}` : ''} — ${resumo} — ${sit}`,
-            });
-          }
           all.push({
             ...base,
             id: `p-${r.id}`,
@@ -240,6 +261,32 @@ export const useHistoricoAtividades = (inicio: string, fim: string, ativo: boole
             descricao: `registrou produção${os?.trecho ? ` — ${os.trecho}` : ''} — ${resumo}`,
           });
         });
+
+        // Eventos de auditoria — edição de produção (nunca contabilizam produção nova).
+        edicoes.forEach((ed) => {
+          const reg = regMap[ed.registroId];
+          const os = reg ? oMap[reg.os_id] : undefined;
+          const resumoAlt = ed.alteracoes.length
+            ? ed.alteracoes.map((a) => a.campo).join(', ')
+            : 'sem detalhe disponível';
+          all.push({
+            id: ed.id,
+            tipo: 'producao_edicao',
+            ts: ed.ts,
+            dataProducao: ed.dataProducao ?? reg?.data_registro ?? null,
+            quemId: ed.usuarioId,
+            quem: (ed.usuarioId && uMap[ed.usuarioId]) || 'Usuário',
+            trecho: os?.trecho ?? null,
+            bacia: os?.bacia ?? null,
+            rede: null,
+            ligacoes: null,
+            ligComp: null,
+            descricao: `editou produção${os?.trecho ? ` — ${os.trecho}` : ''} — ${resumoAlt}`,
+            alteracoes: ed.alteracoes,
+            snapshotIndisponivel: ed.snapshotIndisponivel,
+          });
+        });
+
 
         (topo.data || []).forEach((r: any) => {
           const os = oMap[r.os_id];
@@ -426,9 +473,60 @@ const Chip = ({ texto, onRemove }: { texto: string; onRemove: () => void }) => (
  * Item de evento
  * ------------------------------------------------------------------ */
 
+/** Linha "Campo: antes → depois (diferença)" — cor + sinal explícito. */
+export const AlteracaoLinha = ({ a }: { a: CampoAlterado }) => {
+  const cor =
+    a.direcao === 'aumento'
+      ? 'text-emerald-700'
+      : a.direcao === 'reducao'
+        ? 'text-red-700'
+        : 'text-foreground';
+  return (
+    <div className="text-[11px] leading-snug flex flex-wrap items-baseline gap-x-1">
+      <span className="font-semibold text-foreground">{a.campo}:</span>
+      <span className="text-muted-foreground line-through decoration-muted-foreground/50">{a.antes}</span>
+      <span className="text-muted-foreground">→</span>
+      <span className="font-semibold text-foreground">{a.depois}</span>
+      {a.diferenca && <span className={`font-semibold ${cor}`}>({a.diferenca})</span>}
+    </div>
+  );
+};
+
+export const AlteracoesRealizadas = ({
+  alteracoes,
+  indisponivel,
+}: {
+  alteracoes: CampoAlterado[];
+  indisponivel?: boolean;
+}) => {
+  const soData = alteracoes.length === 1 && alteracoes[0].reclassificacaoData;
+  return (
+    <div className="mt-1.5 rounded-md border border-border bg-muted/30 p-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+        Alterações realizadas
+      </p>
+      {indisponivel || alteracoes.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground italic">{SEM_SNAPSHOT}</p>
+      ) : (
+        <div className="space-y-0.5">
+          {alteracoes.map((a, i) => (
+            <AlteracaoLinha key={`${a.campo}-${i}`} a={a} />
+          ))}
+        </div>
+      )}
+      {soData && (
+        <p className="mt-1 text-[10.5px] font-semibold text-amber-700">
+          Produção reclassificada para outro dia — não houve nova produção física.
+        </p>
+      )}
+    </div>
+  );
+};
+
 const EventoItem = ({ e }: { e: HistoricoEvento }) => {
   const meta = TIPO_META[e.tipo];
   const Icon = meta.Icon;
+  const edicao = e.tipo === 'producao_edicao';
   const retroativa = !!e.dataProducao && e.dataProducao !== diaLocal(e.ts);
 
   return (
@@ -444,7 +542,10 @@ const EventoItem = ({ e }: { e: HistoricoEvento }) => {
           <Icon size={11} />
           {meta.label}
         </span>
-        <span className="text-[11px] text-foreground font-medium">Lançado em: {fmtLancamento(e.ts)}</span>
+        <span className="text-[11px] text-foreground font-medium">
+          {edicao ? 'Editado em: ' : 'Lançado em: '}
+          {fmtLancamento(e.ts)}
+        </span>
         <span className="text-[10px] text-muted-foreground">({fmtRelativo(e.ts)})</span>
         {retroativa && (
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300">
@@ -471,9 +572,14 @@ const EventoItem = ({ e }: { e: HistoricoEvento }) => {
         {e.ligacoes != null && e.ligacoes > 0 && <span>Ligações: <span className="text-foreground">{e.ligacoes} un.</span></span>}
         {e.ligComp != null && e.ligComp > 0 && <span>Ext. ligações: <span className="text-foreground">{num(e.ligComp)} m</span></span>}
       </div>
+
+      {edicao && (
+        <AlteracoesRealizadas alteracoes={e.alteracoes ?? []} indisponivel={e.snapshotIndisponivel} />
+      )}
     </li>
   );
 };
+
 
 /* ------------------------------------------------------------------ *
  * Modal
@@ -523,7 +629,9 @@ export const HistoricoAtividadesModal = ({ open, onOpenChange, inicioInicial, fi
       if (tipos.length && !tipos.includes(e.tipo)) return false;
       if (usuarios.length && (!e.quemId || !usuarios.includes(e.quemId))) return false;
       if (q) {
-        const alvo = `${e.trecho ?? ''} ${e.bacia ?? ''} ${e.descricao}`.toLowerCase();
+        const alt = (e.alteracoes ?? []).map((a) => `${a.campo} ${a.antes} ${a.depois}`).join(' ');
+        const alvo = `${e.trecho ?? ''} ${e.bacia ?? ''} ${e.descricao} ${alt}`.toLowerCase();
+
         if (!alvo.includes(q)) return false;
       }
       return true;

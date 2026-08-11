@@ -36,7 +36,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 import { PeriodoPicker } from '@/components/dashboard/PeriodoPicker';
-import { HistoricoAtividadesModal } from '@/components/dashboard/HistoricoAtividadesModal';
+import { HistoricoAtividadesModal, AlteracoesRealizadas } from '@/components/dashboard/HistoricoAtividadesModal';
+import { buscarEdicoesProducao, type CampoAlterado } from '@/lib/auditProducao';
+
 
 
 import type { OrdemServico } from '@/types/sanegest';
@@ -1664,7 +1666,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
 };
 
-type EventType = 'producao' | 'topografia' | 'ns' | 'almoxarifado';
+type EventType = 'producao' | 'producao_edicao' | 'topografia' | 'ns' | 'almoxarifado';
 
 interface FeedEvent {
   id: string;
@@ -1672,14 +1674,21 @@ interface FeedEvent {
   ts: Date;
   who: string;
   description: string;
+  /** Edição de produção: campos alterados (auditoria). */
+  alteracoes?: CampoAlterado[];
+  snapshotIndisponivel?: boolean;
+  /** Data de produção (yyyy-mm-dd) associada ao evento de edição. */
+  dataProducao?: string | null;
 }
 
 const EVENT_META: Record<EventType, { label: string; color: string; bg: string; dot: string }> = {
-  producao:     { label: 'Produção',     color: '#16A34A', bg: 'rgba(22,163,74,0.10)',  dot: '🟢' },
-  topografia:   { label: 'Topografia',   color: '#185FA5', bg: 'rgba(24,95,165,0.10)',  dot: '🔵' },
-  ns:           { label: 'NS Aplicada',  color: '#CA8A04', bg: 'rgba(202,138,4,0.12)',  dot: '🟡' },
-  almoxarifado: { label: 'Almoxarifado', color: '#EA580C', bg: 'rgba(234,88,12,0.10)',  dot: '🟠' },
+  producao:        { label: 'Produção',     color: '#16A34A', bg: 'rgba(22,163,74,0.10)',  dot: '🟢' },
+  producao_edicao: { label: 'Edição de produção', color: '#7C3AED', bg: 'rgba(124,58,237,0.10)', dot: '🟣' },
+  topografia:      { label: 'Topografia',   color: '#185FA5', bg: 'rgba(24,95,165,0.10)',  dot: '🔵' },
+  ns:              { label: 'NS Aplicada',  color: '#CA8A04', bg: 'rgba(202,138,4,0.12)',  dot: '🟡' },
+  almoxarifado:    { label: 'Almoxarifado', color: '#EA580C', bg: 'rgba(234,88,12,0.10)',  dot: '🟠' },
 };
+
 
 const useRealEvents = (inicio: string, fim: string) => {
   const [events, setEvents] = useState<FeedEvent[]>([]);
@@ -1700,7 +1709,7 @@ const useRealEvents = (inicio: string, fim: string) => {
     (async () => {
       try {
 
-      const [prod, topo, mat, status] = await Promise.all([
+      const [prod, topo, mat, status, edicoes] = await Promise.all([
         supabase.from('registros_producao')
           .select('id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, user_id, os_id, created_at, updated_at, status')
           .eq('excluido', false)
@@ -1720,11 +1729,13 @@ const useRealEvents = (inicio: string, fim: string) => {
           .eq('status_novo', 'VERMELHO')
           .gte('created_at', startIso).lte('created_at', endIso)
           .order('created_at', { ascending: false }).limit(30),
+        buscarEdicoesProducao(startIso, endIso, 60),
       ]);
 
       // Erro silencioso de consulta não pode virar "sem atividades".
       const qErr = prod.error || topo.error || mat.error || status.error;
       if (qErr) throw qErr;
+
 
 
 
@@ -1734,6 +1745,16 @@ const useRealEvents = (inicio: string, fim: string) => {
       (topo.data || []).forEach((r: any) => { r.registrado_por && userIds.add(r.registrado_por); r.os_id && osIds.add(r.os_id); });
       (mat.data || []).forEach((r: any) => { r.registrado_por && userIds.add(r.registrado_por); r.os_id && osIds.add(r.os_id); });
       (status.data || []).forEach((r: any) => { r.user_id && userIds.add(r.user_id); r.os_id && osIds.add(r.os_id); });
+
+      // Edições de produção: fonte oficial é a auditoria (snapshot antes/depois).
+      edicoes.forEach((e) => { if (e.usuarioId) userIds.add(e.usuarioId); });
+      const edIds = Array.from(new Set(edicoes.map((e) => e.registroId).filter(Boolean)));
+      const regsEdicao = edIds.length
+        ? (await supabase.from('registros_producao').select('id, os_id, user_id, data_registro').in('id', edIds)).data || []
+        : [];
+      const regEdMap: Record<string, any> = {};
+      (regsEdicao as any[]).forEach((r: any) => { regEdMap[r.id] = r; if (r.os_id) osIds.add(r.os_id); });
+
 
       const [profs, oss] = await Promise.all([
         userIds.size ? supabase.from('profiles').select('user_id, display_name, email, apelido').in('user_id', Array.from(userIds)) : Promise.resolve({ data: [] as any[] }),
@@ -1755,23 +1776,29 @@ const useRealEvents = (inicio: string, fim: string) => {
         const dataBR = r.data_registro
           ? r.data_registro.split('-').reverse().join('/')
           : '';
-        const createdMs = r.created_at ? new Date(r.created_at).getTime() : 0;
-        const updatedMs = r.updated_at ? new Date(r.updated_at).getTime() : createdMs;
-        const isEdit = updatedMs - createdMs > 60_000 || r.status === 'cancelado';
-        if (isEdit) {
-          const statusLabel = r.status === 'cancelado' ? 'cancelada' : 'contabilizada na produção';
-          all.push({
-            id: `pe-${r.id}`, type: 'producao', ts: new Date(updatedMs),
-            who: uMap[r.user_id] || 'Usuário',
-            description: `editou produção${trecho ? ` — ${trecho}` : ''}${dataBR ? ` — ${dataBR}` : ''} — ${parts.join(' e ') || '0m'} — ${statusLabel}`,
-          });
-        }
         all.push({
           id: `p-${r.id}`, type: 'producao', ts: new Date(r.created_at),
           who: uMap[r.user_id] || 'Usuário',
           description: `registrou ${parts.join(' e ') || 'produção'}${trecho ? ` em ${trecho}` : ''}`,
         });
       });
+
+      edicoes.forEach((ed) => {
+        const reg = regEdMap[ed.registroId];
+        const trechoEd = reg ? oMap[reg.os_id]?.trecho : undefined;
+        const resumo = ed.alteracoes.length ? ed.alteracoes.map((a) => a.campo).join(', ') : 'sem detalhe disponível';
+        all.push({
+          id: ed.id,
+          type: 'producao_edicao',
+          ts: ed.ts,
+          who: (ed.usuarioId && uMap[ed.usuarioId]) || 'Usuário',
+          description: `editou produção${trechoEd ? ` — ${trechoEd}` : ''} — ${resumo}`,
+          alteracoes: ed.alteracoes,
+          snapshotIndisponivel: ed.snapshotIndisponivel,
+          dataProducao: ed.dataProducao ?? reg?.data_registro ?? null,
+        });
+      });
+
       (topo.data || []).forEach((r: any) => {
         all.push({
           id: `t-${r.id}`, type: 'topografia', ts: new Date(r.created_at),
@@ -1910,7 +1937,9 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
                 style={{ borderLeft: `3px solid ${meta.color}` }}
               >
                 <div className="flex flex-col min-w-[88px]">
-                  <span className="text-[10px] font-semibold text-foreground">{formatStamp(e.ts)}</span>
+                  <span className="text-[10px] font-semibold text-foreground">
+                    {e.type === 'producao_edicao' ? 'Editado ' : ''}{formatStamp(e.ts)}
+                  </span>
                   <span className="text-[10px] text-muted-foreground">{formatRelative(e.ts)}</span>
                 </div>
                 <span
@@ -1924,7 +1953,14 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
                     <span className="font-semibold">{e.who}</span>{' '}
                     <span className="text-muted-foreground">— {e.description}</span>
                   </div>
+                  {e.type === 'producao_edicao' && (
+                    <AlteracoesRealizadas
+                      alteracoes={e.alteracoes ?? []}
+                      indisponivel={e.snapshotIndisponivel}
+                    />
+                  )}
                 </div>
+
               </li>
             );
           })}

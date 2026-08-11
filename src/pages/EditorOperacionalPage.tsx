@@ -43,7 +43,7 @@ type OSVinc = { id: string; trecho: string; bacia: string; status: OSStatus; pv_
 type DestinoDivisao = 'A' | 'B' | 'AMBOS' | 'NENHUM';
 
 const EditorOperacionalPage = () => {
-  const { user } = useAuth();
+  const { user, actingUserId } = useAuth();
   const isSalaTecnica = user?.role === 'sala_tecnica';
   const canEdit = isSalaTecnica; // RLS enforces server-side
   const {
@@ -339,7 +339,7 @@ const EditorOperacionalPage = () => {
         lat: snapCoord[1], lon: snapCoord[0],
         cota: cota ? Number(cota) : null,
         profundidade: prof ? Number(prof) : null,
-        motivo: 'Divisão de trecho', updated_by: user.id,
+        motivo: 'Divisão de trecho', updated_by: actingUserId ?? user.id,
       }).select('id').single();
       if (e1) throw e1;
       const novoPvId = (novoPv as any).id;
@@ -352,7 +352,7 @@ const EditorOperacionalPage = () => {
 
       // Marcar original operacional como suprimido
       await supabase.from('mapa_trecho_operacional' as any)
-        .update({ tipo: 'suprimido', motivo: 'Substituído por divisão', updated_by: user.id })
+        .update({ tipo: 'suprimido', motivo: 'Substituído por divisão', updated_by: actingUserId ?? user.id })
         .eq('id', opId);
       // Desativar vínculos do trecho original operacional
       await supabase.from('mapa_trecho_os' as any)
@@ -369,7 +369,7 @@ const EditorOperacionalPage = () => {
           pv_inicial_id: pvIniId, pv_final_id: novoPvId,
           geom: { type: 'LineString', coordinates: coordsA }, extensao_m: lineLength(coordsA),
           dn: orig?.dn ?? null, material: orig?.material ?? null,
-          motivo: 'Divisão de trecho', updated_by: user.id,
+          motivo: 'Divisão de trecho', updated_by: actingUserId ?? user.id,
         },
         {
           base_id: base.id, trecho_origem_id: orig?.origem_id ?? null,
@@ -377,7 +377,7 @@ const EditorOperacionalPage = () => {
           pv_inicial_id: novoPvId, pv_final_id: pvFimId,
           geom: { type: 'LineString', coordinates: coordsB }, extensao_m: lineLength(coordsB),
           dn: orig?.dn ?? null, material: orig?.material ?? null,
-          motivo: 'Divisão de trecho', updated_by: user.id,
+          motivo: 'Divisão de trecho', updated_by: actingUserId ?? user.id,
         },
       ]).select('id, rotulo');
       if (e2) throw e2;
@@ -443,7 +443,7 @@ const EditorOperacionalPage = () => {
         geom: { type: 'Point', coordinates: to },
         lat: to[1], lon: to[0],
         motivo: moverConfirm.deltaM > 10 ? `Movido ${moverConfirm.deltaM.toFixed(1)}m — ${justificativa}` : `Movido ${moverConfirm.deltaM.toFixed(1)}m`,
-        updated_by: user.id,
+        updated_by: actingUserId ?? user.id,
       }).eq('id', opId);
       if (eP) throw eP;
 
@@ -468,7 +468,7 @@ const EditorOperacionalPage = () => {
         await supabase.from('mapa_trecho_operacional' as any).update({
           geom: { type: 'LineString', coordinates: coords },
           extensao_m: lineLength(coords),
-          updated_by: user.id,
+          updated_by: actingUserId ?? user.id,
         }).eq('id', t.id);
       }
       toast.success(`PV movido (${moverConfirm.deltaM.toFixed(1)} m)`);
@@ -484,7 +484,7 @@ const EditorOperacionalPage = () => {
     try {
       const { opId } = await ensureTrechoOperacional(selectedTrecho.id);
       const { error } = await supabase.from('mapa_trecho_operacional' as any).update({
-        tipo: 'suprimido', motivo, updated_by: user.id,
+        tipo: 'suprimido', motivo, updated_by: actingUserId ?? user.id,
       }).eq('id', opId);
       if (error) throw error;
       await supabase.from('mapa_trecho_os' as any)
@@ -585,7 +585,7 @@ const EditorOperacionalPage = () => {
         pv_inicial_id: iniOp, pv_final_id: fimOp,
         geom: { type: 'LineString', coordinates: coords }, extensao_m: lineLength(coords),
         dn: dn ? Number(dn) : null, material: material || null,
-        motivo: 'Trecho manual', updated_by: user.id,
+        motivo: 'Trecho manual', updated_by: actingUserId ?? user.id,
       });
       if (error) throw error;
       toast.success('Trecho manual criado');

@@ -238,7 +238,7 @@ const PVCard = ({
 };
 
 const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: () => void; allowEditAll?: boolean }) => {
-  const { user } = useAuth();
+  const { user, actingUserId } = useAuth();
   const [points, setPoints] = useState<AsBuiltPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingMontante, setSavingMontante] = useState(false);
@@ -388,7 +388,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
         nome_estaca: PV_MONTANTE_TAG,
         latitude: latVal,
         longitude: lngVal,
-        registrado_por: user?.id ?? null,
+        registrado_por: actingUserId ?? user?.id ?? null,
         created_at: ts,
         ...extra,
       }).select().single();
@@ -426,7 +426,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
         nome_estaca: PV_JUSANTE_TAG,
         latitude: latVal,
         longitude: lngVal,
-        registrado_por: user?.id ?? null,
+        registrado_por: actingUserId ?? user?.id ?? null,
         created_at: ts,
         ...extra,
       }).select().single();
@@ -455,7 +455,7 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       nome_estaca: `Intermediário ${next}`,
       latitude: latVal,
       longitude: lngVal,
-      registrado_por: user?.id ?? null,
+      registrado_por: actingUserId ?? user?.id ?? null,
       ...extraPayload(interEnc, interProf, interNs),
       ...(obs ? { observacao: obs } : {}),
     }).select().single();

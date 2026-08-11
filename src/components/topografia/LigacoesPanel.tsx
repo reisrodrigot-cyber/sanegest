@@ -30,7 +30,7 @@ interface OSInfo {
 }
 
 export const LigacoesPanel = ({ osId }: Props) => {
-  const { user } = useAuth();
+  const { user, actingUserId } = useAuth();
   const [ligacoes, setLigacoes] = useState<LigacaoRow[]>([]);
   const [osMap, setOsMap] = useState<Record<string, OSInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -95,7 +95,7 @@ export const LigacoesPanel = ({ osId }: Props) => {
       .update({
         latitude: lat,
         longitude: lng,
-        topografo_id: user?.id ?? null,
+        topografo_id: actingUserId ?? user?.id ?? null,
         data_topografia: new Date().toISOString(),
       })
       .eq('id', id);

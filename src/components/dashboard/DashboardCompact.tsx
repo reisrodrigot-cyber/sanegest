@@ -36,7 +36,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 import { PeriodoPicker } from '@/components/dashboard/PeriodoPicker';
-import { HistoricoAtividadesModal } from '@/components/dashboard/HistoricoAtividadesModal';
+import { HistoricoAtividadesModal, AlteracoesRealizadas } from '@/components/dashboard/HistoricoAtividadesModal';
+import { buscarEdicoesProducao, type CampoAlterado } from '@/lib/auditProducao';
+
 
 
 import type { OrdemServico } from '@/types/sanegest';

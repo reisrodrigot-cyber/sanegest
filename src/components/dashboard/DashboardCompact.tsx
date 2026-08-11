@@ -1937,7 +1937,9 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
                 style={{ borderLeft: `3px solid ${meta.color}` }}
               >
                 <div className="flex flex-col min-w-[88px]">
-                  <span className="text-[10px] font-semibold text-foreground">{formatStamp(e.ts)}</span>
+                  <span className="text-[10px] font-semibold text-foreground">
+                    {e.type === 'producao_edicao' ? 'Editado ' : ''}{formatStamp(e.ts)}
+                  </span>
                   <span className="text-[10px] text-muted-foreground">{formatRelative(e.ts)}</span>
                 </div>
                 <span
@@ -1951,7 +1953,14 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
                     <span className="font-semibold">{e.who}</span>{' '}
                     <span className="text-muted-foreground">— {e.description}</span>
                   </div>
+                  {e.type === 'producao_edicao' && (
+                    <AlteracoesRealizadas
+                      alteracoes={e.alteracoes ?? []}
+                      indisponivel={e.snapshotIndisponivel}
+                    />
+                  )}
                 </div>
+
               </li>
             );
           })}

@@ -51,7 +51,12 @@ export interface HistoricoEvento {
   ligacoes: number | null;
   ligComp: number | null;
   descricao: string;
+  /** Campos alterados (apenas eventos de edição de produção). */
+  alteracoes?: CampoAlterado[];
+  /** Edição histórica sem snapshot anterior utilizável. */
+  snapshotIndisponivel?: boolean;
 }
+
 
 export const TIPO_META: Record<
   HistoricoTipo,

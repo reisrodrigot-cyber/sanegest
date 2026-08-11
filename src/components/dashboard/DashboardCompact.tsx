@@ -1707,7 +1707,7 @@ const useRealEvents = (inicio: string, fim: string) => {
     (async () => {
       try {
 
-      const [prod, topo, mat, status] = await Promise.all([
+      const [prod, topo, mat, status, edicoes] = await Promise.all([
         supabase.from('registros_producao')
           .select('id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, user_id, os_id, created_at, updated_at, status')
           .eq('excluido', false)
@@ -1727,11 +1727,13 @@ const useRealEvents = (inicio: string, fim: string) => {
           .eq('status_novo', 'VERMELHO')
           .gte('created_at', startIso).lte('created_at', endIso)
           .order('created_at', { ascending: false }).limit(30),
+        buscarEdicoesProducao(startIso, endIso, 60),
       ]);
 
       // Erro silencioso de consulta não pode virar "sem atividades".
       const qErr = prod.error || topo.error || mat.error || status.error;
       if (qErr) throw qErr;
+
 
 
 

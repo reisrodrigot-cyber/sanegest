@@ -1776,23 +1776,29 @@ const useRealEvents = (inicio: string, fim: string) => {
         const dataBR = r.data_registro
           ? r.data_registro.split('-').reverse().join('/')
           : '';
-        const createdMs = r.created_at ? new Date(r.created_at).getTime() : 0;
-        const updatedMs = r.updated_at ? new Date(r.updated_at).getTime() : createdMs;
-        const isEdit = updatedMs - createdMs > 60_000 || r.status === 'cancelado';
-        if (isEdit) {
-          const statusLabel = r.status === 'cancelado' ? 'cancelada' : 'contabilizada na produção';
-          all.push({
-            id: `pe-${r.id}`, type: 'producao', ts: new Date(updatedMs),
-            who: uMap[r.user_id] || 'Usuário',
-            description: `editou produção${trecho ? ` — ${trecho}` : ''}${dataBR ? ` — ${dataBR}` : ''} — ${parts.join(' e ') || '0m'} — ${statusLabel}`,
-          });
-        }
         all.push({
           id: `p-${r.id}`, type: 'producao', ts: new Date(r.created_at),
           who: uMap[r.user_id] || 'Usuário',
           description: `registrou ${parts.join(' e ') || 'produção'}${trecho ? ` em ${trecho}` : ''}`,
         });
       });
+
+      edicoes.forEach((ed) => {
+        const reg = regEdMap[ed.registroId];
+        const trechoEd = reg ? oMap[reg.os_id]?.trecho : undefined;
+        const resumo = ed.alteracoes.length ? ed.alteracoes.map((a) => a.campo).join(', ') : 'sem detalhe disponível';
+        all.push({
+          id: ed.id,
+          type: 'producao_edicao',
+          ts: ed.ts,
+          who: (ed.usuarioId && uMap[ed.usuarioId]) || 'Usuário',
+          description: `editou produção${trechoEd ? ` — ${trechoEd}` : ''} — ${resumo}`,
+          alteracoes: ed.alteracoes,
+          snapshotIndisponivel: ed.snapshotIndisponivel,
+          dataProducao: ed.dataProducao ?? reg?.data_registro ?? null,
+        });
+      });
+
       (topo.data || []).forEach((r: any) => {
         all.push({
           id: `t-${r.id}`, type: 'topografia', ts: new Date(r.created_at),

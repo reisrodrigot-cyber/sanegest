@@ -1738,9 +1738,6 @@ const useRealEvents = (inicio: string, fim: string) => {
       const qErr = prod.error || topo.error || mat.error || status.error;
       if (qErr) throw qErr;
 
-
-
-
       const userIds = new Set<string>();
       const osIds = new Set<string>();
       (prod.data || []).forEach((r: any) => { r.user_id && userIds.add(r.user_id); r.os_id && osIds.add(r.os_id); });
@@ -1757,6 +1754,16 @@ const useRealEvents = (inicio: string, fim: string) => {
       const regEdMap: Record<string, any> = {};
       (regsEdicao as any[]).forEach((r: any) => { regEdMap[r.id] = r; if (r.os_id) osIds.add(r.os_id); });
 
+      // Comprimentos individuais das ligações para os registros de produção exibidos.
+      const regIds = (prod.data || []).map((r: any) => r.id);
+      const ligs = regIds.length
+        ? (await supabase.from('ligacoes').select('registro_producao_id, comprimento').in('registro_producao_id', regIds)).data || []
+        : [];
+      const ligMap: Record<string, number> = {};
+      (ligs as any[]).forEach((l: any) => {
+        if (!l.registro_producao_id) return;
+        ligMap[l.registro_producao_id] = (ligMap[l.registro_producao_id] || 0) + (Number(l.comprimento) || 0);
+      });
 
       const [profs, oss] = await Promise.all([
         userIds.size ? supabase.from('profiles').select('user_id, display_name, email, apelido').in('user_id', Array.from(userIds)) : Promise.resolve({ data: [] as any[] }),

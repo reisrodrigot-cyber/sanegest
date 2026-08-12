@@ -669,6 +669,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
 
             const editavel = podeEditar(r);
 
+            const dataProducao = r.data_registro;
+            const dataRegistro = dataLocalMaceio(r.created_at);
+            const retroativo = dataProducao !== dataRegistro;
+
             return (
               <li key={r.id} className={`rounded-lg border border-border bg-background p-2.5 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
                 <div className="min-w-0">
@@ -676,7 +680,15 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
                     <MapPin size={14} className="text-muted-foreground shrink-0" />
                     <span className="truncate">{trecho}</span>
                   </p>
-                  <p className="text-[11px] sm:text-xs text-foreground/80 font-medium mt-0.5">{fmtDataHora(r.created_at)}</p>
+                  {retroativo && (
+                    <span className="inline-flex items-center mt-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[hsl(var(--status-yellow-bg))] text-[hsl(var(--status-yellow-fg))] border border-[hsl(var(--status-yellow))]">
+                      Registro retroativo
+                    </span>
+                  )}
+                  <p className="text-[11px] sm:text-xs text-foreground/90 font-medium mt-1">
+                    {retroativo ? 'Produção referente a:' : 'Produção em:'} {formatBRData(dataProducao)}
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground font-medium">{fmtDataHora(r.created_at)}</p>
                 </div>
 
                 <div className="mt-2 grid grid-cols-2 gap-2">

@@ -36,7 +36,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 import { PeriodoPicker } from '@/components/dashboard/PeriodoPicker';
-import { HistoricoAtividadesModal, AlteracoesRealizadas } from '@/components/dashboard/HistoricoAtividadesModal';
+import { HistoricoAtividadesModal, AlteracoesRealizadas, diaLocal, fmtLancamento, num } from '@/components/dashboard/HistoricoAtividadesModal';
 import { buscarEdicoesProducao, type CampoAlterado } from '@/lib/auditProducao';
 
 
@@ -1677,8 +1677,12 @@ interface FeedEvent {
   /** Edição de produção: campos alterados (auditoria). */
   alteracoes?: CampoAlterado[];
   snapshotIndisponivel?: boolean;
-  /** Data de produção (yyyy-mm-dd) associada ao evento de edição. */
+  /** Data de produção (yyyy-mm-dd) associada ao evento. */
   dataProducao?: string | null;
+  /** Quantitativos do evento de produção. */
+  rede?: number | null;
+  lig?: number | null;
+  ligComp?: number | null;
 }
 
 const EVENT_META: Record<EventType, { label: string; color: string; bg: string; dot: string }> = {
@@ -1736,9 +1740,6 @@ const useRealEvents = (inicio: string, fim: string) => {
       const qErr = prod.error || topo.error || mat.error || status.error;
       if (qErr) throw qErr;
 
-
-
-
       const userIds = new Set<string>();
       const osIds = new Set<string>();
       (prod.data || []).forEach((r: any) => { r.user_id && userIds.add(r.user_id); r.os_id && osIds.add(r.os_id); });
@@ -1755,6 +1756,16 @@ const useRealEvents = (inicio: string, fim: string) => {
       const regEdMap: Record<string, any> = {};
       (regsEdicao as any[]).forEach((r: any) => { regEdMap[r.id] = r; if (r.os_id) osIds.add(r.os_id); });
 
+      // Comprimentos individuais das ligações para os registros de produção exibidos.
+      const regIds = (prod.data || []).map((r: any) => r.id);
+      const ligs = regIds.length
+        ? (await supabase.from('ligacoes').select('registro_producao_id, comprimento').in('registro_producao_id', regIds)).data || []
+        : [];
+      const ligMap: Record<string, number> = {};
+      (ligs as any[]).forEach((l: any) => {
+        if (!l.registro_producao_id) return;
+        ligMap[l.registro_producao_id] = (ligMap[l.registro_producao_id] || 0) + (Number(l.comprimento) || 0);
+      });
 
       const [profs, oss] = await Promise.all([
         userIds.size ? supabase.from('profiles').select('user_id, display_name, email, apelido').in('user_id', Array.from(userIds)) : Promise.resolve({ data: [] as any[] }),
@@ -1767,19 +1778,17 @@ const useRealEvents = (inicio: string, fim: string) => {
 
       const all: FeedEvent[] = [];
       (prod.data || []).forEach((r: any) => {
-        const compAtual = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
-        const ligAtual = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
-        const parts: string[] = [];
-        if (compAtual) parts.push(`${compAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m de rede`);
-        if (ligAtual) parts.push(`${ligAtual} ${ligAtual === 1 ? 'ligação' : 'ligações'}`);
         const trecho = oMap[r.os_id]?.trecho;
-        const dataBR = r.data_registro
-          ? r.data_registro.split('-').reverse().join('/')
-          : '';
         all.push({
-          id: `p-${r.id}`, type: 'producao', ts: new Date(r.created_at),
+          id: `p-${r.id}`,
+          type: 'producao',
+          ts: new Date(r.created_at),
           who: uMap[r.user_id] || 'Usuário',
-          description: `registrou ${parts.join(' e ') || 'produção'}${trecho ? ` em ${trecho}` : ''}`,
+          description: `registrou produção${trecho ? ` em ${trecho}` : ''}`,
+          dataProducao: (r.data_registro as string) || null,
+          rede: Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0,
+          lig: Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0,
+          ligComp: ligMap[r.id] ?? null,
         });
       });
 
@@ -1929,8 +1938,9 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
         <ul className="space-y-1.5">
           {events.map((e) => {
             const meta = EVENT_META[e.type];
+            const isProducao = e.type === 'producao';
+            const retroativa = isProducao && !!e.dataProducao && e.dataProducao !== diaLocal(e.ts);
             return (
-
               <li
                 key={e.id}
                 className="flex items-start gap-3 rounded-md py-1.5 pl-2.5 pr-2 bg-muted/20 hover:bg-muted/40 transition-colors"
@@ -1942,25 +1952,69 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
                   </span>
                   <span className="text-[10px] text-muted-foreground">{formatRelative(e.ts)}</span>
                 </div>
-                <span
-                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide whitespace-nowrap"
-                  style={{ color: meta.color, backgroundColor: meta.bg }}
-                >
-                  {meta.label}
-                </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-foreground">
-                    <span className="font-semibold">{e.who}</span>{' '}
-                    <span className="text-muted-foreground">— {e.description}</span>
-                  </div>
-                  {e.type === 'producao_edicao' && (
-                    <AlteracoesRealizadas
-                      alteracoes={e.alteracoes ?? []}
-                      indisponivel={e.snapshotIndisponivel}
-                    />
+                  {isProducao ? (
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide whitespace-nowrap"
+                          style={{
+                            color: retroativa ? '#92400E' : meta.color,
+                            backgroundColor: retroativa ? '#FEF3C7' : meta.bg,
+                            border: retroativa ? '1px solid #FCD34D' : 'none',
+                          }}
+                        >
+                          {retroativa ? 'Produção retroativa' : meta.label}
+                        </span>
+                      </div>
+                      <div className="text-xs text-foreground">
+                        <span className="font-semibold">{e.who}</span>{' '}
+                        <span className="text-muted-foreground">— {e.description}</span>
+                      </div>
+                      <div className={`text-[11px] ${retroativa ? 'font-semibold text-amber-700' : 'text-muted-foreground'}`}>
+                        {retroativa ? (
+                          <>Produção referente a: {fmtDateBR(e.dataProducao!)}</>
+                        ) : (
+                          <>Produção em: {fmtDateBR(e.dataProducao!)}</>
+                        )}{' '}
+                        | Registrado em: {fmtLancamento(e.ts)}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10.5px] text-muted-foreground">
+                        {(() => {
+                          const rede = e.rede ?? 0;
+                          const lig = e.lig ?? 0;
+                          const ext = e.ligComp ?? 0;
+                          const partes: React.ReactNode[] = [];
+                          if (rede > 0) partes.push(<span key="rede">Rede: <span className="text-foreground font-medium">{num(rede)} m</span></span>);
+                          if (lig > 0) partes.push(<span key="lig">Ligações: <span className="text-foreground font-medium">{lig} {lig === 1 ? 'un' : 'un'}</span></span>);
+                          if (ext > 0) partes.push(<span key="ext">Extensão de ramais: <span className="text-foreground font-medium">{num(ext)} m</span></span>);
+                          return partes.length > 0 ? <>{partes}</> : null;
+                        })()}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide whitespace-nowrap"
+                          style={{ color: meta.color, backgroundColor: meta.bg }}
+                        >
+                          {meta.label}
+                        </span>
+                      </div>
+                      <div className="text-xs text-foreground mt-1">
+                        <span className="font-semibold">{e.who}</span>{' '}
+                        <span className="text-muted-foreground">— {e.description}</span>
+                      </div>
+                      {e.type === 'producao_edicao' && (
+                        <AlteracoesRealizadas
+                          alteracoes={e.alteracoes ?? []}
+                          indisponivel={e.snapshotIndisponivel}
+                        />
+                      )}
+                    </>
                   )}
                 </div>
-
               </li>
             );
           })}

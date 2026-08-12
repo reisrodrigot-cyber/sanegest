@@ -80,7 +80,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 export const fmtLancamento = (d: Date) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} às ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-const fmtRelativo = (d: Date) => {
+export const fmtRelativo = (d: Date) => {
   const diff = Date.now() - d.getTime();
   const min = Math.floor(diff / 60000);
   if (min < 1) return 'agora';
@@ -90,10 +90,10 @@ const fmtRelativo = (d: Date) => {
   return `há ${Math.floor(h / 24)}d`;
 };
 
-const num = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const num = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Dia local (yyyy-mm-dd) de um timestamp de lançamento. */
-const diaLocal = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export const diaLocal = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 /* ------------------------------------------------------------------ *
  * Busca de dados (somente leitura)

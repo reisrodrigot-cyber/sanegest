@@ -327,10 +327,10 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       </div>
 
       {/* Acumulado */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-card border border-border rounded-lg p-3">
-          <p className="text-xs text-muted-foreground">Rede executada (trechos)</p>
-          <p className="text-xl font-bold text-foreground">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="bg-card border border-border rounded-lg p-2.5 sm:p-3">
+          <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">Rede executada (trechos)</p>
+          <p className="text-lg sm:text-xl font-bold text-foreground">
             {acumComprimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
           </p>
         </div>
@@ -338,13 +338,13 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           type="button"
           onClick={() => acumLigacoes > 0 && setPopupAcumOpen(true)}
           disabled={acumLigacoes === 0}
-          className="bg-card border border-border rounded-lg p-3 text-left transition hover:border-secondary hover:bg-muted/40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
+          className="bg-card border border-border rounded-lg p-2.5 sm:p-3 text-left transition hover:border-secondary hover:bg-muted/40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
         >
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1 leading-tight">
             Ligações (quantidade)
             {acumLigacoes > 0 && <Eye size={11} className="opacity-60" />}
           </p>
-          <p className="text-xl font-bold text-foreground">{acumLigacoes}</p>
+          <p className="text-lg sm:text-xl font-bold text-foreground">{acumLigacoes}</p>
           {(() => {
             const extensao = ligacoesAll.reduce(
               (s, l) => s + (Number(l.comprimento) || 0),

@@ -869,7 +869,7 @@ const ProducaoPage = () => {
               : 'bg-card text-foreground border-border hover:bg-muted/60'
           }`}
         >
-          Em execução ({countEmExecucao})
+          N.S. execução ({countEmExecucao})
         </button>
         <button
           type="button"

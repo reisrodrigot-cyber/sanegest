@@ -355,7 +355,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         <AvancoSecao
           titulo="Rede por sub-bacia"
-          linhas={avanco.rede}
+          linhas={avanco.rede.filter((l) => l.previsto > 0)}
           unidade="m"
           formatar={fmtM}
           contratualPorChave={contratualRede}
@@ -365,7 +365,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
         <AvancoSecao
           titulo="Ramais por sub-bacia"
-          linhas={avanco.ramais}
+          linhas={avanco.ramais.filter((l) => l.previsto > 0)}
           unidade="un."
           formatar={fmtUn}
           contratualPorChave={contratualRamais}
@@ -375,7 +375,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
         <AvancoSecao
           titulo="Linha de Recalque por sub-bacia"
-          linhas={avanco.linhaRecalque}
+          linhas={avanco.linhaRecalque.filter((l) => l.previsto > 0)}
           unidade="m"
           formatar={fmtM}
           contratualPorChave={contratualLR}

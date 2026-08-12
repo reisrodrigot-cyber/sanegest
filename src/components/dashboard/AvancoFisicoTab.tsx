@@ -370,11 +370,10 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           linhas={avanco.linhaRecalque}
           unidade="m"
           formatar={fmtM}
-          contratualPorChave={new Map()}
+          contratualPorChave={contratualLR}
           formatarContratual={fmtM}
           podeEditar={false}
           onEditar={() => {}}
-          mostrarContratual={false}
         />
       </div>
 

@@ -84,7 +84,7 @@ const fmt = (v: unknown) => {
 };
 
 const ReadField = ({ label, value }: { label: string; value: unknown }) => (
-  <div className="flex justify-between py-1.5 border-b border-border last:border-0 text-sm">
+  <div className="flex justify-between py-1 sm:py-1.5 border-b border-border last:border-0 text-[13px] sm:text-sm">
     <span className="text-muted-foreground">{label}</span>
     <span className="text-foreground font-medium">{fmt(value)}</span>
   </div>
@@ -310,10 +310,10 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
   };
 
   return (
-    <div className="mt-4 pt-4 border-t border-border space-y-5">
+    <div className="mt-3 pt-3 border-t border-border space-y-3 sm:space-y-5">
       {/* Dados da OS (read-only) */}
-      <div className="bg-muted/30 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-2">Dados da OS</h3>
+      <div className="bg-muted/30 rounded-lg p-2.5 sm:p-4">
+        <h3 className="text-[13px] sm:text-sm font-semibold text-foreground mb-1 sm:mb-2">Dados da OS</h3>
         <div className="grid md:grid-cols-2 gap-x-6">
           <ReadField label="Comprimento (m)" value={os.comprimento_previsto} />
           <ReadField label="DN" value={formatDN(os.dn)} />
@@ -327,10 +327,10 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       </div>
 
       {/* Acumulado */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-card border border-border rounded-lg p-3">
-          <p className="text-xs text-muted-foreground">Rede executada (trechos)</p>
-          <p className="text-xl font-bold text-foreground">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="bg-card border border-border rounded-lg p-2.5 sm:p-3">
+          <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">Rede executada (trechos)</p>
+          <p className="text-lg sm:text-xl font-bold text-foreground">
             {acumComprimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
           </p>
         </div>
@@ -338,13 +338,13 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
           type="button"
           onClick={() => acumLigacoes > 0 && setPopupAcumOpen(true)}
           disabled={acumLigacoes === 0}
-          className="bg-card border border-border rounded-lg p-3 text-left transition hover:border-secondary hover:bg-muted/40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
+          className="bg-card border border-border rounded-lg p-2.5 sm:p-3 text-left transition hover:border-secondary hover:bg-muted/40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
         >
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1 leading-tight">
             Ligações (quantidade)
             {acumLigacoes > 0 && <Eye size={11} className="opacity-60" />}
           </p>
-          <p className="text-xl font-bold text-foreground">{acumLigacoes}</p>
+          <p className="text-lg sm:text-xl font-bold text-foreground">{acumLigacoes}</p>
           {(() => {
             const extensao = ligacoesAll.reduce(
               (s, l) => s + (Number(l.comprimento) || 0),
@@ -361,8 +361,8 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       </div>
 
       {/* Novo registro do dia */}
-      <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">Novo registro de produção</h3>
+      <div className="bg-card border border-border rounded-lg p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+        <h3 className="text-[13px] sm:text-sm font-semibold text-foreground">Novo registro de produção</h3>
         <div
           className="flex items-start gap-2.5 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm leading-snug text-destructive"
           role="alert"
@@ -869,7 +869,7 @@ const ProducaoPage = () => {
               : 'bg-card text-foreground border-border hover:bg-muted/60'
           }`}
         >
-          Em execução ({countEmExecucao})
+          N.S. execução ({countEmExecucao})
         </button>
         <button
           type="button"
@@ -880,7 +880,7 @@ const ProducaoPage = () => {
               : 'bg-card text-foreground border-border hover:bg-muted/60'
           }`}
         >
-          Concluído ({countConcluido})
+          N.S. PV assentado ({countConcluido})
         </button>
       </div>
 
@@ -898,8 +898,8 @@ const ProducaoPage = () => {
         <div className="space-y-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           {displayedOS.map((os) => (
 
-            <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4 max-w-full">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
+            <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-3 sm:p-4 max-w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 min-w-0">
                 <div className="min-w-0">
                   <p className="font-medium text-foreground truncate">{os.trecho}</p>
                   <p className="text-xs text-muted-foreground truncate">
@@ -910,7 +910,7 @@ const ProducaoPage = () => {
                   onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
                   className="w-full sm:w-auto min-h-[44px] px-4 py-2 rounded-md text-sm font-medium bg-[hsl(var(--status-green))] text-white shadow-sm hover:bg-[hsl(135_64%_40%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--status-green))] focus-visible:ring-offset-2 focus-visible:ring-offset-card transition-colors"
                 >
-                  {expandedId === os.id ? 'Fechar' : statusTab === 'concluido' ? 'Ver Produção' : 'Registrar Dia'}
+                  {expandedId === os.id ? 'Fechar' : 'Registrar produção nessa N.S.'}
                 </button>
               </div>
               {expandedId === os.id && <OSPanel os={os} />}

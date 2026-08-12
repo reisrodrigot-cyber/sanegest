@@ -310,10 +310,10 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
   };
 
   return (
-    <div className="mt-4 pt-4 border-t border-border space-y-5">
+    <div className="mt-3 pt-3 border-t border-border space-y-3 sm:space-y-5">
       {/* Dados da OS (read-only) */}
-      <div className="bg-muted/30 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-2">Dados da OS</h3>
+      <div className="bg-muted/30 rounded-lg p-2.5 sm:p-4">
+        <h3 className="text-[13px] sm:text-sm font-semibold text-foreground mb-1 sm:mb-2">Dados da OS</h3>
         <div className="grid md:grid-cols-2 gap-x-6">
           <ReadField label="Comprimento (m)" value={os.comprimento_previsto} />
           <ReadField label="DN" value={formatDN(os.dn)} />

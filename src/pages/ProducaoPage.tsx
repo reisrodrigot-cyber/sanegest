@@ -859,28 +859,40 @@ const ProducaoPage = () => {
         Registre a produção do dia em cada NS atribuída a você
       </p>
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="grid grid-cols-2 gap-0 mb-4 rounded-xl border border-border overflow-hidden bg-white">
         <button
           type="button"
           onClick={() => setStatusTab('em-execucao')}
-          className={`min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors border ${
+          className={`relative min-h-[52px] px-2 py-2 text-sm font-bold transition-colors ${
             statusTab === 'em-execucao'
-              ? 'bg-secondary text-secondary-foreground border-secondary'
-              : 'bg-card text-foreground border-border hover:bg-muted/60'
+              ? 'bg-[hsl(var(--heca-blue))] text-white shadow-sm'
+              : 'bg-white text-[hsl(var(--heca-navy))] hover:bg-slate-50'
           }`}
         >
-          N.S. execução ({countEmExecucao})
+          <span className="block leading-tight">N.S. execução</span>
+          <span className={`block text-xs mt-0.5 font-semibold ${statusTab === 'em-execucao' ? 'text-white/90' : 'text-muted-foreground'}`}>
+            {countEmExecucao}
+          </span>
+          {statusTab === 'em-execucao' && (
+            <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[hsl(var(--heca-navy))]" />
+          )}
         </button>
         <button
           type="button"
           onClick={() => setStatusTab('concluido')}
-          className={`min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors border ${
+          className={`relative min-h-[52px] px-2 py-2 text-sm font-bold transition-colors border-l border-border ${
             statusTab === 'concluido'
-              ? 'bg-secondary text-secondary-foreground border-secondary'
-              : 'bg-card text-foreground border-border hover:bg-muted/60'
+              ? 'bg-[hsl(var(--heca-blue))] text-white shadow-sm'
+              : 'bg-white text-[hsl(var(--heca-navy))] hover:bg-slate-50'
           }`}
         >
-          N.S. PV assentado ({countConcluido})
+          <span className="block leading-tight">N.S. PV assentado</span>
+          <span className={`block text-xs mt-0.5 font-semibold ${statusTab === 'concluido' ? 'text-white/90' : 'text-muted-foreground'}`}>
+            {countConcluido}
+          </span>
+          {statusTab === 'concluido' && (
+            <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[hsl(var(--heca-navy))]" />
+          )}
         </button>
       </div>
 

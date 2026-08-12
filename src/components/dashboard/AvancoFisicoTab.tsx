@@ -380,9 +380,10 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           formatar={fmtM}
           contratualPorChave={contratualLR}
           formatarContratual={fmtM}
-          podeEditar={false}
-          onEditar={() => {}}
+          podeEditar={podeEditar}
+          onEditar={() => setModalAberto(true)}
         />
+
       </div>
 
 

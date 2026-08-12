@@ -281,6 +281,14 @@ const AvancoSecao = ({
 };
 
 
+const normalizarSubBacia = (s: string) =>
+  s.toLowerCase().replace(/[\s.\-_,]/g, '');
+
+const ocultarGenerica = (nome: string) => {
+  const n = normalizarSubBacia(nome);
+  return n === 'povss13' || n === 'povss14';
+};
+
 export const AvancoFisicoTab = ({ ordens }: Props) => {
   const avanco = useAvancoFisico(ordens);
   const { effectiveRole } = useAuth();
@@ -290,13 +298,17 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
 
   const subBaciasMap = new Map<string, string>();
   [...avanco.rede, ...avanco.ramais, ...avanco.linhaRecalque].forEach((l) => {
+    if (ocultarGenerica(l.exibicao)) return;
     if (!subBaciasMap.has(l.chave)) subBaciasMap.set(l.chave, l.exibicao);
   });
   const subBacias = Array.from(subBaciasMap, ([chave, exibicao]) => ({ chave, exibicao }));
-  const contratualRede = new Map(avanco.rede.map((l) => [l.chave, porChave.get(l.chave)?.redeM ?? null]));
-  const contratualRamais = new Map(avanco.ramais.map((l) => [l.chave, porChave.get(l.chave)?.ramaisUn ?? null]));
+  const redeVisivel = avanco.rede.filter((l) => !ocultarGenerica(l.exibicao));
+  const ramaisVisivel = avanco.ramais.filter((l) => !ocultarGenerica(l.exibicao));
+  const lrVisivel = avanco.linhaRecalque.filter((l) => !ocultarGenerica(l.exibicao));
+  const contratualRede = new Map(redeVisivel.map((l) => [l.chave, porChave.get(l.chave)?.redeM ?? null]));
+  const contratualRamais = new Map(ramaisVisivel.map((l) => [l.chave, porChave.get(l.chave)?.ramaisUn ?? null]));
   const contratualLR = new Map<string, number | null>(
-    avanco.linhaRecalque.map((l) => [l.chave, porChave.get(l.chave)?.lrM ?? null]),
+    lrVisivel.map((l) => [l.chave, porChave.get(l.chave)?.lrM ?? null]),
   );
 
 
@@ -355,7 +367,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         <AvancoSecao
           titulo="Rede por sub-bacia"
-          linhas={avanco.rede.filter((l) => l.previsto > 0)}
+          linhas={redeVisivel}
           unidade="m"
           formatar={fmtM}
           contratualPorChave={contratualRede}
@@ -365,7 +377,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
         <AvancoSecao
           titulo="Ramais por sub-bacia"
-          linhas={avanco.ramais.filter((l) => l.previsto > 0)}
+          linhas={ramaisVisivel}
           unidade="un."
           formatar={fmtUn}
           contratualPorChave={contratualRamais}
@@ -375,7 +387,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
         <AvancoSecao
           titulo="Linha de Recalque por sub-bacia"
-          linhas={avanco.linhaRecalque.filter((l) => l.previsto > 0)}
+          linhas={lrVisivel}
           unidade="m"
           formatar={fmtM}
           contratualPorChave={contratualLR}

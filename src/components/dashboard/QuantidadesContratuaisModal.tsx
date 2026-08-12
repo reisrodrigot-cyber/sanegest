@@ -16,7 +16,7 @@ interface Props {
   subBacias: SubBaciaRef[];
   porChave: Map<string, QuantitativoContratual>;
   salvar: (
-    items: { chave: string; exibicao: string; redeM: number | null; ramaisUn: number | null }[],
+    items: { chave: string; exibicao: string; redeM: number | null; ramaisUn: number | null; lrM: number | null }[],
   ) => Promise<{ error: unknown }>;
 }
 
@@ -27,22 +27,29 @@ const parseNum = (v: string): number | null => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
+type Campos = { rede: string; ramais: string; lr: string };
+const vazio: Campos = { rede: '', ramais: '', lr: '' };
+
 export function QuantidadesContratuaisModal({ open, onOpenChange, subBacias, porChave, salvar }: Props) {
-  const [valores, setValores] = useState<Record<string, { rede: string; ramais: string }>>({});
+  const [valores, setValores] = useState<Record<string, Campos>>({});
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    const init: Record<string, { rede: string; ramais: string }> = {};
+    const init: Record<string, Campos> = {};
     subBacias.forEach((s) => {
       const q = porChave.get(s.chave);
       init[s.chave] = {
         rede: q?.redeM != null ? String(q.redeM).replace('.', ',') : '',
         ramais: q?.ramaisUn != null ? String(q.ramaisUn) : '',
+        lr: q?.lrM != null ? String(q.lrM).replace('.', ',') : '',
       };
     });
     setValores(init);
   }, [open, subBacias, porChave]);
+
+  const set = (chave: string, campo: keyof Campos, v: string) =>
+    setValores((prev) => ({ ...prev, [chave]: { ...(prev[chave] ?? vazio), [campo]: v } }));
 
   const handleSalvar = async () => {
     setSalvando(true);
@@ -51,6 +58,7 @@ export function QuantidadesContratuaisModal({ open, onOpenChange, subBacias, por
       exibicao: s.exibicao,
       redeM: parseNum(valores[s.chave]?.rede ?? ''),
       ramaisUn: parseNum(valores[s.chave]?.ramais ?? ''),
+      lrM: parseNum(valores[s.chave]?.lr ?? ''),
     }));
     const { error } = await salvar(items);
     setSalvando(false);
@@ -61,6 +69,7 @@ export function QuantidadesContratuaisModal({ open, onOpenChange, subBacias, por
     toast({ title: 'Quantidades contratuais salvas' });
     onOpenChange(false);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -79,37 +79,42 @@ export function QuantidadesContratuaisModal({ open, onOpenChange, subBacias, por
         </DialogHeader>
 
         <div className="max-h-[60vh] overflow-auto -mx-2 px-2">
-          <div className="hidden sm:grid grid-cols-[1fr_140px_120px] gap-2 pb-1 text-xs text-muted-foreground font-medium">
+          <div className="hidden sm:grid grid-cols-[1fr_120px_110px_140px] gap-2 pb-1 text-xs text-muted-foreground font-medium">
             <span>Sub-bacia</span>
             <span className="text-right">Rede (m)</span>
             <span className="text-right">Ramais (un.)</span>
+            <span className="text-right">Linha de Recalque (m)</span>
           </div>
           <ul className="flex flex-col gap-2">
             {subBacias.map((s) => (
-              <li key={s.chave} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_120px] gap-2 items-center border-b border-border/40 pb-2 sm:pb-1 sm:border-0">
+              <li key={s.chave} className="grid grid-cols-1 sm:grid-cols-[1fr_120px_110px_140px] gap-2 items-center border-b border-border/40 pb-2 sm:pb-1 sm:border-0">
                 <span className="text-sm text-foreground">{s.exibicao}</span>
                 <Input
                   inputMode="decimal"
                   placeholder="Rede (m)"
                   className="h-9 text-right tabular-nums"
                   value={valores[s.chave]?.rede ?? ''}
-                  onChange={(e) =>
-                    setValores((v) => ({ ...v, [s.chave]: { rede: e.target.value, ramais: v[s.chave]?.ramais ?? '' } }))
-                  }
+                  onChange={(e) => set(s.chave, 'rede', e.target.value)}
                 />
                 <Input
                   inputMode="numeric"
                   placeholder="Ramais (un.)"
                   className="h-9 text-right tabular-nums"
                   value={valores[s.chave]?.ramais ?? ''}
-                  onChange={(e) =>
-                    setValores((v) => ({ ...v, [s.chave]: { rede: v[s.chave]?.rede ?? '', ramais: e.target.value } }))
-                  }
+                  onChange={(e) => set(s.chave, 'ramais', e.target.value)}
+                />
+                <Input
+                  inputMode="decimal"
+                  placeholder="L. Recalque (m)"
+                  className="h-9 text-right tabular-nums"
+                  value={valores[s.chave]?.lr ?? ''}
+                  onChange={(e) => set(s.chave, 'lr', e.target.value)}
                 />
               </li>
             ))}
           </ul>
         </div>
+
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={salvando}>

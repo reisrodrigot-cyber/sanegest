@@ -661,10 +661,10 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
             });
             return groups.map((g) => (
               <div key={g.date}>
-                <p className="text-sm font-semibold text-foreground py-1">
+                <p className="text-[13px] sm:text-sm font-semibold text-foreground leading-tight">
                   {fmtDataCurta(g.date)}
                 </p>
-                <ul className="space-y-3 mt-2">
+                <ul className="space-y-2 mt-1">
                   {g.items.map((r) => {
                     const os = ordens[r.os_id];
                     const trecho = os?.trecho ?? 'Trecho —';

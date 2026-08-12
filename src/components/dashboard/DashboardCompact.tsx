@@ -1981,10 +1981,8 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10.5px] text-muted-foreground">
                         {(() => {
-                          const r = (prod.data || []).find((x: any) => `p-${x.id}` === e.id);
-                          if (!r) return null;
-                          const rede = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
-                          const lig = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
+                          const rede = e.rede ?? 0;
+                          const lig = e.lig ?? 0;
                           const ext = e.ligComp ?? 0;
                           const partes: React.ReactNode[] = [];
                           if (rede > 0) partes.push(<span key="rede">Rede: <span className="text-foreground font-medium">{num(rede)} m</span></span>);

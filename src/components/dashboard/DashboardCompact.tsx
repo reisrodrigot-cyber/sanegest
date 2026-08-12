@@ -1677,8 +1677,10 @@ interface FeedEvent {
   /** Edição de produção: campos alterados (auditoria). */
   alteracoes?: CampoAlterado[];
   snapshotIndisponivel?: boolean;
-  /** Data de produção (yyyy-mm-dd) associada ao evento de edição. */
+  /** Data de produção (yyyy-mm-dd) associada ao evento. */
   dataProducao?: string | null;
+  /** Comprimento total das ligações (m) — apenas eventos de produção. */
+  ligComp?: number | null;
 }
 
 const EVENT_META: Record<EventType, { label: string; color: string; bg: string; dot: string }> = {

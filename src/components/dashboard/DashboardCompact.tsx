@@ -1776,19 +1776,15 @@ const useRealEvents = (inicio: string, fim: string) => {
 
       const all: FeedEvent[] = [];
       (prod.data || []).forEach((r: any) => {
-        const compAtual = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
-        const ligAtual = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
-        const parts: string[] = [];
-        if (compAtual) parts.push(`${compAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m de rede`);
-        if (ligAtual) parts.push(`${ligAtual} ${ligAtual === 1 ? 'ligação' : 'ligações'}`);
         const trecho = oMap[r.os_id]?.trecho;
-        const dataBR = r.data_registro
-          ? r.data_registro.split('-').reverse().join('/')
-          : '';
         all.push({
-          id: `p-${r.id}`, type: 'producao', ts: new Date(r.created_at),
+          id: `p-${r.id}`,
+          type: 'producao',
+          ts: new Date(r.created_at),
           who: uMap[r.user_id] || 'Usuário',
-          description: `registrou ${parts.join(' e ') || 'produção'}${trecho ? ` em ${trecho}` : ''}`,
+          description: `registrou produção${trecho ? ` em ${trecho}` : ''}`,
+          dataProducao: (r.data_registro as string) || null,
+          ligComp: ligMap[r.id] ?? null,
         });
       });
 

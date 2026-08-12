@@ -44,14 +44,11 @@ interface OSRow {
 }
 
 
-const fmtDataCurta = (key: string) => {
-  const today = new Date().toISOString().slice(0, 10);
-  const yest = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); })();
-  const [y, m, d] = key.split('-');
-  const label = `${d}/${m}/${y}`;
-  if (key === today) return `Hoje — ${label}`;
-  if (key === yest) return `Ontem — ${label}`;
-  return label;
+const fmtDataHora = (iso: string) => {
+  const dt = new Date(iso);
+  const data = dt.toLocaleDateString('pt-BR');
+  const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `Registrado em ${data} às ${hora}`;
 };
 const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 // "Hoje" em America/Maceio (mesma regra do cadastro de produção)
@@ -649,136 +646,115 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
           Nenhum envio encontrado.
         </p>
       ) : (
-        <div className="space-y-3 sm:space-y-4">
-          {(() => {
-            const groups: { date: string; items: RegistroRow[] }[] = [];
-            itens.forEach((r) => {
-              if (groups.length === 0 || groups[groups.length - 1].date !== r.data_registro) {
-                groups.push({ date: r.data_registro, items: [r] });
-              } else {
-                groups[groups.length - 1].items.push(r);
-              }
-            });
-            return groups.map((g) => (
-              <div key={g.date}>
-                <p className="text-[13px] sm:text-sm font-semibold text-foreground leading-tight">
-                  {fmtDataCurta(g.date)}
-                </p>
-                <ul className="space-y-2 mt-1">
-                  {g.items.map((r) => {
-                    const os = ordens[r.os_id];
-                    const trecho = os?.trecho ?? 'Trecho —';
-                    const cancelado = (r.status ?? 'ativo') === 'cancelado';
-                    const ajustado = r.comprimento_ajustado != null || r.ligacoes_ajustadas != null;
-                    const compContab = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
-                    const ligContab = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
+        <ul className="space-y-2 sm:space-y-3">
+          {itens.map((r) => {
+            const os = ordens[r.os_id];
+            const trecho = os?.trecho ?? 'Trecho —';
+            const cancelado = (r.status ?? 'ativo') === 'cancelado';
+            const ajustado = r.comprimento_ajustado != null || r.ligacoes_ajustadas != null;
+            const compContab = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+            const ligContab = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
 
-                    const statusLabel = cancelado
-                      ? 'Cancelado pela sala técnica'
-                      : ajustado ? 'Ajustado pela sala técnica' : 'Contabilizado na produção';
-                    const StatusIcon = cancelado ? AlertTriangle : ajustado ? AlertTriangle : CheckCircle2;
-                    const statusColor = cancelado
-                      ? 'text-destructive'
-                      : ajustado ? 'text-orange-700' : 'text-emerald-700';
+            const statusLabel = cancelado
+              ? 'Cancelado pela sala técnica'
+              : ajustado ? 'Ajustado pela sala técnica' : 'Contabilizado na produção';
+            const StatusIcon = cancelado ? AlertTriangle : ajustado ? AlertTriangle : CheckCircle2;
+            const statusColor = cancelado
+              ? 'text-destructive'
+              : ajustado ? 'text-orange-700' : 'text-emerald-700';
 
-                    const editavel = podeEditar(r);
+            const editavel = podeEditar(r);
 
-                    return (
-                      <li key={r.id} className={`rounded-lg border border-border bg-background p-2.5 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm sm:text-base font-bold text-foreground flex items-center gap-1.5">
-                              <MapPin size={14} className="text-muted-foreground shrink-0" />
-                              <span className="truncate">{trecho}</span>
-                            </p>
-                            <p className="text-[11px] text-muted-foreground">Enviado às {fmtHora(r.created_at)}</p>
-                          </div>
-                        </div>
+            return (
+              <li key={r.id} className={`rounded-lg border border-border bg-background p-2.5 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
+                <div className="min-w-0">
+                  <p className="text-sm sm:text-base font-bold text-foreground flex items-center gap-1.5">
+                    <MapPin size={14} className="text-muted-foreground shrink-0" />
+                    <span className="truncate">{trecho}</span>
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-foreground/80 font-medium mt-0.5">{fmtDataHora(r.created_at)}</p>
+                </div>
 
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                          <div className="rounded-md bg-muted/40 px-2 py-1.5">
-                            <p className="text-[11px] text-muted-foreground leading-tight">Comprimento informado</p>
-                            <p className="text-sm sm:text-base font-bold text-foreground leading-tight">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
-                            {ajustado && r.comprimento_ajustado != null && (
-                              <p className="text-[11px] text-orange-700">
-                                Ajustado: <span className="font-semibold">{fmtMetros(compContab)}</span>
-                              </p>
-                            )}
-                          </div>
-                          <div className="rounded-md bg-muted/40 px-2 py-1.5">
-                            <p className="text-[11px] text-muted-foreground leading-tight">Ligações informadas</p>
-                            <p className="text-sm sm:text-base font-bold text-foreground leading-tight">{r.ligacoes_dia ?? 0}</p>
-                            {ajustado && r.ligacoes_ajustadas != null && (
-                              <p className="text-[11px] text-orange-700">
-                                Ajustado: <span className="font-semibold">{ligContab}</span>
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                    <p className="text-[11px] text-muted-foreground leading-tight">Comprimento informado</p>
+                    <p className="text-sm sm:text-base font-bold text-foreground leading-tight">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
+                    {ajustado && r.comprimento_ajustado != null && (
+                      <p className="text-[11px] text-orange-700">
+                        Ajustado: <span className="font-semibold">{fmtMetros(compContab)}</span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                    <p className="text-[11px] text-muted-foreground leading-tight">Ligações informadas</p>
+                    <p className="text-sm sm:text-base font-bold text-foreground leading-tight">{r.ligacoes_dia ?? 0}</p>
+                    {ajustado && r.ligacoes_ajustadas != null && (
+                      <p className="text-[11px] text-orange-700">
+                        Ajustado: <span className="font-semibold">{ligContab}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-                        {r.motivo_ajuste && (
-                          <p className="mt-1.5 text-[11px] text-orange-700 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
-                        )}
-                        {cancelado && r.motivo_cancelamento && (
-                          <p className="mt-1.5 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
-                        )}
+                {r.motivo_ajuste && (
+                  <p className="mt-1.5 text-[11px] text-orange-700 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
+                )}
+                {cancelado && r.motivo_cancelamento && (
+                  <p className="mt-1.5 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
+                )}
 
-                        {r.observacao && (
-                          <p className="mt-1.5 text-[11px] sm:text-xs text-muted-foreground italic">Obs.: {r.observacao}</p>
-                        )}
+                {r.observacao && (
+                  <p className="mt-1.5 text-[11px] sm:text-xs text-muted-foreground italic">Obs.: {r.observacao}</p>
+                )}
 
-                        <div className={`mt-1.5 flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold ${statusColor}`}>
-                          <StatusIcon size={13} />
-                          <span>{statusLabel}</span>
-                        </div>
+                <div className={`mt-1.5 flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold ${statusColor}`}>
+                  <StatusIcon size={13} />
+                  <span>{statusLabel}</span>
+                </div>
 
-                        {r.pv_final_assentado && !cancelado && (
-                          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-secondary/10 px-2 py-0.5 text-[11px] font-semibold text-secondary">
-                            <CheckCircle2 size={12} />
-                            PV final assentado — trecho concluído pelo encarregado
-                          </div>
-                        )}
+                {r.pv_final_assentado && !cancelado && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-foreground/80">
+                    <CheckCircle2 size={12} className="text-emerald-700" />
+                    PV final assentado — trecho concluído pelo encarregado
+                  </p>
+                )}
 
-                        {/* Ações de edição/exclusão do encarregado */}
-                        {editavel ? (
-                          <div className="mt-2 pt-2 border-t border-border">
-                            <div className="grid grid-cols-2 gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="min-h-[44px]"
-                                onClick={() => abrirEdicao(r)}
-                              >
-                                <Pencil size={16} className="mr-1.5" /> Editar
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="min-h-[44px] text-destructive hover:text-destructive"
-                                onClick={() => setDeleting(r)}
-                              >
-                                <Trash2 size={16} className="mr-1.5" /> Excluir
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-3 pt-3 border-t border-border">
-                            <p className={`text-[11px] font-semibold ${cancelado ? 'text-destructive' : 'text-orange-700'}`}>
-                              Registro {cancelado ? 'cancelado' : 'ajustado'} pela sala técnica
-                            </p>
-                            <p className="text-[11px] text-muted-foreground italic mt-0.5">
-                              Registro ajustado pela sala técnica. Solicite nova correção se necessário.
-                            </p>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ));
-          })()}
-        </div>
+                {/* Ações de edição/exclusão do encarregado */}
+                {editavel ? (
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-[44px]"
+                        onClick={() => abrirEdicao(r)}
+                      >
+                        <Pencil size={16} className="mr-1.5" /> Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-[44px] text-destructive hover:text-destructive"
+                        onClick={() => setDeleting(r)}
+                      >
+                        <Trash2 size={16} className="mr-1.5" /> Excluir
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className={`text-[11px] font-semibold ${cancelado ? 'text-destructive' : 'text-orange-700'}`}>
+                      Registro {cancelado ? 'cancelado' : 'ajustado'} pela sala técnica
+                    </p>
+                    <p className="text-[11px] text-muted-foreground italic mt-0.5">
+                      Registro ajustado pela sala técnica. Solicite nova correção se necessário.
+                    </p>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       {/* Modal edição */}

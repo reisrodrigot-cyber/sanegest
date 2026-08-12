@@ -1786,6 +1786,8 @@ const useRealEvents = (inicio: string, fim: string) => {
           who: uMap[r.user_id] || 'Usuário',
           description: `registrou produção${trecho ? ` em ${trecho}` : ''}`,
           dataProducao: (r.data_registro as string) || null,
+          rede: Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0,
+          lig: Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0,
           ligComp: ligMap[r.id] ?? null,
         });
       });

@@ -7,7 +7,9 @@ export interface QuantitativoContratual {
   exibicao: string;
   redeM: number | null;
   ramaisUn: number | null;
+  lrM: number | null;
 }
+
 
 /**
  * Quantidades contratuais manuais por sub-bacia (tabela quantitativos_referencia).

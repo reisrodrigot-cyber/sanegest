@@ -1679,7 +1679,9 @@ interface FeedEvent {
   snapshotIndisponivel?: boolean;
   /** Data de produção (yyyy-mm-dd) associada ao evento. */
   dataProducao?: string | null;
-  /** Comprimento total das ligações (m) — apenas eventos de produção. */
+  /** Quantitativos do evento de produção. */
+  rede?: number | null;
+  lig?: number | null;
   ligComp?: number | null;
 }
 

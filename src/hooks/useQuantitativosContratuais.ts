@@ -51,13 +51,15 @@ export function useQuantitativosContratuais() {
   }, [rows]);
 
   const salvar = useCallback(
-    async (items: { chave: string; exibicao: string; redeM: number | null; ramaisUn: number | null }[]) => {
+    async (items: { chave: string; exibicao: string; redeM: number | null; ramaisUn: number | null; lrM: number | null }[]) => {
       const payload = items.map((i) => ({
         bacia_chave: i.chave,
         bacia_exibicao: i.exibicao,
         rede_prevista_metros: i.redeM ?? 0,
         ramais_previstos_unidades: i.ramaisUn ?? 0,
+        linha_recalque_prevista_metros: i.lrM ?? 0,
       }));
+
       if (payload.length === 0) return { error: null };
       const { error } = await supabase
         .from('quantitativos_referencia')

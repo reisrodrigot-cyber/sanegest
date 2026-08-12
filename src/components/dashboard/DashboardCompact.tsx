@@ -1934,8 +1934,9 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
         <ul className="space-y-1.5">
           {events.map((e) => {
             const meta = EVENT_META[e.type];
+            const isProducao = e.type === 'producao';
+            const retroativa = isProducao && !!e.dataProducao && e.dataProducao !== diaLocal(e.ts);
             return (
-
               <li
                 key={e.id}
                 className="flex items-start gap-3 rounded-md py-1.5 pl-2.5 pr-2 bg-muted/20 hover:bg-muted/40 transition-colors"
@@ -1947,25 +1948,71 @@ const ActivityFeed = ({ minDate }: { minDate?: string }) => {
                   </span>
                   <span className="text-[10px] text-muted-foreground">{formatRelative(e.ts)}</span>
                 </div>
-                <span
-                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide whitespace-nowrap"
-                  style={{ color: meta.color, backgroundColor: meta.bg }}
-                >
-                  {meta.label}
-                </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-foreground">
-                    <span className="font-semibold">{e.who}</span>{' '}
-                    <span className="text-muted-foreground">— {e.description}</span>
-                  </div>
-                  {e.type === 'producao_edicao' && (
-                    <AlteracoesRealizadas
-                      alteracoes={e.alteracoes ?? []}
-                      indisponivel={e.snapshotIndisponivel}
-                    />
+                  {isProducao ? (
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide whitespace-nowrap"
+                          style={{
+                            color: retroativa ? '#92400E' : meta.color,
+                            backgroundColor: retroativa ? '#FEF3C7' : meta.bg,
+                            border: retroativa ? '1px solid #FCD34D' : 'none',
+                          }}
+                        >
+                          {retroativa ? 'Produção retroativa' : meta.label}
+                        </span>
+                      </div>
+                      <div className="text-xs text-foreground">
+                        <span className="font-semibold">{e.who}</span>{' '}
+                        <span className="text-muted-foreground">— {e.description}</span>
+                      </div>
+                      <div className={`text-[11px] ${retroativa ? 'font-semibold text-amber-700' : 'text-muted-foreground'}`}>
+                        {retroativa ? (
+                          <>Produção referente a: {fmtDateBR(e.dataProducao!)}</>
+                        ) : (
+                          <>Produção em: {fmtDateBR(e.dataProducao!)}</>
+                        )}{' '}
+                        | Registrado em: {fmtLancamento(e.ts)}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10.5px] text-muted-foreground">
+                        {(() => {
+                          const r = (prod.data || []).find((x: any) => `p-${x.id}` === e.id);
+                          if (!r) return null;
+                          const rede = Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
+                          const lig = Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
+                          const ext = e.ligComp ?? 0;
+                          const partes: React.ReactNode[] = [];
+                          if (rede > 0) partes.push(<span key="rede">Rede: <span className="text-foreground font-medium">{num(rede)} m</span></span>);
+                          if (lig > 0) partes.push(<span key="lig">Ligações: <span className="text-foreground font-medium">{lig} {lig === 1 ? 'un' : 'un'}</span></span>);
+                          if (ext > 0) partes.push(<span key="ext">Extensão de ramais: <span className="text-foreground font-medium">{num(ext)} m</span></span>);
+                          return partes.length > 0 ? <>{partes}</> : null;
+                        })()}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide whitespace-nowrap"
+                          style={{ color: meta.color, backgroundColor: meta.bg }}
+                        >
+                          {meta.label}
+                        </span>
+                      </div>
+                      <div className="text-xs text-foreground mt-1">
+                        <span className="font-semibold">{e.who}</span>{' '}
+                        <span className="text-muted-foreground">— {e.description}</span>
+                      </div>
+                      {e.type === 'producao_edicao' && (
+                        <AlteracoesRealizadas
+                          alteracoes={e.alteracoes ?? []}
+                          indisponivel={e.snapshotIndisponivel}
+                        />
+                      )}
+                    </>
                   )}
                 </div>
-
               </li>
             );
           })}

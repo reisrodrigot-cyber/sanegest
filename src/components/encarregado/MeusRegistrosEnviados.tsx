@@ -44,14 +44,11 @@ interface OSRow {
 }
 
 
-const fmtDataCurta = (key: string) => {
-  const today = new Date().toISOString().slice(0, 10);
-  const yest = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); })();
-  const [y, m, d] = key.split('-');
-  const label = `${d}/${m}/${y}`;
-  if (key === today) return `Hoje — ${label}`;
-  if (key === yest) return `Ontem — ${label}`;
-  return label;
+const fmtDataHora = (iso: string) => {
+  const dt = new Date(iso);
+  const data = dt.toLocaleDateString('pt-BR');
+  const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `Registrado em ${data} às ${hora}`;
 };
 const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 // "Hoje" em America/Maceio (mesma regra do cadastro de produção)

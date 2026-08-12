@@ -898,8 +898,8 @@ const ProducaoPage = () => {
         <div className="space-y-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           {displayedOS.map((os) => (
 
-            <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-4 max-w-full">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
+            <div key={os.id} className="bg-card rounded-xl border border-border shadow-sm p-3 sm:p-4 max-w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 min-w-0">
                 <div className="min-w-0">
                   <p className="font-medium text-foreground truncate">{os.trecho}</p>
                   <p className="text-xs text-muted-foreground truncate">
@@ -910,7 +910,7 @@ const ProducaoPage = () => {
                   onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
                   className="w-full sm:w-auto min-h-[44px] px-4 py-2 rounded-md text-sm font-medium bg-[hsl(var(--status-green))] text-white shadow-sm hover:bg-[hsl(135_64%_40%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--status-green))] focus-visible:ring-offset-2 focus-visible:ring-offset-card transition-colors"
                 >
-                  {expandedId === os.id ? 'Fechar' : statusTab === 'concluido' ? 'Ver Produção' : 'Registrar Dia'}
+                  {expandedId === os.id ? 'Fechar' : 'Registrar produção nessa N.S.'}
                 </button>
               </div>
               {expandedId === os.id && <OSPanel os={os} />}

@@ -684,32 +684,32 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
                     const editavel = podeEditar(r);
 
                     return (
-                      <li key={r.id} className={`rounded-lg border border-border bg-background p-3 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
-                        <div className="flex items-start justify-between gap-3">
+                      <li key={r.id} className={`rounded-lg border border-border bg-background p-2.5 sm:p-4 ${cancelado ? 'opacity-60' : ''}`}>
+                        <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-base font-bold text-foreground flex items-center gap-1.5">
+                            <p className="text-sm sm:text-base font-bold text-foreground flex items-center gap-1.5">
                               <MapPin size={14} className="text-muted-foreground shrink-0" />
                               <span className="truncate">{trecho}</span>
                             </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Enviado às {fmtHora(r.created_at)}</p>
+                            <p className="text-[11px] text-muted-foreground">Enviado às {fmtHora(r.created_at)}</p>
                           </div>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <div className="rounded-md bg-muted/40 p-2">
-                            <p className="text-[11px] text-muted-foreground">Comprimento informado</p>
-                            <p className="text-base font-bold text-foreground">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                            <p className="text-[11px] text-muted-foreground leading-tight">Comprimento informado</p>
+                            <p className="text-sm sm:text-base font-bold text-foreground leading-tight">{fmtMetros(Number(r.comprimento_dia) || 0)}</p>
                             {ajustado && r.comprimento_ajustado != null && (
-                              <p className="text-[11px] text-orange-700 mt-0.5">
+                              <p className="text-[11px] text-orange-700">
                                 Ajustado: <span className="font-semibold">{fmtMetros(compContab)}</span>
                               </p>
                             )}
                           </div>
-                          <div className="rounded-md bg-muted/40 p-2">
-                            <p className="text-[11px] text-muted-foreground">Ligações informadas</p>
-                            <p className="text-base font-bold text-foreground">{r.ligacoes_dia ?? 0}</p>
+                          <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                            <p className="text-[11px] text-muted-foreground leading-tight">Ligações informadas</p>
+                            <p className="text-sm sm:text-base font-bold text-foreground leading-tight">{r.ligacoes_dia ?? 0}</p>
                             {ajustado && r.ligacoes_ajustadas != null && (
-                              <p className="text-[11px] text-orange-700 mt-0.5">
+                              <p className="text-[11px] text-orange-700">
                                 Ajustado: <span className="font-semibold">{ligContab}</span>
                               </p>
                             )}
@@ -717,23 +717,23 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
                         </div>
 
                         {r.motivo_ajuste && (
-                          <p className="mt-2 text-[11px] text-orange-700 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
+                          <p className="mt-1.5 text-[11px] text-orange-700 italic">Motivo do ajuste: {r.motivo_ajuste}</p>
                         )}
                         {cancelado && r.motivo_cancelamento && (
-                          <p className="mt-2 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
+                          <p className="mt-1.5 text-[11px] text-destructive italic">Motivo do cancelamento: {r.motivo_cancelamento}</p>
                         )}
 
                         {r.observacao && (
-                          <p className="mt-2 text-xs text-muted-foreground italic">Obs.: {r.observacao}</p>
+                          <p className="mt-1.5 text-[11px] sm:text-xs text-muted-foreground italic">Obs.: {r.observacao}</p>
                         )}
 
-                        <div className={`mt-3 flex items-center gap-1.5 text-xs font-semibold ${statusColor}`}>
-                          <StatusIcon size={14} />
+                        <div className={`mt-1.5 flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold ${statusColor}`}>
+                          <StatusIcon size={13} />
                           <span>{statusLabel}</span>
                         </div>
 
                         {r.pv_final_assentado && !cancelado && (
-                          <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-secondary/10 px-2 py-1 text-[11px] font-semibold text-secondary">
+                          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-secondary/10 px-2 py-0.5 text-[11px] font-semibold text-secondary">
                             <CheckCircle2 size={12} />
                             PV final assentado — trecho concluído pelo encarregado
                           </div>
@@ -741,10 +741,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
 
                         {/* Ações de edição/exclusão do encarregado */}
                         {editavel ? (
-                          <div className="mt-3 pt-3 border-t border-border">
-                            <p className="text-[11px] text-muted-foreground mb-2">
-                              Este registro está ativo e ainda não foi ajustado pela sala técnica. Você pode editá-lo ou excluí-lo.
-                            </p>
+                          <div className="mt-2 pt-2 border-t border-border">
                             <div className="grid grid-cols-2 gap-2">
                               <Button
                                 type="button"

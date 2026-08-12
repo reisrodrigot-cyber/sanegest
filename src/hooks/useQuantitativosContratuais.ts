@@ -27,7 +27,7 @@ export function useQuantitativosContratuais() {
     (async () => {
       const { data } = await supabase
         .from('quantitativos_referencia')
-        .select('bacia_chave, bacia_exibicao, rede_prevista_metros, ramais_previstos_unidades');
+        .select('bacia_chave, bacia_exibicao, rede_prevista_metros, ramais_previstos_unidades, linha_recalque_prevista_metros');
       if (cancelado) return;
       setRows(
         (data ?? []).map((r: any) => ({
@@ -35,9 +35,11 @@ export function useQuantitativosContratuais() {
           exibicao: r.bacia_exibicao ?? r.bacia_chave,
           redeM: Number(r.rede_prevista_metros) > 0 ? Number(r.rede_prevista_metros) : null,
           ramaisUn: Number(r.ramais_previstos_unidades) > 0 ? Number(r.ramais_previstos_unidades) : null,
+          lrM: Number(r.linha_recalque_prevista_metros) > 0 ? Number(r.linha_recalque_prevista_metros) : null,
         })),
       );
       setLoading(false);
+
     })();
     return () => { cancelado = true; };
   }, [tick]);

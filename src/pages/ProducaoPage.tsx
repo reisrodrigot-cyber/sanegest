@@ -880,7 +880,7 @@ const ProducaoPage = () => {
               : 'bg-card text-foreground border-border hover:bg-muted/60'
           }`}
         >
-          Concluído ({countConcluido})
+          N.S. PV assentado ({countConcluido})
         </button>
       </div>
 

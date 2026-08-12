@@ -484,12 +484,17 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
   };
 
   return (
-    <section id="meus-registros" className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-5">
-      <div className="mb-3">
+    <section id="meus-registros" className="bg-card rounded-xl border border-border shadow-sm p-3 sm:p-5">
+      <div className="mb-2.5">
         <h2 className="text-lg font-bold text-foreground">Meus registros enviados</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Cada envio já conta como produção. Você pode editar ou excluir seus registros enquanto eles estiverem ativos. A sala técnica pode ajustar, cancelar ou restaurar lançamentos com auditoria.
-        </p>
+        <div className="mt-1.5 rounded-md border border-[hsl(var(--status-yellow))] bg-[hsl(var(--status-yellow-bg))] p-2.5 text-[12px] leading-snug text-[hsl(var(--status-yellow-fg))]">
+          <p className="font-semibold">
+            Use Editar ou Excluir somente para corrigir um erro em uma produção já registrada.
+          </p>
+          <p className="mt-1">
+            Se esqueceu de lançar uma produção, registre um novo lançamento usando a data correta, inclusive data retroativa.
+          </p>
+        </div>
       </div>
 
       {/* Filtros de período */}

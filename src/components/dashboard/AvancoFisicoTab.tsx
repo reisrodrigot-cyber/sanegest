@@ -291,6 +291,8 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
   const subBacias = avanco.rede.map((l) => ({ chave: l.chave, exibicao: l.exibicao }));
   const contratualRede = new Map(avanco.rede.map((l) => [l.chave, porChave.get(l.chave)?.redeM ?? null]));
   const contratualRamais = new Map(avanco.ramais.map((l) => [l.chave, porChave.get(l.chave)?.ramaisUn ?? null]));
+  // Linha de Recalque: referência contratual manual ainda não cadastrada — exibe "—".
+  const contratualLR = new Map<string, number | null>(avanco.linhaRecalque.map((l) => [l.chave, null]));
 
   if (avanco.loading) {
     return (

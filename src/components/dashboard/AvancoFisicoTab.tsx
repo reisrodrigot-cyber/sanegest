@@ -298,13 +298,14 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
 
   const subBaciasMap = new Map<string, string>();
   [...avanco.rede, ...avanco.ramais, ...avanco.linhaRecalque].forEach((l) => {
-    if (ocultarGenerica(l.exibicao)) return;
     if (!subBaciasMap.has(l.chave)) subBaciasMap.set(l.chave, l.exibicao);
   });
   const subBacias = Array.from(subBaciasMap, ([chave, exibicao]) => ({ chave, exibicao }));
+  // Rede e Ramais: ocultar apenas as referências genéricas POV. SS-13 / POV. SS-14
   const redeVisivel = avanco.rede.filter((l) => !ocultarGenerica(l.exibicao));
   const ramaisVisivel = avanco.ramais.filter((l) => !ocultarGenerica(l.exibicao));
-  const lrVisivel = avanco.linhaRecalque.filter((l) => !ocultarGenerica(l.exibicao));
+  // Linha de Recalque: as genéricas SS-13 / SS-14 são válidas e devem aparecer
+  const lrVisivel = avanco.linhaRecalque;
   const contratualRede = new Map(redeVisivel.map((l) => [l.chave, porChave.get(l.chave)?.redeM ?? null]));
   const contratualRamais = new Map(ramaisVisivel.map((l) => [l.chave, porChave.get(l.chave)?.ramaisUn ?? null]));
   const contratualLR = new Map<string, number | null>(

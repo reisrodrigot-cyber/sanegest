@@ -288,11 +288,17 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
   const [modalAberto, setModalAberto] = useState(false);
   const podeEditar = effectiveRole === 'admin' || effectiveRole === 'sala_tecnica';
 
-  const subBacias = avanco.rede.map((l) => ({ chave: l.chave, exibicao: l.exibicao }));
+  const subBaciasMap = new Map<string, string>();
+  [...avanco.rede, ...avanco.ramais, ...avanco.linhaRecalque].forEach((l) => {
+    if (!subBaciasMap.has(l.chave)) subBaciasMap.set(l.chave, l.exibicao);
+  });
+  const subBacias = Array.from(subBaciasMap, ([chave, exibicao]) => ({ chave, exibicao }));
   const contratualRede = new Map(avanco.rede.map((l) => [l.chave, porChave.get(l.chave)?.redeM ?? null]));
   const contratualRamais = new Map(avanco.ramais.map((l) => [l.chave, porChave.get(l.chave)?.ramaisUn ?? null]));
-  // Linha de Recalque: referência contratual manual ainda não cadastrada — exibe "—".
-  const contratualLR = new Map<string, number | null>(avanco.linhaRecalque.map((l) => [l.chave, null]));
+  const contratualLR = new Map<string, number | null>(
+    avanco.linhaRecalque.map((l) => [l.chave, porChave.get(l.chave)?.lrM ?? null]),
+  );
+
 
   if (avanco.loading) {
     return (

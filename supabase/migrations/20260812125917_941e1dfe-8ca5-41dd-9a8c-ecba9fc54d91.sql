@@ -1,0 +1,1 @@
+ALTER TABLE public.quantitativos_referencia ADD COLUMN IF NOT EXISTS linha_recalque_prevista_metros numeric NOT NULL DEFAULT 0;

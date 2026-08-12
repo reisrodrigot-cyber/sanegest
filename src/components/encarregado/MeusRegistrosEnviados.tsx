@@ -649,7 +649,7 @@ export function MeusRegistrosEnviados({ limit, hideFilters: _hideFilters, filtro
           Nenhum envio encontrado.
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {(() => {
             const groups: { date: string; items: RegistroRow[] }[] = [];
             itens.forEach((r) => {

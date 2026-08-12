@@ -84,7 +84,7 @@ const fmt = (v: unknown) => {
 };
 
 const ReadField = ({ label, value }: { label: string; value: unknown }) => (
-  <div className="flex justify-between py-1.5 border-b border-border last:border-0 text-sm">
+  <div className="flex justify-between py-1 sm:py-1.5 border-b border-border last:border-0 text-[13px] sm:text-sm">
     <span className="text-muted-foreground">{label}</span>
     <span className="text-foreground font-medium">{fmt(value)}</span>
   </div>

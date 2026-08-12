@@ -361,8 +361,8 @@ const OSPanel = ({ os }: { os: OrdemServico }) => {
       </div>
 
       {/* Novo registro do dia */}
-      <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">Novo registro de produção</h3>
+      <div className="bg-card border border-border rounded-lg p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+        <h3 className="text-[13px] sm:text-sm font-semibold text-foreground">Novo registro de produção</h3>
         <div
           className="flex items-start gap-2.5 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm leading-snug text-destructive"
           role="alert"

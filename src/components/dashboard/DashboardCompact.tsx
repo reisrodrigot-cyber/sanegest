@@ -81,7 +81,9 @@ const fmtM = (n: number) =>
 
 
 // Normaliza variações de nome de encarregado para nomes canônicos exibidos.
-export { normalizarEncarregado } from '@/lib/encarregados';
+import { normalizarEncarregado } from '@/lib/encarregados';
+export { normalizarEncarregado };
+
 
 
 

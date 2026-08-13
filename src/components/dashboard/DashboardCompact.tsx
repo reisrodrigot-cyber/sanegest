@@ -81,14 +81,8 @@ const fmtM = (n: number) =>
 
 
 // Normaliza variações de nome de encarregado para nomes canônicos exibidos.
-const normalizarEncarregado = (raw: string | null | undefined): string => {
-  const s = String(raw ?? '').trim();
-  if (!s) return '—';
-  const low = s.toLowerCase();
-  if (low.includes('nilton')) return 'Nilton Alexandre';
-  if (low.includes('ailton')) return 'Ailton Santos';
-  return s;
-};
+export { normalizarEncarregado } from '@/lib/encarregados';
+
 
 
 

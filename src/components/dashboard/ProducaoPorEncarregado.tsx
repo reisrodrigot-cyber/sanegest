@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { OrdemServico } from '@/types/sanegest';
+import { normalizarEncarregado } from '@/lib/encarregados';
+
 
 interface Props {
   ordens: OrdemServico[];

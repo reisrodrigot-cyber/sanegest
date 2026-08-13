@@ -81,7 +81,7 @@ const BarraPct = ({ pct }: { pct: number | null }) => (
 
 const AvancoSecao = ({
   titulo, linhas, unidade, formatar, contratualPorChave, formatarContratual, podeEditar, onEditar,
-  mostrarContratual = true,
+  mostrarContratual = true, saldoOperacional = false,
 }: {
   titulo: string;
   linhas: LinhaAvanco[];
@@ -93,6 +93,8 @@ const AvancoSecao = ({
   onEditar: () => void;
   /** Quando false, a seção mostra apenas Previsto/Realizado/Saldo/% (sem contratual). */
   mostrarContratual?: boolean;
+  /** Quando true, o saldo exibido é Previsto − Realizado (não contratual). */
+  saldoOperacional?: boolean;
 }) => {
   const contratualTexto = (chave: string) => {
     const v = contratualPorChave.get(chave);
@@ -102,6 +104,7 @@ const AvancoSecao = ({
     const v = contratualPorChave.get(chave);
     return v == null ? '—' : formatarContratual(v - realizado);
   };
+
   const previsto = linhas.reduce((s, l) => s + l.previsto, 0);
   const realizado = linhas.reduce((s, l) => s + l.realizado, 0);
   const pctTotal = previsto > 0 ? Math.round((realizado / previsto) * 1000) / 10 : null;

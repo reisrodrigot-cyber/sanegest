@@ -168,9 +168,10 @@ const AvancoSecao = ({
                           <dd className="tabular-nums font-medium text-foreground">{contratualTexto(l.chave)} {unidade}</dd>
                         </div>
                         <div className="min-w-0">
-                          <dt className="text-muted-foreground">Saldo contratual</dt>
-                          <dd className="tabular-nums font-medium text-foreground">{saldoContratualTexto(l.chave, l.realizado)} {unidade}</dd>
+                          <dt className="text-muted-foreground">{saldoOperacional ? 'Saldo' : 'Saldo contratual'}</dt>
+                          <dd className="tabular-nums font-medium text-foreground">{saldoOperacional ? formatar(l.saldo) : saldoContratualTexto(l.chave, l.realizado)} {unidade}</dd>
                         </div>
+
                       </>
                     ) : (
                       <div className="min-w-0">

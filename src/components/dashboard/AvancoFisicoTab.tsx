@@ -202,7 +202,7 @@ const AvancoSecao = ({
                   {mostrarContratual ? (
                     <>
                       <div><dt className="text-muted-foreground">Qnt. Contratual</dt><dd className="tabular-nums font-medium text-foreground">{contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma)} ${unidade}`}</dd></div>
-                      <div><dt className="text-muted-foreground">Saldo contratual</dt><dd className="tabular-nums font-medium text-foreground">{contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma - realizadoComContratual)} ${unidade}`}</dd></div>
+                      <div><dt className="text-muted-foreground">{saldoOperacional ? 'Saldo' : 'Saldo contratual'}</dt><dd className="tabular-nums font-medium text-foreground">{saldoOperacional ? `${formatar(previsto - realizado)} ${unidade}` : (contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma - realizadoComContratual)} ${unidade}`)}</dd></div>
                     </>
                   ) : (
                     <div><dt className="text-muted-foreground">Saldo</dt><dd className="tabular-nums font-medium text-foreground">{formatar(previsto - realizado)} {unidade}</dd></div>

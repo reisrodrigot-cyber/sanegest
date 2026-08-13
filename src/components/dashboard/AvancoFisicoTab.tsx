@@ -265,8 +265,9 @@ const AvancoSecao = ({
                         {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma)}
                       </td>
                       <td className="py-1.5 px-2 text-right tabular-nums">
-                        {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma - realizadoComContratual)}
+                        {saldoOperacional ? formatar(previsto - realizado) : (contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma - realizadoComContratual))}
                       </td>
+
                     </>
                   ) : (
                     <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto - realizado)}</td>

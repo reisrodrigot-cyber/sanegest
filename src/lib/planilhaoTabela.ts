@@ -1,3 +1,4 @@
+import { normalizarEncarregado } from '@/lib/encarregados';
 import type { OSDisplayStatus } from '@/lib/osStatus';
 import { statusLabel, vinculoDisplayStatus, STATUS_PRIORITY_DESC } from '@/lib/osStatus';
 import { passesFilter, type CellValue, type ColFilterType, type ColumnFilterValue, isFilterActive } from '@/lib/columnFilter';
@@ -171,8 +172,8 @@ function aggregarProducao(producao: ProducaoRaw[]): Map<string, ProdAgg> {
     a.ligQtd += Number(p.quantidade_ligacoes_realizadas || 0);
     a.ligM = Math.max(a.ligM, Number(p.comprimento_total_ligacoes || 0));
     if (p.pv_final_assentado) a.pvFinal = true;
-    const nome = (p.responsavel_nome || '').trim();
-    if (nome) a.encarregados.add(nome);
+    const nome = normalizarEncarregado((p.responsavel_nome || '').trim());
+    if (nome && nome !== '—') a.encarregados.add(nome);
     const d = p.data_producao ? String(p.data_producao).slice(0, 10) : null;
     if (d) {
       if (rede > 0 || Number(p.quantidade_ligacoes_realizadas || 0) > 0) a.dias.add(d);
@@ -231,8 +232,8 @@ export function consolidarLinhas(ordens: OrdemRaw[], producao: ProducaoRaw[]): P
         if (p.rede > 0 || p.ligQtd > 0 || p.ligM > 0) temProducao = true;
       }
       statuses.push(vinculoDisplayStatus({ status: os.status as never, pv_final_assentado: p?.pvFinal || false }));
-      const resp = (os.liberado_para || os.executor_real || os.executor || '').trim();
-      if (resp && !p?.encarregados.size) encarregados.add(resp);
+      const resp = normalizarEncarregado((os.liberado_para || os.executor_real || os.executor || '').trim());
+      if (resp && resp !== '—' && !p?.encarregados.size) encarregados.add(resp);
     }
 
     // Status agregado: prioriza a situação mais avançada do grupo
@@ -243,7 +244,7 @@ export function consolidarLinhas(ordens: OrdemRaw[], producao: ProducaoRaw[]): P
     // Regra única: saldo = previsto − executado (sem clamp, negativo é exibido)
     const saldo: number | null = previstoVal != null ? previstoVal - (realVal ?? 0) : null;
 
-    const respPrev = [...new Set(g.oss.map(o => (o.liberado_para || o.executor_real || o.executor || '').trim()).filter(Boolean))].join(', ');
+    const respPrev = [...new Set(g.oss.map(o => (o.liberado_para || o.executor_real || o.executor || '').trim()).filter(Boolean).map(normalizarEncarregado))].join(', ');
 
     rows.push({
       key,

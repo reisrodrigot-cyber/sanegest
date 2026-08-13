@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
+import { normalizarEncarregado } from '@/lib/encarregados';
 
 interface Row {
   os_id: string;
@@ -38,7 +39,7 @@ export const MediaPorEncarregado = () => {
           .in('user_id', ids);
         const map: Record<string, string> = {};
         (profs ?? []).forEach((p) => {
-          map[p.user_id] = p.apelido || p.display_name || p.email || p.user_id.slice(0, 8);
+          map[p.user_id] = normalizarEncarregado(p.apelido || p.display_name || p.email || p.user_id.slice(0, 8));
         });
         setUsers(map);
       }

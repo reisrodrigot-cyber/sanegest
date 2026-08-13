@@ -81,7 +81,8 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
         const ligs = campo?.lig ?? 0;
         if (metros <= 0 && ligs <= 0) return;
         const raw = os.liberado_para!;
-        const nome = apelidoMap[raw] || raw;
+        const nome = normalizarEncarregado(apelidoMap[raw] || raw);
+
         const cur = map.get(nome) ?? { nome, nsExecutadas: 0, totalMetros: 0, totalLigacoes: 0, ns: [] };
         cur.nsExecutadas += 1;
         cur.totalMetros += metros;

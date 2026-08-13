@@ -380,7 +380,9 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           formatarContratual={fmtM}
           podeEditar={podeEditar}
           onEditar={() => setModalAberto(true)}
+          saldoOperacional
         />
+
         <AvancoSecao
           titulo="Ramais por sub-bacia"
           linhas={ramaisVisivel}

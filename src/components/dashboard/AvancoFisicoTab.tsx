@@ -392,6 +392,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           formatarContratual={fmtUn}
           podeEditar={podeEditar}
           onEditar={() => setModalAberto(true)}
+          saldoOperacional
         />
         <AvancoSecao
           titulo="Linha de Recalque por sub-bacia"
@@ -402,6 +403,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           formatarContratual={fmtM}
           podeEditar={podeEditar}
           onEditar={() => setModalAberto(true)}
+          saldoOperacional
         />
 
       </div>

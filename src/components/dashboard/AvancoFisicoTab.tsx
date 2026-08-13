@@ -245,7 +245,7 @@ const AvancoSecao = ({
                     {mostrarContratual ? (
                       <>
                         <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">{contratualTexto(l.chave)}</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums">{saldoContratualTexto(l.chave, l.realizado)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{saldoOperacional ? formatar(l.saldo) : saldoContratualTexto(l.chave, l.realizado)}</td>
                       </>
                     ) : (
                       <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.saldo)}</td>

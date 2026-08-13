@@ -228,7 +228,7 @@ const AvancoSecao = ({
                           {podeEditar && BotaoLapis}
                         </span>
                       </th>
-                      <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo contratual ({unidade})</th>
+                      <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">{saldoOperacional ? 'Saldo' : 'Saldo contratual'} ({unidade})</th>
                     </>
                   ) : (
                     <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo ({unidade})</th>

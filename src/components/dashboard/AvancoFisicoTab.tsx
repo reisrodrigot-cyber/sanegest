@@ -81,7 +81,7 @@ const BarraPct = ({ pct }: { pct: number | null }) => (
 
 const AvancoSecao = ({
   titulo, linhas, unidade, formatar, contratualPorChave, formatarContratual, podeEditar, onEditar,
-  mostrarContratual = true,
+  mostrarContratual = true, saldoOperacional = false,
 }: {
   titulo: string;
   linhas: LinhaAvanco[];
@@ -93,6 +93,8 @@ const AvancoSecao = ({
   onEditar: () => void;
   /** Quando false, a seção mostra apenas Previsto/Realizado/Saldo/% (sem contratual). */
   mostrarContratual?: boolean;
+  /** Quando true, o saldo exibido é Previsto − Realizado (não contratual). */
+  saldoOperacional?: boolean;
 }) => {
   const contratualTexto = (chave: string) => {
     const v = contratualPorChave.get(chave);
@@ -102,6 +104,7 @@ const AvancoSecao = ({
     const v = contratualPorChave.get(chave);
     return v == null ? '—' : formatarContratual(v - realizado);
   };
+
   const previsto = linhas.reduce((s, l) => s + l.previsto, 0);
   const realizado = linhas.reduce((s, l) => s + l.realizado, 0);
   const pctTotal = previsto > 0 ? Math.round((realizado / previsto) * 1000) / 10 : null;
@@ -165,9 +168,10 @@ const AvancoSecao = ({
                           <dd className="tabular-nums font-medium text-foreground">{contratualTexto(l.chave)} {unidade}</dd>
                         </div>
                         <div className="min-w-0">
-                          <dt className="text-muted-foreground">Saldo contratual</dt>
-                          <dd className="tabular-nums font-medium text-foreground">{saldoContratualTexto(l.chave, l.realizado)} {unidade}</dd>
+                          <dt className="text-muted-foreground">{saldoOperacional ? 'Saldo' : 'Saldo contratual'}</dt>
+                          <dd className="tabular-nums font-medium text-foreground">{saldoOperacional ? formatar(l.saldo) : saldoContratualTexto(l.chave, l.realizado)} {unidade}</dd>
                         </div>
+
                       </>
                     ) : (
                       <div className="min-w-0">
@@ -198,7 +202,7 @@ const AvancoSecao = ({
                   {mostrarContratual ? (
                     <>
                       <div><dt className="text-muted-foreground">Qnt. Contratual</dt><dd className="tabular-nums font-medium text-foreground">{contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma)} ${unidade}`}</dd></div>
-                      <div><dt className="text-muted-foreground">Saldo contratual</dt><dd className="tabular-nums font-medium text-foreground">{contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma - realizadoComContratual)} ${unidade}`}</dd></div>
+                      <div><dt className="text-muted-foreground">{saldoOperacional ? 'Saldo' : 'Saldo contratual'}</dt><dd className="tabular-nums font-medium text-foreground">{saldoOperacional ? `${formatar(previsto - realizado)} ${unidade}` : (contratualTotalSoma == null ? '—' : `${formatarContratual(contratualTotalSoma - realizadoComContratual)} ${unidade}`)}</dd></div>
                     </>
                   ) : (
                     <div><dt className="text-muted-foreground">Saldo</dt><dd className="tabular-nums font-medium text-foreground">{formatar(previsto - realizado)} {unidade}</dd></div>
@@ -224,7 +228,7 @@ const AvancoSecao = ({
                           {podeEditar && BotaoLapis}
                         </span>
                       </th>
-                      <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo contratual ({unidade})</th>
+                      <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">{saldoOperacional ? 'Saldo' : 'Saldo contratual'} ({unidade})</th>
                     </>
                   ) : (
                     <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo ({unidade})</th>
@@ -241,7 +245,7 @@ const AvancoSecao = ({
                     {mostrarContratual ? (
                       <>
                         <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">{contratualTexto(l.chave)}</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums">{saldoContratualTexto(l.chave, l.realizado)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{saldoOperacional ? formatar(l.saldo) : saldoContratualTexto(l.chave, l.realizado)}</td>
                       </>
                     ) : (
                       <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.saldo)}</td>
@@ -261,8 +265,9 @@ const AvancoSecao = ({
                         {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma)}
                       </td>
                       <td className="py-1.5 px-2 text-right tabular-nums">
-                        {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma - realizadoComContratual)}
+                        {saldoOperacional ? formatar(previsto - realizado) : (contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma - realizadoComContratual))}
                       </td>
+
                     </>
                   ) : (
                     <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto - realizado)}</td>
@@ -375,7 +380,9 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
           formatarContratual={fmtM}
           podeEditar={podeEditar}
           onEditar={() => setModalAberto(true)}
+          saldoOperacional
         />
+
         <AvancoSecao
           titulo="Ramais por sub-bacia"
           linhas={ramaisVisivel}

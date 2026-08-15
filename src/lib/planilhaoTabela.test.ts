@@ -18,7 +18,7 @@ const os = (o: Partial<OrdemRaw> & { id: string }): OrdemRaw => ({
 });
 
 const prod = (p: Partial<ProducaoRaw> & { os_id: string }): ProducaoRaw => ({
-  data_producao: '2026-08-01', responsavel_nome: 'João', comprimento_trecho_executado: 10,
+  data_producao: '2026-08-01', responsavel_user_id: 'user-joao', responsavel_nome: 'João', comprimento_trecho_executado: 10,
   quantidade_ligacoes_realizadas: 0, comprimento_total_ligacoes: 0, pv_final_assentado: false, ...p,
 });
 
@@ -48,13 +48,37 @@ describe('consolidarLinhas', () => {
       [os({ id: 'a' })],
       [
         prod({ os_id: 'a', responsavel_nome: 'João', data_producao: '2026-07-10' }),
-        prod({ os_id: 'a', responsavel_nome: 'Maria', data_producao: '2026-08-02' }),
+        prod({ os_id: 'a', responsavel_user_id: 'user-maria', responsavel_nome: 'Maria', data_producao: '2026-08-02' }),
         prod({ os_id: 'a', responsavel_nome: 'João', data_producao: '2026-07-20' }),
       ],
     );
     expect(rows[0].encarregados).toBe('João, Maria');
     expect(rows[0].periodo).toBe('10/07/2026 – 02/08/2026');
     expect(rows[0].dias_producao).toBe(3);
+  });
+
+  it('une grafias da mesma conta pelo ID sem perder produção', () => {
+    const rows = consolidarLinhas(
+      [os({ id: 'a' })],
+      [
+        prod({ os_id: 'a', responsavel_user_id: 'carlito-id', responsavel_nome: 'carlitojose180', comprimento_trecho_executado: 4 }),
+        prod({ os_id: 'a', responsavel_user_id: 'carlito-id', responsavel_nome: 'Carlito', comprimento_trecho_executado: 12 }),
+      ],
+    );
+    expect(rows[0].encarregados).toBe('Carlito');
+    expect(rows[0].real_m).toBe(16);
+  });
+
+  it('não une contas diferentes que tenham o mesmo nome exibido', () => {
+    const rows = consolidarLinhas(
+      [os({ id: 'a' })],
+      [
+        prod({ os_id: 'a', responsavel_user_id: 'pessoa-1', responsavel_nome: 'João' }),
+        prod({ os_id: 'a', responsavel_user_id: 'pessoa-2', responsavel_nome: 'João' }),
+      ],
+    );
+    expect(rows[0].encarregados).toBe('João, João');
+    expect(rows[0].real_m).toBe(20);
   });
 
   it('saldo é sempre previsto − executado, mesmo com PV final assentado', () => {

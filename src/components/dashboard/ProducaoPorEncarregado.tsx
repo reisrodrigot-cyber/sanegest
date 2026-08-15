@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { OrdemServico } from '@/types/sanegest';
-import { normalizarEncarregado } from '@/lib/encarregados';
+import { resolverIdentidadeEncarregado } from '@/lib/encarregados';
 
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
 }
 
 interface EncarregadoRow {
+  id: string;
   nome: string;
   nsExecutadas: number;
   totalMetros: number;
@@ -31,7 +32,7 @@ interface RegistroRow {
 
 export function ProducaoPorEncarregado({ ordens }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [apelidoMap, setApelidoMap] = useState<Record<string, string>>({});
+  const [perfilMap, setPerfilMap] = useState<Record<string, { apelido: string | null; displayName: string | null; email: string | null }>>({});
   const [registros, setRegistros] = useState<RegistroRow[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const n = new Date();
@@ -41,19 +42,17 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
   useEffect(() => {
     (async () => {
       const [{ data: profs }, { data: regs }] = await Promise.all([
-        supabase.from('profiles').select('display_name, apelido, email'),
+        supabase.from('profiles').select('user_id, display_name, apelido, email'),
         supabase
           .from('registros_producao')
           .select('os_id, user_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, status')
           .eq('excluido', false).eq('status', 'ativo'),
       ]);
-      const map: Record<string, string> = {};
+      const map: Record<string, { apelido: string | null; displayName: string | null; email: string | null }> = {};
       (profs ?? []).forEach((p: any) => {
-        const friendly = p.apelido || p.display_name || p.email;
-        if (p.display_name && friendly) map[p.display_name] = friendly;
-        if (p.email && friendly) map[p.email] = friendly;
+        map[p.user_id] = { apelido: p.apelido, displayName: p.display_name, email: p.email };
       });
-      setApelidoMap(map);
+      setPerfilMap(map);
       setRegistros((regs ?? []) as RegistroRow[]);
     })();
   }, []);
@@ -61,33 +60,33 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
   const dados = useMemo(() => {
     const ym = selectedMonth;
 
-    // Soma de registros contabilizados (ajustado ?? informado) por OS no mês atual.
-    const sumByOs = new Map<string, { comp: number; lig: number; lastDate: string }>();
+    // Soma por autor + O.S.; o texto da atribuição não define autoria.
+    const sumByAutorOs = new Map<string, { userId: string; osId: string; comp: number; lig: number; lastDate: string }>();
     for (const r of registros) {
       if (!r.data_registro.startsWith(ym)) continue;
-      const cur = sumByOs.get(r.os_id) ?? { comp: 0, lig: 0, lastDate: r.data_registro };
+      const key = `${r.user_id}|${r.os_id}`;
+      const cur = sumByAutorOs.get(key) ?? { userId: r.user_id, osId: r.os_id, comp: 0, lig: 0, lastDate: r.data_registro };
       cur.comp += Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
       cur.lig += Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
       if (r.data_registro > cur.lastDate) cur.lastDate = r.data_registro;
-      sumByOs.set(r.os_id, cur);
+      sumByAutorOs.set(key, cur);
     }
 
     const map = new Map<string, EncarregadoRow>();
-    ordens
-      .filter(os => os.liberado_para)
-      .forEach(os => {
-        const campo = sumByOs.get(os.id);
-        const metros = campo?.comp ?? 0;
-        const ligs = campo?.lig ?? 0;
+    sumByAutorOs.forEach((campo) => {
+        const os = ordens.find((item) => item.id === campo.osId);
+        if (!os) return;
+        const metros = campo.comp;
+        const ligs = campo.lig;
         if (metros <= 0 && ligs <= 0) return;
-        const raw = os.liberado_para!;
-        const nome = normalizarEncarregado(apelidoMap[raw] || raw);
+        const perfil = perfilMap[campo.userId];
+        const identidade = resolverIdentidadeEncarregado({ userId: campo.userId, ...perfil });
 
-        const cur = map.get(nome) ?? { nome, nsExecutadas: 0, totalMetros: 0, totalLigacoes: 0, ns: [] };
+        const cur = map.get(identidade.id) ?? { id: identidade.id, nome: identidade.nome, nsExecutadas: 0, totalMetros: 0, totalLigacoes: 0, ns: [] };
         cur.nsExecutadas += 1;
         cur.totalMetros += metros;
         cur.totalLigacoes += ligs;
-        const dataRef = new Date((campo?.lastDate ?? os.updated_at) + (campo?.lastDate ? 'T00:00:00' : ''));
+        const dataRef = new Date(`${campo.lastDate}T00:00:00`);
         cur.ns.push({
           id: os.id,
           trecho: os.trecho,
@@ -97,10 +96,10 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
           data: dataRef.toLocaleDateString('pt-BR'),
           fonte: 'campo',
         });
-        map.set(nome, cur);
+        map.set(identidade.id, cur);
       });
     return Array.from(map.values()).sort((a, b) => b.totalMetros - a.totalMetros);
-  }, [ordens, apelidoMap, registros, selectedMonth]);
+  }, [ordens, perfilMap, registros, selectedMonth]);
 
   const monthLabel = useMemo(() => {
     const [y, m] = selectedMonth.split('-').map(Number);
@@ -157,12 +156,12 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
             {dados.map(enc => (
               <>
                 <tr
-                  key={enc.nome}
+                  key={enc.id}
                   className="border-b border-border/50 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => setExpanded(expanded === enc.nome ? null : enc.nome)}
+                  onClick={() => setExpanded(expanded === enc.id ? null : enc.id)}
                 >
                   <td className="py-2 text-muted-foreground">
-                    {expanded === enc.nome ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    {expanded === enc.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </td>
                   <td className="py-2 text-foreground font-medium">{enc.nome}</td>
                   <td className="py-2 text-right text-muted-foreground">{enc.nsExecutadas}</td>
@@ -171,7 +170,7 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
                   </td>
                   <td className="py-2 text-right text-muted-foreground">{enc.totalLigacoes}</td>
                 </tr>
-                {expanded === enc.nome && enc.ns.map(ns => (
+                {expanded === enc.id && enc.ns.map(ns => (
                   <tr key={ns.id} className="bg-muted/30">
                     <td className="py-1.5"></td>
                     <td className="py-1.5 pl-4 text-muted-foreground" colSpan={4}>

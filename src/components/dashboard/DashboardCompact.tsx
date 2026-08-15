@@ -71,6 +71,7 @@ interface RelatorioRow {
   quantidade_ligacoes_realizadas: number | null;
   comprimento_total_ligacoes: number | null;
   pv_final_assentado: boolean | null;
+  responsavel_user_id: string | null;
 
 }
 
@@ -81,7 +82,7 @@ const fmtM = (n: number) =>
 
 
 // Normaliza variações de nome de encarregado para nomes canônicos exibidos.
-import { normalizarEncarregado } from '@/lib/encarregados';
+import { normalizarEncarregado, resolverIdentidadeEncarregado } from '@/lib/encarregados';
 export { normalizarEncarregado };
 
 
@@ -306,7 +307,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     const fetchAllRelatorio = () => fetchAllPaged<RelatorioRow>((from, to) =>
       supabase
         .from('relatorio_producao_diaria')
-        .select('os_id, obra_nome, trecho, encarregado, liberado_para, responsavel_nome, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes, pv_final_assentado')
+        .select('os_id, obra_nome, trecho, encarregado, liberado_para, responsavel_nome, responsavel_user_id, data_producao, comprimento_trecho_executado, quantidade_ligacoes_realizadas, comprimento_total_ligacoes, pv_final_assentado')
         .order('data_producao', { ascending: true })
         .range(from, to),
     );
@@ -414,7 +415,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   //   - Total: rede + ligações (m).
   //   - Produtividade de rede (m/dia): rede / dias distintos com rede > 0.
   //     Ligações NÃO entram neste indicador.
-  //   - Normaliza nomes: "nilton*" → Nilton Alexandre, "ailton*" → Ailton Santos.
+  //   - Agrupa exclusivamente pelo ID estável do autor; nome é só apresentação.
   const porEncarregado = useMemo(() => {
     interface Agg {
       nome: string;
@@ -433,8 +434,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       if (!data) continue;
       if (data < periodo.inicio || data > periodo.fim) continue;
 
-      const rawNome = row.encarregado || row.liberado_para || row.responsavel_nome || '—';
-      const nome = normalizarEncarregado(rawNome);
+      const identidade = resolverIdentidadeEncarregado({
+        userId: row.responsavel_user_id,
+        nome: row.responsavel_nome || row.encarregado || row.liberado_para,
+      });
       const rede = Number(row.comprimento_trecho_executado) || 0;
       const ligUn = Number(row.quantidade_ligacoes_realizadas) || 0;
       const ligTot = Number(row.comprimento_total_ligacoes) || 0;
@@ -443,8 +446,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       if (rede <= 0 && ligUn <= 0 && ligTot <= 0) continue;
 
       const grupo = row.os_id ? `os:${row.os_id}` : `tr:${trechoKey(row.trecho)}`;
-      const cur = map.get(nome) ?? {
-        nome,
+      const cur = map.get(identidade.id) ?? {
+        nome: identidade.nome,
         rede: 0,
         ligUn: 0,
         days: new Set<string>(),
@@ -457,7 +460,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       if (rede > 0) cur.diasRede.add(data);
       const prevMax = cur.ligMaxPorOs.get(grupo) ?? 0;
       if (ligTot > prevMax) cur.ligMaxPorOs.set(grupo, ligTot);
-      map.set(nome, cur);
+      map.set(identidade.id, cur);
     }
 
     return Array.from(map.values())

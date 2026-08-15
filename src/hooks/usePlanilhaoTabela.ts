@@ -120,7 +120,7 @@ export function usePlanilhaoTabela() {
           supabase
             .from('relatorio_producao_diaria' as never)
             .select(
-              'os_id,data_producao,responsavel_nome,comprimento_trecho_executado,quantidade_ligacoes_realizadas,comprimento_total_ligacoes,pv_final_assentado',
+              'os_id,data_producao,responsavel_user_id,responsavel_nome,comprimento_trecho_executado,quantidade_ligacoes_realizadas,comprimento_total_ligacoes,pv_final_assentado',
             )
             .range(from, to) as never,
         ),

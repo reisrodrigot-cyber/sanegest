@@ -1,4 +1,4 @@
-import { normalizarEncarregado } from '@/lib/encarregados';
+import { normalizarEncarregado, resolverIdentidadeEncarregado } from '@/lib/encarregados';
 import type { OSDisplayStatus } from '@/lib/osStatus';
 import { statusLabel, vinculoDisplayStatus, STATUS_PRIORITY_DESC } from '@/lib/osStatus';
 import { passesFilter, type CellValue, type ColFilterType, type ColumnFilterValue, isFilterActive } from '@/lib/columnFilter';
@@ -135,6 +135,7 @@ export interface OrdemRaw {
 
 export interface ProducaoRaw {
   os_id: string;
+  responsavel_user_id: string | null;
   data_producao: string | null;
   responsavel_nome: string | null;
   comprimento_trecho_executado: number | null;
@@ -148,7 +149,7 @@ interface ProdAgg {
   ligQtd: number;
   ligM: number;
   dias: Set<string>;
-  encarregados: Set<string>;
+  encarregados: Map<string, string>;
   primeira: string | null;
   ultima: string | null;
   pvFinal: boolean;
@@ -164,7 +165,7 @@ function aggregarProducao(producao: ProducaoRaw[]): Map<string, ProdAgg> {
     if (!p.os_id) continue;
     let a = map.get(p.os_id);
     if (!a) {
-      a = { rede: 0, ligQtd: 0, ligM: 0, dias: new Set(), encarregados: new Set(), primeira: null, ultima: null, pvFinal: false };
+      a = { rede: 0, ligQtd: 0, ligM: 0, dias: new Set(), encarregados: new Map(), primeira: null, ultima: null, pvFinal: false };
       map.set(p.os_id, a);
     }
     const rede = Number(p.comprimento_trecho_executado || 0);
@@ -172,8 +173,8 @@ function aggregarProducao(producao: ProducaoRaw[]): Map<string, ProdAgg> {
     a.ligQtd += Number(p.quantidade_ligacoes_realizadas || 0);
     a.ligM = Math.max(a.ligM, Number(p.comprimento_total_ligacoes || 0));
     if (p.pv_final_assentado) a.pvFinal = true;
-    const nome = normalizarEncarregado((p.responsavel_nome || '').trim());
-    if (nome && nome !== '—') a.encarregados.add(nome);
+    const identidade = resolverIdentidadeEncarregado({ userId: p.responsavel_user_id, nome: p.responsavel_nome });
+    if (identidade.nome !== '—') a.encarregados.set(identidade.id, identidade.nome);
     const d = p.data_producao ? String(p.data_producao).slice(0, 10) : null;
     if (d) {
       if (rede > 0 || Number(p.quantidade_ligacoes_realizadas || 0) > 0) a.dias.add(d);
@@ -211,7 +212,7 @@ export function consolidarLinhas(ordens: OrdemRaw[], producao: ProducaoRaw[]): P
     let rede = 0, ligQtd = 0, ligM = 0;
     let temProducao = false;
     let pvFinal = false;
-    const encarregados = new Set<string>();
+    const encarregados = new Map<string, string>();
     const diasSet = new Set<string>();
     let primeira: string | null = null;
     let ultima: string | null = null;
@@ -224,7 +225,7 @@ export function consolidarLinhas(ordens: OrdemRaw[], producao: ProducaoRaw[]): P
         rede += p.rede;
         ligQtd += p.ligQtd;
         ligM += p.ligM;
-        p.encarregados.forEach(e => encarregados.add(e));
+        p.encarregados.forEach((nome, id) => encarregados.set(id, nome));
         p.dias.forEach(d => diasSet.add(d));
         if (p.primeira && (!primeira || p.primeira < primeira)) primeira = p.primeira;
         if (p.ultima && (!ultima || p.ultima > ultima)) ultima = p.ultima;
@@ -233,7 +234,7 @@ export function consolidarLinhas(ordens: OrdemRaw[], producao: ProducaoRaw[]): P
       }
       statuses.push(vinculoDisplayStatus({ status: os.status as never, pv_final_assentado: p?.pvFinal || false }));
       const resp = normalizarEncarregado((os.liberado_para || os.executor_real || os.executor || '').trim());
-      if (resp && resp !== '—' && !p?.encarregados.size) encarregados.add(resp);
+      if (resp && resp !== '—' && !p?.encarregados.size) encarregados.set(`atribuicao:${os.id}`, resp);
     }
 
     // Status agregado: prioriza a situação mais avançada do grupo
@@ -256,7 +257,7 @@ export function consolidarLinhas(ordens: OrdemRaw[], producao: ProducaoRaw[]): P
       previsto_m: previstoVal,
       real_m: realVal,
       saldo_m: saldo,
-      encarregados: [...encarregados].sort((a, b) => naturalCompare(a, b)).join(', '),
+      encarregados: [...encarregados.values()].sort((a, b) => naturalCompare(a, b)).join(', '),
       periodo: primeira && ultima
         ? (primeira === ultima ? fmtDateBR(primeira) : `${fmtDateBR(primeira)} – ${fmtDateBR(ultima)}`)
         : '',

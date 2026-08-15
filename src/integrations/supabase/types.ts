@@ -1652,6 +1652,7 @@ export type Database = {
           quantidade_ligacoes_realizadas: number | null
           real_validado: boolean | null
           responsavel_nome: string | null
+          responsavel_user_id: string | null
           trecho: string | null
           updated_at: string | null
         }

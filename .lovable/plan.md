@@ -1,115 +1,38 @@
+# Correção de identidade do encarregado nos relatórios
 
-# Fase 2 — Editor Operacional de Trechos e PVs
+## Objetivo
+Usar o ID estável do autor da produção como chave em todos os agrupamentos. Login, apelido e nome serão apenas rótulos de apresentação, impedindo tanto a duplicidade de Carlito quanto a união indevida de pessoas homônimas.
 
-Editor exclusivo para `sala_tecnica`. Sobrepõe uma camada operacional editável à base importada, **sem tocar na geometria original** nem no KMZ, importação SS-08, Mapa de Campo ou promoção de base.
+## Implementação
 
-## Princípio estrutural
+1. **Corrigir a fonte canônica do relatório diário**
+   - Atualizar `relatorio_producao_diaria` para preservar `registros_producao.user_id` como `responsavel_user_id` e agregar por O.S. + data + usuário responsável.
+   - Resolver `responsavel_nome` por `profiles.user_id`, com prioridade para `apelido`, depois `display_name` e e-mail.
+   - Manter intactas as regras atuais de soma de rede, quantidade de ligações, comprimentos individuais e PV final.
+   - Não alterar registros, perfis, contas, permissões, RLS ou histórico.
 
-Todo trecho operacional existe **sempre** entre dois PVs (`pv_inicial_id` → `pv_final_id`). Nenhum trecho pode ser salvo sem os dois nós. A geometria original permanece imutável em `mapa_trechos` / `mapa_pontos`. Alterações vivem em duas tabelas novas de "estado atual".
+2. **Centralizar a resolução de identidade no frontend**
+   - Evoluir o utilitário de encarregados para produzir uma identidade `{ id, nome }`, usando sempre o ID como chave e o perfil como rótulo.
+   - Manter fallback controlado para fontes legadas sem ID, sem usar nome exibido para fundir contas diferentes.
+   - Remover agrupamentos baseados diretamente em `responsavel_nome`, `encarregado`, login ou apelido.
 
-## Modelo de dados (novas tabelas — estado atual, sem versionamento)
+3. **Aplicar a chave canônica em todos os consumidores**
+   - Dashboard: produção e produtividade por encarregado, médias, cards e detalhamentos.
+   - Relatório diário e Planilhão: consultas, consolidação, totais e nomes exibidos.
+   - Exportações Excel/PDF e funções de consulta do relatório: consumir a mesma identidade canônica.
+   - Preservar somas integrais de rede, ligações em unidades e metragem de ligações, sem descartar, sobrescrever ou duplicar lançamentos.
 
-### `mapa_pv_operacional`
-- `id`, `base_id` (→ `mapa_bases`), `ponto_origem_id` (→ `mapa_pontos`, nullable — null = PV manual novo)
-- `rotulo`, `tipo` (`original` | `movido` | `manual` | `suprimido`)
-- `geom` (jsonb Point [lon,lat]), `lat`, `lon` (escalares para índice)
-- `cota`, `profundidade`, `observacao` (opcionais)
-- `motivo`, `updated_by`, `updated_at`, `created_at`
-- Único: `(base_id, ponto_origem_id)` quando não-null.
+4. **Cobertura contra regressão**
+   - Adicionar testes com duas grafias da mesma conta apontando para o mesmo ID: uma única linha “Carlito”, com totais somados.
+   - Adicionar teste com duas contas distintas que tenham o mesmo nome exibido: identidades permanecem separadas.
+   - Verificar que os totais gerais antes e depois da resolução de identidade são idênticos.
 
-### `mapa_trecho_operacional`
-- `id`, `base_id`, `trecho_origem_id` (→ `mapa_trechos`, nullable — null = manual)
-- `rotulo`, `tipo` (`original` | `derivado` | `manual` | `suprimido`)
-- `pv_inicial_id` (→ `mapa_pv_operacional`, NOT NULL), `pv_final_id` (idem, NOT NULL)
-- `geom` (jsonb LineString), `extensao_m` (numeric, recalculada), `dn`, `material`
-- `motivo`, `updated_by`, `updated_at`, `created_at`
-- Check: `pv_inicial_id <> pv_final_id`.
+5. **Validação específica de 14/08/2026**
+   - Consultar a fonte diária após a migração e confirmar que os quatro lançamentos do usuário de Carlito aparecem sob um único `responsavel_user_id` e rótulo “Carlito”.
+   - Confirmar uma única seção/linha de Carlito no relatório, acumulando **16,00 m de rede, 4 ligações e 15,76 m de ligações**, sem alteração nos totais gerais do dia.
+   - Validar a tela no preview e executar os testes relacionados.
 
-### Reuso de tabela existente
-`mapa_trecho_os` já é N:N trecho↔N.S. Adicionar coluna opcional `trecho_operacional_id` (nullable) para vincular quando o trecho é operacional derivado/manual. Vínculos originais continuam por `trecho_id`.
-
-### RLS
-Todas as três operações (SELECT/INSERT/UPDATE/DELETE) em `mapa_pv_operacional`, `mapa_trecho_operacional` e nas colunas novas de `mapa_trecho_os` restritas via `has_role(auth.uid(),'sala_tecnica') OR has_role(auth.uid(),'admin')` — admin só para leitura de auditoria; **edição real apenas `sala_tecnica`** conforme requisito. GRANTs explícitos para `authenticated` + `service_role`.
-
-## Rotas e navegação
-
-- Nova rota `/mapa/editor` → `EditorOperacionalPage`.
-- `ROUTE_ROLES['/mapa/editor'] = ['sala_tecnica']`.
-- Item no `AppSidebar` visível **apenas** para `sala_tecnica` (não para admin no menu; admin acessa por URL só se for útil — por padrão bloqueado para respeitar "apenas sala_tecnica").
-- `ProtectedRoute` já bloqueia por `effectiveRole`.
-
-## Interface (`src/pages/EditorOperacionalPage.tsx` + componentes)
-
-Layout: mapa Leaflet central + painel lateral direito de propriedades + toolbar superior.
-
-Camadas simultâneas com toggles:
-- Geometria original (referência, cinza claro tracejado fino).
-- Trechos operacionais (linha sólida colorida por status).
-- PVs originais (círculo pequeno).
-- PVs operacionais novos/movidos (marcador distinto — losango).
-- Suprimidos (tracejado vermelho, ocultos por padrão).
-- Divergências/pendências (badge discreto).
-
-Seleção obrigatória antes de qualquer edição.
-
-## Ferramentas
-
-Componentes em `src/components/mapa/editor/`:
-
-1. **SelecionarTrecho** — painel mostra rótulo original, extensão original vs operacional, PVs, N.S. vinculadas, status agregado, tipo, ações.
-2. **VincularNS** — modal com busca de N.S. da bacia; multi-select; motivo curto. Cor permanece derivada.
-3. **DividirTrecho** — botão "Adicionar PV": ativa modo clique-na-linha; snap ao segmento mais próximo (projeção ortogonal via turf `nearestPointOnLine`); cria PV operacional novo + 2 trechos derivados; recalcula extensões (turf `length`); modal para rótulos e N.S. de cada segmento.
-4. **MoverPV** — arraste com preview em metros (turf `distance`); lista trechos afetados; alerta reforçado se >10 m com campo de justificativa obrigatório; atualiza extremidades e recalcula extensões.
-5. **SuprimirTrecho** — motivo obrigatório; marca `tipo='suprimido'`; PVs permanecem.
-6. **SuprimirPV** — se sem trechos ativos: suprime. Se com trechos: modal com opções (cancelar / suprimir trechos / unir dois trechos quando exatamente 2 / reposicionar). Ao unir: escolher N.S. atual, confirmar comprimento.
-7. **CriarTrechoManual** — selecionar PV1 → PV2 → desenhar polilinha entre eles (vértices intermediários livres); campos rótulo, DN, material, N.S.; marcado como `manual`.
-8. **RestaurarOriginal** — botão no painel: remove overlay operacional daquele trecho (soft delete do `mapa_trecho_operacional` e PVs derivados órfãos); confirma antes.
-
-## Bibliotecas
-
-Adicionar `@turf/turf` (`nearestPointOnLine`, `length`, `distance`, `lineSlice`). `react-leaflet` + `leaflet` já usados.
-
-## Hook de dados
-
-`useEditorOperacional(baseId)`:
-- Carrega trechos e PVs originais + operacionais.
-- Faz merge: para cada trecho original com operacional derivado/suprimido, aplica overlay.
-- Retorna geometria efetiva + status agregado (reusa lógica de `useMapaBasePreview`).
-- Mutations com invalidation via React Query.
-
-## Cores e popups
-
-- Sempre via `statusAgregado` das N.S. ativas vinculadas (VERMELHO > LARANJA > AMARELO > VERDE > CINZA).
-- `pv_final_assentado=true` → linha do popup: "PV final assentado — pronto para Topografia".
-- Popup indica: Original | Derivado | Manual | Suprimido.
-
-## Segurança
-
-- Menu escondido para não-sala_tecnica.
-- Rota bloqueada por `ProtectedRoute`.
-- RLS restringe todas as operações a `sala_tecnica`.
-- Sem endpoint público que permita bypass; todo acesso vai por PostgREST + RLS.
-
-## Testes (via Playwright, base SS-08 Preview)
-
-1. Login sala_tecnica → abre `/mapa/editor`.
-2. Login encarregado → rota bloqueada, menu ausente.
-3. Selecionar TR-8.37, adicionar PV no meio → 2 segmentos com extensões somando o original.
-4. Vincular N.S. distintas aos 2 segmentos → cores independentes.
-5. Mover PV <10m e >10m (alerta + justificativa).
-6. Suprimir PV conectado → bloqueio + opções.
-7. Unir 2 trechos.
-8. Criar trecho manual entre 2 PVs (ex: Linha de Recalque).
-9. Suprimir trecho e restaurar original.
-10. Confirmar KMZ, Mapa de Campo, importação SS-08 sem regressão; nenhuma base promovida.
-
-## Entregas ao final
-
-- Código implementado (migração + páginas + componentes + hook).
-- Relatório de testes reais (Playwright).
-- Decisões técnicas (turf, N:N via coluna nullable, RLS estrita sala_tecnica).
-- Limitações: sem versionamento/timeline; snap usa projeção ortogonal simples; polilinha manual limitada a cliques (sem edição de vértice após criar — v1).
-
-## Fora de escopo (não implementar)
-
-Promoção de base, edição por outros perfis, integração com novos projetos, automação de N.S., timeline/aprovação de edições.
+## Detalhes técnicos
+- A granularidade canônica será `responsavel_user_id`; o nome nunca será chave de agrupamento.
+- Quando a mesma O.S. tiver lançamentos de usuários diferentes no mesmo dia, a fonte retornará uma linha por usuário, preservando autoria e quantitativos.
+- Consumidores que consolidam por O.S. continuarão consolidando os quantitativos normalmente, mas manterão identidades distintas para exibição.

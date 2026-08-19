@@ -61,7 +61,8 @@ export const ProdutividadeProfundidade = () => {
     const osEnc = new Map<string, string>();
     ordens.forEach((o) => {
       osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null);
-      osEnc.set(o.id, normalizarEncarregado(o.liberado_para) || 'Encarregado não definido');
+      const enc = normalizarEncarregado(o.liberado_para);
+      osEnc.set(o.id, enc === '—' ? 'Encarregado não definido' : enc);
     });
 
     const ajustados = aplicarRealValidadoEmRegistros(registros, ordens as OSRealInput[]);

@@ -1636,10 +1636,13 @@ export type Database = {
     Views: {
       relatorio_producao_diaria: {
         Row: {
+          autor_nome: string | null
+          autor_user_id: string | null
           comprimento_total_ligacoes: number | null
           comprimento_trecho_executado: number | null
           data_producao: string | null
           encarregado: string | null
+          encarregado_indefinido: boolean | null
           liberado_para: string | null
           ligacoes_detalhadas: number | null
           obra_id: string | null

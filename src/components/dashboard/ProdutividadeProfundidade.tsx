@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Layers } from 'lucide-react';
 import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
+import { normalizarEncarregado } from '@/lib/encarregados';
 
 interface RegistroRow {
   os_id: string;
@@ -16,6 +17,7 @@ interface OSRow {
   comprimento_real: number | null;
   ligacoes_real: number | null;
   real_validado: boolean | null;
+  liberado_para: string | null;
 }
 
 const FAIXAS = [
@@ -41,7 +43,7 @@ export const ProdutividadeProfundidade = () => {
   useEffect(() => {
     Promise.all([
       supabase.from('registros_producao').select('user_id, os_id, data_registro, comprimento_dia, comprimento_ajustado, ligacoes_dia, ligacoes_ajustadas, status').eq('excluido', false).eq('status', 'ativo'),
-      supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado'),
+      supabase.from('ordens_servico').select('id, prof_media_prevista, comprimento_real, ligacoes_real, real_validado, liberado_para'),
     ]).then(([r, o]) => {
       setRegistros((r.data ?? []) as RegistroRow[]);
       setOrdens((o.data ?? []) as OSRow[]);
@@ -55,7 +57,13 @@ export const ProdutividadeProfundidade = () => {
   //   que ele produziu rede, proporcionalmente aos metros de cada faixa.
   const stats = useMemo(() => {
     const osProf = new Map<string, number | null>();
-    ordens.forEach((o) => osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null));
+    // Encarregado operacional da N.S. (liberado_para) — nunca o autor do lançamento.
+    const osEnc = new Map<string, string>();
+    ordens.forEach((o) => {
+      osProf.set(o.id, o.prof_media_prevista != null ? Number(o.prof_media_prevista) : null);
+      const enc = normalizarEncarregado(o.liberado_para);
+      osEnc.set(o.id, enc === '—' ? 'Encarregado não definido' : enc);
+    });
 
     const ajustados = aplicarRealValidadoEmRegistros(registros, ordens as OSRealInput[]);
 
@@ -65,7 +73,7 @@ export const ProdutividadeProfundidade = () => {
       if (metros <= 0) return;
       const idx = faixaIndex(osProf.get(r.os_id) ?? null);
       if (idx < 0) return;
-      const key = `${(r as any).user_id ?? 'sem-user'}|${r.data_registro}`;
+      const key = `${osEnc.get(r.os_id) ?? 'Encarregado não definido'}|${r.data_registro}`;
       let arr = porPar.get(key);
       if (!arr) { arr = FAIXAS.map(() => 0); porPar.set(key, arr); }
       arr[idx] += metros;

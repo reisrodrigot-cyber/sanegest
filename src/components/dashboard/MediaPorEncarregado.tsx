@@ -1,72 +1,57 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
-import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
-import { normalizarEncarregado } from '@/lib/encarregados';
+import { resolverIdentidadeEncarregado } from '@/lib/encarregados';
 
 interface Row {
   os_id: string;
-  user_id: string;
-  data_registro: string;
-  comprimento_dia: number;
+  data_producao: string;
+  responsavel_user_id: string | null;
+  responsavel_nome: string | null;
+  comprimento_trecho_executado: number | null;
 }
 
 export const MediaPorEncarregado = () => {
   const [rows, setRows] = useState<Row[]>([]);
-  const [ordens, setOrdens] = useState<OSRealInput[]>([]);
-  const [users, setUsers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const [{ data }, { data: o }] = await Promise.all([
-        supabase
-          .from('registros_producao')
-          .select('os_id, user_id, data_registro, comprimento_dia')
-          .eq('excluido', false).eq('status', 'ativo'),
-        supabase
-          .from('ordens_servico')
-          .select('id, comprimento_real, ligacoes_real, real_validado'),
-      ]);
-      const r = (data ?? []) as Row[];
-      setRows(r);
-      setOrdens((o ?? []) as OSRealInput[]);
-      const ids = Array.from(new Set(r.map((x) => x.user_id)));
-      if (ids.length > 0) {
-        const { data: profs } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, email, apelido')
-          .in('user_id', ids);
-        const map: Record<string, string> = {};
-        (profs ?? []).forEach((p) => {
-          map[p.user_id] = normalizarEncarregado(p.apelido || p.display_name || p.email || p.user_id.slice(0, 8));
-        });
-        setUsers(map);
-      }
+      // Fonte canônica: a produção pertence ao encarregado operacional da N.S.
+      // (liberado_para), nunca ao usuário que digitou o lançamento.
+      const { data } = await supabase
+        .from('relatorio_producao_diaria' as never)
+        .select('os_id, data_producao, responsavel_user_id, responsavel_nome, comprimento_trecho_executado');
+      setRows(((data ?? []) as unknown) as Row[]);
       setLoading(false);
     };
     load();
   }, []);
 
   const stats = useMemo(() => {
-    const ajustados = aplicarRealValidadoEmRegistros(rows, ordens);
-    const map = new Map<string, { total: number; days: Set<string> }>();
-    ajustados.forEach((r) => {
-      const cur = map.get(r.user_id) ?? { total: 0, days: new Set<string>() };
-      cur.total += Number(r.comprimento_dia) || 0;
-      cur.days.add(r.data_registro);
-      map.set(r.user_id, cur);
+    const map = new Map<string, { nome: string; total: number; days: Set<string> }>();
+    rows.forEach((r) => {
+      const comp = Number(r.comprimento_trecho_executado) || 0;
+      if (comp <= 0) return;
+      const identidade = resolverIdentidadeEncarregado({
+        userId: r.responsavel_user_id,
+        nome: r.responsavel_nome,
+      });
+      const cur = map.get(identidade.id) ?? { nome: identidade.nome, total: 0, days: new Set<string>() };
+      cur.total += comp;
+      cur.days.add(String(r.data_producao));
+      map.set(identidade.id, cur);
     });
     return Array.from(map.entries())
-      .map(([userId, v]) => ({
-        userId,
-        nome: users[userId] || '—',
+      .map(([id, v]) => ({
+        userId: id,
+        nome: v.nome,
         total: Math.round(v.total * 10) / 10,
         dias: v.days.size,
         media: v.days.size > 0 ? Math.round((v.total / v.days.size) * 10) / 10 : 0,
       }))
       .sort((a, b) => b.media - a.media);
-  }, [rows, ordens, users]);
+  }, [rows]);
 
 
   if (loading) {

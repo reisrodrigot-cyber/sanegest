@@ -19,21 +19,18 @@ interface EncarregadoRow {
   ns: { id: string; trecho: string; bacia: string; metros: number; ligacoes: number; data: string; fonte: 'validado' | 'campo' }[];
 }
 
-interface RegistroRow {
+interface RelatorioRow {
   os_id: string;
-  user_id: string;
-  data_registro: string;
-  comprimento_dia: number;
-  ligacoes_dia: number;
-  comprimento_ajustado: number | null;
-  ligacoes_ajustadas: number | null;
-  status: string;
+  data_producao: string;
+  responsavel_user_id: string | null;
+  responsavel_nome: string | null;
+  comprimento_trecho_executado: number | null;
+  quantidade_ligacoes_realizadas: number | null;
 }
 
 export function ProducaoPorEncarregado({ ordens }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [perfilMap, setPerfilMap] = useState<Record<string, { apelido: string | null; displayName: string | null; email: string | null }>>({});
-  const [registros, setRegistros] = useState<RegistroRow[]>([]);
+  const [registros, setRegistros] = useState<RelatorioRow[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
@@ -41,48 +38,44 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
 
   useEffect(() => {
     (async () => {
-      const [{ data: profs }, { data: regs }] = await Promise.all([
-        supabase.from('profiles').select('user_id, display_name, apelido, email'),
-        supabase
-          .from('registros_producao')
-          .select('os_id, user_id, data_registro, comprimento_dia, ligacoes_dia, comprimento_ajustado, ligacoes_ajustadas, status')
-          .eq('excluido', false).eq('status', 'ativo'),
-      ]);
-      const map: Record<string, { apelido: string | null; displayName: string | null; email: string | null }> = {};
-      (profs ?? []).forEach((p: any) => {
-        map[p.user_id] = { apelido: p.apelido, displayName: p.display_name, email: p.email };
-      });
-      setPerfilMap(map);
-      setRegistros((regs ?? []) as RegistroRow[]);
+      // A produção pertence ao encarregado operacional da N.S. (liberado_para).
+      // Quem digitou o lançamento permanece apenas como autor de auditoria.
+      const { data } = await supabase
+        .from('relatorio_producao_diaria' as never)
+        .select('os_id, data_producao, responsavel_user_id, responsavel_nome, comprimento_trecho_executado, quantidade_ligacoes_realizadas');
+      setRegistros(((data ?? []) as unknown) as RelatorioRow[]);
     })();
   }, []);
 
   const dados = useMemo(() => {
     const ym = selectedMonth;
 
-    // Soma por autor + O.S.; o texto da atribuição não define autoria.
-    const sumByAutorOs = new Map<string, { userId: string; osId: string; comp: number; lig: number; lastDate: string }>();
+    // Soma por encarregado operacional + O.S.
+    const sumByEncOs = new Map<string, { encId: string; nome: string; osId: string; comp: number; lig: number; lastDate: string }>();
     for (const r of registros) {
-      if (!r.data_registro.startsWith(ym)) continue;
-      const key = `${r.user_id}|${r.os_id}`;
-      const cur = sumByAutorOs.get(key) ?? { userId: r.user_id, osId: r.os_id, comp: 0, lig: 0, lastDate: r.data_registro };
-      cur.comp += Number(r.comprimento_ajustado ?? r.comprimento_dia) || 0;
-      cur.lig += Number(r.ligacoes_ajustadas ?? r.ligacoes_dia) || 0;
-      if (r.data_registro > cur.lastDate) cur.lastDate = r.data_registro;
-      sumByAutorOs.set(key, cur);
+      const data = String(r.data_producao ?? '');
+      if (!data.startsWith(ym)) continue;
+      const identidade = resolverIdentidadeEncarregado({
+        userId: r.responsavel_user_id,
+        nome: r.responsavel_nome,
+      });
+      const key = `${identidade.id}|${r.os_id}`;
+      const cur = sumByEncOs.get(key) ?? { encId: identidade.id, nome: identidade.nome, osId: r.os_id, comp: 0, lig: 0, lastDate: data };
+      cur.comp += Number(r.comprimento_trecho_executado) || 0;
+      cur.lig += Number(r.quantidade_ligacoes_realizadas) || 0;
+      if (data > cur.lastDate) cur.lastDate = data;
+      sumByEncOs.set(key, cur);
     }
 
     const map = new Map<string, EncarregadoRow>();
-    sumByAutorOs.forEach((campo) => {
+    sumByEncOs.forEach((campo) => {
         const os = ordens.find((item) => item.id === campo.osId);
         if (!os) return;
         const metros = campo.comp;
         const ligs = campo.lig;
         if (metros <= 0 && ligs <= 0) return;
-        const perfil = perfilMap[campo.userId];
-        const identidade = resolverIdentidadeEncarregado({ userId: campo.userId, ...perfil });
 
-        const cur = map.get(identidade.id) ?? { id: identidade.id, nome: identidade.nome, nsExecutadas: 0, totalMetros: 0, totalLigacoes: 0, ns: [] };
+        const cur = map.get(campo.encId) ?? { id: campo.encId, nome: campo.nome, nsExecutadas: 0, totalMetros: 0, totalLigacoes: 0, ns: [] };
         cur.nsExecutadas += 1;
         cur.totalMetros += metros;
         cur.totalLigacoes += ligs;
@@ -96,10 +89,10 @@ export function ProducaoPorEncarregado({ ordens }: Props) {
           data: dataRef.toLocaleDateString('pt-BR'),
           fonte: 'campo',
         });
-        map.set(identidade.id, cur);
+        map.set(campo.encId, cur);
       });
     return Array.from(map.values()).sort((a, b) => b.totalMetros - a.totalMetros);
-  }, [ordens, perfilMap, registros, selectedMonth]);
+  }, [ordens, registros, selectedMonth]);
 
   const monthLabel = useMemo(() => {
     const [y, m] = selectedMonth.split('-').map(Number);

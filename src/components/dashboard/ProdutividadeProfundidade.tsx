@@ -16,6 +16,7 @@ interface OSRow {
   comprimento_real: number | null;
   ligacoes_real: number | null;
   real_validado: boolean | null;
+  liberado_para: string | null;
 }
 
 const FAIXAS = [

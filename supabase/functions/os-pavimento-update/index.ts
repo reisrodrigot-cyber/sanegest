@@ -20,14 +20,51 @@ const json = (body: unknown, status = 200) =>
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ITENS = 200;
 
-// Entrada aceita -> valor canônico gravado
-const PAV_MAP: Record<string, string> = {
-  'Terra': 'Solo Natural',
-  'Solo Natural': 'Solo Natural',
-  'Asfalto': 'Asfalto',
-  'Paralelo': 'Paralelepípedo',
-  'Paralelepípedo': 'Paralelepípedo',
+// Valores oficiais gravados (idênticos ao seletor do encarregado)
+const SOLO = 'Solo Natural';
+const ASFALTO = 'Asfalto';
+const PARALELO = 'Paralelepipedo';
+const OFICIAIS = [
+  SOLO,
+  ASFALTO,
+  PARALELO,
+  `${SOLO} / ${ASFALTO}`,
+  `${SOLO} / ${PARALELO}`,
+  `${ASFALTO} / ${PARALELO}`,
+  `${SOLO} / ${ASFALTO} / ${PARALELO}`,
+];
+
+// Sinônimos aceitos por componente
+const SINONIMOS: Record<string, string> = {
+  'terra': SOLO,
+  'terreno natural': SOLO,
+  'solo natural': SOLO,
+  'asfalto': ASFALTO,
+  'paralelo': PARALELO,
+  'paralelepipedo': PARALELO,
+  'paralelepipelo': PARALELO,
 };
+
+const semAcento = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+// Normaliza qualquer entrada (simples ou combinada) para um valor oficial, ou null.
+function normalizarPav(entrada: string): string | null {
+  const partes = entrada.split(/[\/+,]| e /i).map((p) => semAcento(p)).filter((p) => p.length > 0);
+  if (partes.length === 0) return null;
+
+  const set = new Set<string>();
+  for (const p of partes) {
+    const canon = SINONIMOS[p];
+    if (!canon) return null;
+    set.add(canon);
+  }
+
+  // Ordem oficial: Solo Natural / Asfalto / Paralelepipedo
+  const ordenado = [SOLO, ASFALTO, PARALELO].filter((v) => set.has(v)).join(' / ');
+  return OFICIAIS.includes(ordenado) ? ordenado : null;
+}
+
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;

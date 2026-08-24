@@ -1178,6 +1178,42 @@ export type Database = {
         }
         Relationships: []
       }
+      os_pavimento_update_log: {
+        Row: {
+          atualizados: number
+          created_at: string
+          erro: string | null
+          id: string
+          inalterados: number
+          itens_recebidos: number
+          os_ids: string[]
+          requisicao_id: string
+          sucesso: boolean
+        }
+        Insert: {
+          atualizados?: number
+          created_at?: string
+          erro?: string | null
+          id?: string
+          inalterados?: number
+          itens_recebidos?: number
+          os_ids?: string[]
+          requisicao_id: string
+          sucesso?: boolean
+        }
+        Update: {
+          atualizados?: number
+          created_at?: string
+          erro?: string | null
+          id?: string
+          inalterados?: number
+          itens_recebidos?: number
+          os_ids?: string[]
+          requisicao_id?: string
+          sucesso?: boolean
+        }
+        Relationships: []
+      }
       os_revisoes: {
         Row: {
           areia: string | null
@@ -1745,6 +1781,7 @@ export type Database = {
         Returns: undefined
       }
       recompute_os_status: { Args: { _os_id: string }; Returns: undefined }
+      set_os_pav_previsto_lote: { Args: { _itens: Json }; Returns: Json }
     }
     Enums: {
       app_role:

@@ -1377,6 +1377,36 @@ export type Database = {
           },
         ]
       }
+      pav_normalizacao_log: {
+        Row: {
+          created_at: string
+          id: string
+          origem: string
+          os_id: string
+          requisicao_id: string | null
+          valor_anterior: string | null
+          valor_novo: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          origem: string
+          os_id: string
+          requisicao_id?: string | null
+          valor_anterior?: string | null
+          valor_novo: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          origem?: string
+          os_id?: string
+          requisicao_id?: string | null
+          valor_anterior?: string | null
+          valor_novo?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           apelido: string | null

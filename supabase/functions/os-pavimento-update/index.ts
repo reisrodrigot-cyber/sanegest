@@ -104,10 +104,14 @@ function validar(body: unknown): { itens: Item[] } | { erro: string } {
     if (vistos.has(id)) return { erro: `Item ${i}: "os_id" repetido na lista.` };
     vistos.add(id);
 
-    if (typeof pav_previsto !== 'string' || !(pav_previsto.trim() in PAV_MAP)) {
-      return { erro: `Item ${i}: "pav_previsto" deve ser um de: ${Object.keys(PAV_MAP).join(', ')}` };
+    if (typeof pav_previsto !== 'string') {
+      return { erro: `Item ${i}: "pav_previsto" deve ser texto.` };
     }
-    itens.push({ os_id: id, pav: PAV_MAP[pav_previsto.trim()] });
+    const pav = normalizarPav(pav_previsto);
+    if (!pav) {
+      return { erro: `Item ${i}: "pav_previsto" deve ser um de: ${OFICIAIS.join(', ')}` };
+    }
+    itens.push({ os_id: id, pav });
   }
 
   return { itens };

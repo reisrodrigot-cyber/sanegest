@@ -22,9 +22,11 @@ const MAX_ITENS = 200;
 
 // Entrada aceita -> valor canônico gravado
 const PAV_MAP: Record<string, string> = {
-  'Terra': 'Terreno Natural',
+  'Terra': 'Solo Natural',
+  'Solo Natural': 'Solo Natural',
   'Asfalto': 'Asfalto',
-  'Paralelepípedo': 'Paralelo',
+  'Paralelo': 'Paralelepípedo',
+  'Paralelepípedo': 'Paralelepípedo',
 };
 
 function timingSafeEqual(a: string, b: string): boolean {

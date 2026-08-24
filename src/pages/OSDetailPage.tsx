@@ -35,13 +35,13 @@ import type { OSStatus } from '@/types/sanegest';
 import { LEGACY_STATUS_OPTIONS, statusLabel, resolveDisplayStatus } from '@/lib/osStatus';
 
 const PAV_OPTIONS = [
-  'Terreno Natural',
+  'Solo Natural',
   'Asfalto',
-  'Paralelo',
-  'Terreno Natural e Asfalto',
-  'Terreno Natural e Paralelo',
-  'Asfalto e Paralelo',
-  'Terreno Natural, Asfalto e Paralelo',
+  'Paralelepípedo',
+  'Solo Natural e Asfalto',
+  'Solo Natural e Paralelepípedo',
+  'Asfalto e Paralelepípedo',
+  'Solo Natural, Asfalto e Paralelepípedo',
 ];
 
 function fmt(val: unknown): string {

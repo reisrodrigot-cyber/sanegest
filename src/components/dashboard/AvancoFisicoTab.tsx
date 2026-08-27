@@ -406,7 +406,7 @@ const RamaisSecao = ({
                   <th className="py-1 px-1 text-right font-normal leading-tight">Contr.</th>
                   <th className="py-1 px-1 text-right font-medium leading-tight">Real.</th>
                   <th className="py-1 px-1 text-right font-medium leading-tight">Saldo</th>
-                  <th className="py-1 px-1 text-right font-normal leading-tight">Contr.</th>
+                  <th className={`py-1 px-1 text-right font-normal leading-tight ${divisor}`}>Contr.</th>
                   <th className="py-1 px-1 text-right font-medium leading-tight">Real.</th>
                   <th className="py-1 px-1 text-right font-medium leading-tight">Saldo</th>
                 </tr>

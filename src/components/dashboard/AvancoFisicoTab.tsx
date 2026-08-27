@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Loader2, TrendingUp, Pencil } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuantitativosContratuais } from '@/hooks/useQuantitativosContratuais';
@@ -83,7 +83,7 @@ const AvancoSecao = ({
   titulo, linhas, unidade, formatar, contratualPorChave, formatarContratual, podeEditar, onEditar,
   mostrarContratual = true, saldoOperacional = false,
 }: {
-  titulo: string;
+  titulo: ReactNode;
   linhas: LinhaAvanco[];
   unidade: string;
   formatar: (n: number) => string;
@@ -137,8 +137,11 @@ const AvancoSecao = ({
   );
 
   return (
-    <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col min-h-0">
-      <h3 className="text-sm font-semibold text-foreground mb-2">{titulo}</h3>
+    <div className="bg-card rounded-lg border border-border shadow-sm p-2.5 flex flex-col min-h-0">
+      <div className="flex items-start justify-center gap-1 mb-2 min-h-[2.4em]">
+        <h3 className="text-sm font-semibold text-foreground text-center leading-tight self-center">{titulo}</h3>
+        {podeEditar && BotaoLapis}
+      </div>
 
       {linhas.length === 0 ? (
         <p className="text-xs text-muted-foreground py-4 text-center">Sem dados.</p>
@@ -219,23 +222,23 @@ const AvancoSecao = ({
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-card">
                 <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="pb-1 pr-2 font-medium whitespace-nowrap">Sub-bacia</th>
+                  <th className="pb-1 pr-2 font-medium leading-tight">Sub-bacia</th>
                   {mostrarContratual ? (
                     <>
-                      <th className="pb-1 px-2 text-right whitespace-nowrap font-normal">
+                      <th className="pb-1 px-1.5 text-right font-normal leading-tight">
                         <span className="inline-flex items-center gap-1 justify-end">
-                          Qnt. Contratual ({unidade})
+                          Qnt.<br />Contratual<br />({unidade})
                           {podeEditar && BotaoLapis}
                         </span>
                       </th>
-                      <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">{saldoOperacional ? 'Saldo' : 'Saldo contratual'} ({unidade})</th>
+                      <th className="pb-1 px-1.5 font-medium text-right leading-tight">{saldoOperacional ? 'Saldo' : 'Saldo contratual'}<br />({unidade})</th>
                     </>
                   ) : (
-                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo ({unidade})</th>
+                    <th className="pb-1 px-1.5 font-medium text-right leading-tight">Saldo<br />({unidade})</th>
                   )}
-                  <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Previsto ({unidade})</th>
-                  <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Realizado ({unidade})</th>
-                  <th className="pb-1 pl-2 font-medium text-right whitespace-nowrap">% Executado</th>
+                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Previsto<br />({unidade})</th>
+                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Realizado<br />({unidade})</th>
+                  <th className="pb-1 pl-2 font-medium text-right leading-tight">%<br />Executado</th>
                 </tr>
               </thead>
               <tbody>
@@ -244,14 +247,14 @@ const AvancoSecao = ({
                     <td className="py-1.5 pr-2 text-foreground">{l.exibicao}</td>
                     {mostrarContratual ? (
                       <>
-                        <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">{contratualTexto(l.chave)}</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums">{saldoOperacional ? formatar(l.saldo) : saldoContratualTexto(l.chave, l.realizado)}</td>
+                        <td className="py-1.5 px-1.5 text-right tabular-nums text-muted-foreground font-normal">{contratualTexto(l.chave)}</td>
+                        <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoOperacional ? formatar(l.saldo) : saldoContratualTexto(l.chave, l.realizado)}</td>
                       </>
                     ) : (
-                      <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.saldo)}</td>
+                      <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(l.saldo)}</td>
                     )}
-                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.previsto)}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.realizado)}</td>
+                    <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(l.previsto)}</td>
+                    <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(l.realizado)}</td>
                     <td className="py-1.5 pl-2 text-right tabular-nums font-semibold">{fmtPct(l.pct)}</td>
                   </tr>
                 ))}
@@ -261,19 +264,19 @@ const AvancoSecao = ({
                   <td className="py-1.5 pr-2 text-foreground">Total</td>
                   {mostrarContratual ? (
                     <>
-                      <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">
+                      <td className="py-1.5 px-1.5 text-right tabular-nums text-muted-foreground font-normal">
                         {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma)}
                       </td>
-                      <td className="py-1.5 px-2 text-right tabular-nums">
+                      <td className="py-1.5 px-1.5 text-right tabular-nums">
                         {saldoOperacional ? formatar(previsto - realizado) : (contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma - realizadoComContratual))}
                       </td>
 
                     </>
                   ) : (
-                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto - realizado)}</td>
+                    <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(previsto - realizado)}</td>
                   )}
-                  <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto)}</td>
-                  <td className="py-1.5 px-2 text-right tabular-nums">{formatar(realizado)}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(previsto)}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(realizado)}</td>
                   <td className="py-1.5 pl-2 text-right tabular-nums">{fmtPct(pctTotal)}</td>
                 </tr>
               </tfoot>
@@ -339,9 +342,11 @@ const RamaisSecao = ({
   const divisor = 'border-l border-border/50';
 
   return (
-    <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col min-h-0">
-      <div className="flex items-center gap-1 mb-2">
-        <h3 className="text-sm font-semibold text-foreground">Ramais por sub-bacia</h3>
+    <div className="bg-card rounded-lg border border-border shadow-sm p-2.5 flex flex-col min-h-0">
+      <div className="flex items-start justify-center gap-1 mb-2 min-h-[2.4em]">
+        <h3 className="text-sm font-semibold text-foreground text-center leading-tight self-center">
+          Ramais por<br />sub-bacia
+        </h3>
         {podeEditar && BotaoLapis}
       </div>
 
@@ -384,14 +389,14 @@ const RamaisSecao = ({
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-card">
                 <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="pb-1 pr-2 font-medium whitespace-nowrap">Sub-bacia</th>
-                  <th className="pb-1 px-2 text-right whitespace-nowrap font-normal">Qnt. Contratual (un.)</th>
-                  <th className="pb-1 px-2 text-right whitespace-nowrap font-medium">Realizado (un.)</th>
-                  <th className="pb-1 px-2 text-right whitespace-nowrap font-medium">Saldo (un.)</th>
-                  <th className={`pb-1 px-2 text-right whitespace-nowrap font-normal ${divisor}`}>Qnt. Contratual (m)</th>
-                  <th className="pb-1 px-2 text-right whitespace-nowrap font-medium">Realizado (m)</th>
-                  <th className="pb-1 px-2 text-right whitespace-nowrap font-medium">Saldo (m)</th>
-                  <th className="pb-1 pl-2 text-right whitespace-nowrap font-medium">% Executado</th>
+                  <th className="pb-1 pr-2 font-medium leading-tight">Sub-bacia</th>
+                  <th className="pb-1 px-1.5 text-right font-normal leading-tight">Qnt.<br />Contratual<br />(un.)</th>
+                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Realizado<br />(un.)</th>
+                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Saldo<br />(un.)</th>
+                  <th className={`pb-1 px-1.5 text-right font-normal leading-tight ${divisor}`}>Qnt.<br />Contratual<br />(m)</th>
+                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Realizado<br />(m)</th>
+                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Saldo<br />(m)</th>
+                  <th className="pb-1 pl-2 font-medium text-right leading-tight">%<br />Executado</th>
                 </tr>
               </thead>
               <tbody>
@@ -401,12 +406,12 @@ const RamaisSecao = ({
                   return (
                     <tr key={l.chave} className="border-b border-border/40">
                       <td className="py-1.5 pr-2 text-foreground">{l.exibicao}</td>
-                      <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">{cUn == null ? '—' : fmtUn(cUn)}</td>
-                      <td className="py-1.5 px-2 text-right tabular-nums">{fmtUn(l.realizado)}</td>
-                      <td className="py-1.5 px-2 text-right tabular-nums">{saldoUn(cUn, l.realizado)}</td>
-                      <td className={`py-1.5 px-2 text-right tabular-nums text-muted-foreground ${divisor}`}>{cM == null ? '—' : fmtM(cM)}</td>
-                      <td className="py-1.5 px-2 text-right tabular-nums">{fmtM(l.realizadoM ?? 0)}</td>
-                      <td className="py-1.5 px-2 text-right tabular-nums">{saldoM(cM, l.realizadoM ?? 0)}</td>
+                      <td className="py-1.5 px-1.5 text-right tabular-nums text-muted-foreground">{cUn == null ? '—' : fmtUn(cUn)}</td>
+                      <td className="py-1.5 px-1.5 text-right tabular-nums">{fmtUn(l.realizado)}</td>
+                      <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoUn(cUn, l.realizado)}</td>
+                      <td className={`py-1.5 px-1.5 text-right tabular-nums text-muted-foreground ${divisor}`}>{cM == null ? '—' : fmtM(cM)}</td>
+                      <td className="py-1.5 px-1.5 text-right tabular-nums">{fmtM(l.realizadoM ?? 0)}</td>
+                      <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoM(cM, l.realizadoM ?? 0)}</td>
                       <td className="py-1.5 pl-2 text-right tabular-nums font-semibold">{fmtPct(pctLinha(cUn, l.realizado))}</td>
                     </tr>
                   );
@@ -415,12 +420,12 @@ const RamaisSecao = ({
               <tfoot>
                 <tr className="border-t border-border font-semibold">
                   <td className="py-1.5 pr-2 text-foreground">Total</td>
-                  <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">{totContratualUn == null ? '—' : fmtUn(totContratualUn)}</td>
-                  <td className="py-1.5 px-2 text-right tabular-nums">{fmtUn(totalRealUn)}</td>
-                  <td className="py-1.5 px-2 text-right tabular-nums">{saldoUn(totContratualUn, totalRealUn)}</td>
-                  <td className={`py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal ${divisor}`}>{totContratualM == null ? '—' : fmtM(totContratualM)}</td>
-                  <td className="py-1.5 px-2 text-right tabular-nums">{fmtM(totalRealM)}</td>
-                  <td className="py-1.5 px-2 text-right tabular-nums">{saldoM(totContratualM, totalRealM)}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums text-muted-foreground font-normal">{totContratualUn == null ? '—' : fmtUn(totContratualUn)}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums">{fmtUn(totalRealUn)}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoUn(totContratualUn, totalRealUn)}</td>
+                  <td className={`py-1.5 px-1.5 text-right tabular-nums text-muted-foreground font-normal ${divisor}`}>{totContratualM == null ? '—' : fmtM(totContratualM)}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums">{fmtM(totalRealM)}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoM(totContratualM, totalRealM)}</td>
                   <td className="py-1.5 pl-2 text-right tabular-nums">{fmtPct(pctTotal)}</td>
                 </tr>
               </tfoot>
@@ -527,9 +532,9 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         <AvancoSecao
-          titulo="Rede por sub-bacia"
+          titulo={<>Rede por<br />sub-bacia</>}
           linhas={redeVisivel}
           unidade="m"
           formatar={fmtM}
@@ -549,7 +554,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
 
         <AvancoSecao
-          titulo="Linha de Recalque por sub-bacia"
+          titulo={<>Linha de Recalque<br />por sub-bacia</>}
           linhas={lrVisivel}
           unidade="m"
           formatar={fmtM}

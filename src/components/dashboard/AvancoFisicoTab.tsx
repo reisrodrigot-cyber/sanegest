@@ -222,23 +222,23 @@ const AvancoSecao = ({
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-card">
                 <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="pb-1 pr-2 font-medium whitespace-nowrap">Sub-bacia</th>
+                  <th className="pb-1 pr-2 font-medium leading-tight">Sub-bacia</th>
                   {mostrarContratual ? (
                     <>
-                      <th className="pb-1 px-2 text-right whitespace-nowrap font-normal">
+                      <th className="pb-1 px-1.5 text-right font-normal leading-tight">
                         <span className="inline-flex items-center gap-1 justify-end">
-                          Qnt. Contratual ({unidade})
+                          Qnt.<br />Contratual<br />({unidade})
                           {podeEditar && BotaoLapis}
                         </span>
                       </th>
-                      <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">{saldoOperacional ? 'Saldo' : 'Saldo contratual'} ({unidade})</th>
+                      <th className="pb-1 px-1.5 font-medium text-right leading-tight">{saldoOperacional ? 'Saldo' : 'Saldo contratual'}<br />({unidade})</th>
                     </>
                   ) : (
-                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Saldo ({unidade})</th>
+                    <th className="pb-1 px-1.5 font-medium text-right leading-tight">Saldo<br />({unidade})</th>
                   )}
-                  <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Previsto ({unidade})</th>
-                  <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Realizado ({unidade})</th>
-                  <th className="pb-1 pl-2 font-medium text-right whitespace-nowrap">% Executado</th>
+                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Previsto<br />({unidade})</th>
+                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Realizado<br />({unidade})</th>
+                  <th className="pb-1 pl-2 font-medium text-right leading-tight">%<br />Executado</th>
                 </tr>
               </thead>
               <tbody>

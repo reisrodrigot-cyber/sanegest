@@ -421,7 +421,7 @@ const RamaisSecao = ({
                       <td className="py-1 px-1 text-right tabular-nums text-muted-foreground">{cUn == null ? '—' : fmtUn(cUn)}</td>
                       <td className="py-1 px-1 text-right tabular-nums">{fmtUn(l.realizado)}</td>
                       <td className="py-1 px-1 text-right tabular-nums">{saldoUn(cUn, l.realizado)}</td>
-                      <td className="py-1 px-1 text-right tabular-nums text-muted-foreground">{cM == null ? '—' : fmtM(cM)}</td>
+                      <td className={`py-1 px-1 text-right tabular-nums text-muted-foreground ${divisor}`}>{cM == null ? '—' : fmtM(cM)}</td>
                       <td className="py-1 px-1 text-right tabular-nums">{fmtM(l.realizadoM ?? 0)}</td>
                       <td className="py-1 px-1 text-right tabular-nums">{saldoM(cM, l.realizadoM ?? 0)}</td>
                       <td className="py-1 pl-1 text-right tabular-nums font-semibold">{fmtPct(pctLinha(cUn, l.realizado))}</td>

@@ -16,7 +16,7 @@ interface Props {
   subBacias: SubBaciaRef[];
   porChave: Map<string, QuantitativoContratual>;
   salvar: (
-    items: { chave: string; exibicao: string; redeM: number | null; ramaisUn: number | null; lrM: number | null }[],
+    items: { chave: string; exibicao: string; redeM: number | null; ramaisUn: number | null; ramaisM: number | null; lrM: number | null }[],
   ) => Promise<{ error: unknown }>;
 }
 
@@ -27,8 +27,8 @@ const parseNum = (v: string): number | null => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-type Campos = { rede: string; ramais: string; lr: string };
-const vazio: Campos = { rede: '', ramais: '', lr: '' };
+type Campos = { rede: string; ramais: string; ramaisM: string; lr: string };
+const vazio: Campos = { rede: '', ramais: '', ramaisM: '', lr: '' };
 
 export function QuantidadesContratuaisModal({ open, onOpenChange, subBacias, porChave, salvar }: Props) {
   const [valores, setValores] = useState<Record<string, Campos>>({});
@@ -42,6 +42,7 @@ export function QuantidadesContratuaisModal({ open, onOpenChange, subBacias, por
       init[s.chave] = {
         rede: q?.redeM != null ? String(q.redeM).replace('.', ',') : '',
         ramais: q?.ramaisUn != null ? String(q.ramaisUn) : '',
+        ramaisM: q?.ramaisM != null ? String(q.ramaisM).replace('.', ',') : '',
         lr: q?.lrM != null ? String(q.lrM).replace('.', ',') : '',
       };
     });
@@ -58,6 +59,7 @@ export function QuantidadesContratuaisModal({ open, onOpenChange, subBacias, por
       exibicao: s.exibicao,
       redeM: parseNum(valores[s.chave]?.rede ?? ''),
       ramaisUn: parseNum(valores[s.chave]?.ramais ?? ''),
+      ramaisM: parseNum(valores[s.chave]?.ramaisM ?? ''),
       lrM: parseNum(valores[s.chave]?.lr ?? ''),
     }));
     const { error } = await salvar(items);
@@ -73,21 +75,22 @@ export function QuantidadesContratuaisModal({ open, onOpenChange, subBacias, por
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Editar quantidades contratuais</DialogTitle>
         </DialogHeader>
 
         <div className="max-h-[60vh] overflow-auto -mx-2 px-2">
-          <div className="hidden sm:grid grid-cols-[1fr_120px_110px_140px] gap-2 pb-1 text-xs text-muted-foreground font-medium">
+          <div className="hidden sm:grid grid-cols-[1fr_110px_100px_110px_130px] gap-2 pb-1 text-xs text-muted-foreground font-medium">
             <span>Sub-bacia</span>
             <span className="text-right">Rede (m)</span>
             <span className="text-right">Ramais (un.)</span>
+            <span className="text-right">Ramais (m)</span>
             <span className="text-right">Linha de Recalque (m)</span>
           </div>
           <ul className="flex flex-col gap-2">
             {subBacias.map((s) => (
-              <li key={s.chave} className="grid grid-cols-1 sm:grid-cols-[1fr_120px_110px_140px] gap-2 items-center border-b border-border/40 pb-2 sm:pb-1 sm:border-0">
+              <li key={s.chave} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_100px_110px_130px] gap-2 items-center border-b border-border/40 pb-2 sm:pb-1 sm:border-0">
                 <span className="text-sm text-foreground">{s.exibicao}</span>
                 <Input
                   inputMode="decimal"
@@ -102,6 +105,13 @@ export function QuantidadesContratuaisModal({ open, onOpenChange, subBacias, por
                   className="h-9 text-right tabular-nums"
                   value={valores[s.chave]?.ramais ?? ''}
                   onChange={(e) => set(s.chave, 'ramais', e.target.value)}
+                />
+                <Input
+                  inputMode="decimal"
+                  placeholder="Ramais (m)"
+                  className="h-9 text-right tabular-nums"
+                  value={valores[s.chave]?.ramaisM ?? ''}
+                  onChange={(e) => set(s.chave, 'ramaisM', e.target.value)}
                 />
                 <Input
                   inputMode="decimal"

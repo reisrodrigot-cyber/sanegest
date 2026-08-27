@@ -138,8 +138,8 @@ const AvancoSecao = ({
 
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-2.5 flex flex-col min-h-0">
-      <div className="flex items-start justify-center gap-1 mb-2 min-h-[2.4em]">
-        <h3 className="text-sm font-semibold text-foreground text-center leading-tight self-center">{titulo}</h3>
+      <div className="flex items-center justify-center gap-1 mb-2">
+        <h3 className="text-sm font-semibold text-foreground text-center whitespace-nowrap">{titulo}</h3>
         {podeEditar && BotaoLapis}
       </div>
 
@@ -343,10 +343,8 @@ const RamaisSecao = ({
 
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-2.5 flex flex-col min-h-0">
-      <div className="flex items-start justify-center gap-1 mb-2 min-h-[2.4em]">
-        <h3 className="text-sm font-semibold text-foreground text-center leading-tight self-center">
-          Ramais por<br />sub-bacia
-        </h3>
+      <div className="flex items-center justify-center gap-1 mb-2">
+        <h3 className="text-sm font-semibold text-foreground text-center whitespace-nowrap">Ramais / SB</h3>
         {podeEditar && BotaoLapis}
       </div>
 
@@ -385,18 +383,32 @@ const RamaisSecao = ({
           </ul>
 
           {/* Desktop */}
-          <div className="hidden md:block overflow-auto max-h-[420px]">
-            <table className="w-full text-xs">
+          <div className="hidden md:block overflow-visible">
+            <table className="w-full text-xs table-fixed">
+              <colgroup>
+                <col style={{ width: '24%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '16%' }} />
+              </colgroup>
               <thead className="sticky top-0 bg-card">
                 <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="pb-1 pr-2 font-medium leading-tight">Sub-bacia</th>
-                  <th className="pb-1 px-1.5 text-right font-normal leading-tight">Qnt.<br />Contratual<br />(un.)</th>
-                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Realizado<br />(un.)</th>
-                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Saldo<br />(un.)</th>
-                  <th className={`pb-1 px-1.5 text-right font-normal leading-tight ${divisor}`}>Qnt.<br />Contratual<br />(m)</th>
-                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Realizado<br />(m)</th>
-                  <th className="pb-1 px-1.5 font-medium text-right leading-tight">Saldo<br />(m)</th>
-                  <th className="pb-1 pl-2 font-medium text-right leading-tight">%<br />Executado</th>
+                  <th rowSpan={2} className="pb-1 pr-2 font-medium align-bottom leading-tight">Sub-bacia</th>
+                  <th colSpan={3} className="pb-0 px-1 text-center font-medium leading-tight border-b border-border/50">UNIDADES</th>
+                  <th colSpan={3} className="pb-0 px-1 text-center font-medium leading-tight border-b border-border/50">METROS</th>
+                  <th rowSpan={2} className="pb-1 pl-1 text-right font-medium align-bottom leading-tight whitespace-nowrap">% Exec.</th>
+                </tr>
+                <tr className="text-left text-muted-foreground border-b border-border">
+                  <th className="py-1 px-1 text-right font-normal leading-tight">Contr.</th>
+                  <th className="py-1 px-1 text-right font-medium leading-tight">Real.</th>
+                  <th className="py-1 px-1 text-right font-medium leading-tight">Saldo</th>
+                  <th className={`py-1 px-1 text-right font-normal leading-tight ${divisor}`}>Contr.</th>
+                  <th className="py-1 px-1 text-right font-medium leading-tight">Real.</th>
+                  <th className="py-1 px-1 text-right font-medium leading-tight">Saldo</th>
                 </tr>
               </thead>
               <tbody>
@@ -405,28 +417,28 @@ const RamaisSecao = ({
                   const cM = contratualM.get(l.chave);
                   return (
                     <tr key={l.chave} className="border-b border-border/40">
-                      <td className="py-1.5 pr-2 text-foreground">{l.exibicao}</td>
-                      <td className="py-1.5 px-1.5 text-right tabular-nums text-muted-foreground">{cUn == null ? '—' : fmtUn(cUn)}</td>
-                      <td className="py-1.5 px-1.5 text-right tabular-nums">{fmtUn(l.realizado)}</td>
-                      <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoUn(cUn, l.realizado)}</td>
-                      <td className={`py-1.5 px-1.5 text-right tabular-nums text-muted-foreground ${divisor}`}>{cM == null ? '—' : fmtM(cM)}</td>
-                      <td className="py-1.5 px-1.5 text-right tabular-nums">{fmtM(l.realizadoM ?? 0)}</td>
-                      <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoM(cM, l.realizadoM ?? 0)}</td>
-                      <td className="py-1.5 pl-2 text-right tabular-nums font-semibold">{fmtPct(pctLinha(cUn, l.realizado))}</td>
+                      <td className="py-1 pr-2 text-foreground break-words">{l.exibicao}</td>
+                      <td className="py-1 px-1 text-right tabular-nums text-muted-foreground">{cUn == null ? '—' : fmtUn(cUn)}</td>
+                      <td className="py-1 px-1 text-right tabular-nums">{fmtUn(l.realizado)}</td>
+                      <td className="py-1 px-1 text-right tabular-nums">{saldoUn(cUn, l.realizado)}</td>
+                      <td className={`py-1 px-1 text-right tabular-nums text-muted-foreground ${divisor}`}>{cM == null ? '—' : fmtM(cM)}</td>
+                      <td className="py-1 px-1 text-right tabular-nums">{fmtM(l.realizadoM ?? 0)}</td>
+                      <td className="py-1 px-1 text-right tabular-nums">{saldoM(cM, l.realizadoM ?? 0)}</td>
+                      <td className="py-1 pl-1 text-right tabular-nums font-semibold">{fmtPct(pctLinha(cUn, l.realizado))}</td>
                     </tr>
                   );
                 })}
               </tbody>
               <tfoot>
                 <tr className="border-t border-border font-semibold">
-                  <td className="py-1.5 pr-2 text-foreground">Total</td>
-                  <td className="py-1.5 px-1.5 text-right tabular-nums text-muted-foreground font-normal">{totContratualUn == null ? '—' : fmtUn(totContratualUn)}</td>
-                  <td className="py-1.5 px-1.5 text-right tabular-nums">{fmtUn(totalRealUn)}</td>
-                  <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoUn(totContratualUn, totalRealUn)}</td>
-                  <td className={`py-1.5 px-1.5 text-right tabular-nums text-muted-foreground font-normal ${divisor}`}>{totContratualM == null ? '—' : fmtM(totContratualM)}</td>
-                  <td className="py-1.5 px-1.5 text-right tabular-nums">{fmtM(totalRealM)}</td>
-                  <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoM(totContratualM, totalRealM)}</td>
-                  <td className="py-1.5 pl-2 text-right tabular-nums">{fmtPct(pctTotal)}</td>
+                  <td className="py-1 pr-2 text-foreground">Total</td>
+                  <td className="py-1 px-1 text-right tabular-nums text-muted-foreground font-normal">{totContratualUn == null ? '—' : fmtUn(totContratualUn)}</td>
+                  <td className="py-1 px-1 text-right tabular-nums">{fmtUn(totalRealUn)}</td>
+                  <td className="py-1 px-1 text-right tabular-nums">{saldoUn(totContratualUn, totalRealUn)}</td>
+                  <td className={`py-1 px-1 text-right tabular-nums text-muted-foreground font-normal ${divisor}`}>{totContratualM == null ? '—' : fmtM(totContratualM)}</td>
+                  <td className="py-1 px-1 text-right tabular-nums">{fmtM(totalRealM)}</td>
+                  <td className="py-1 px-1 text-right tabular-nums">{saldoM(totContratualM, totalRealM)}</td>
+                  <td className="py-1 pl-1 text-right tabular-nums">{fmtPct(pctTotal)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -534,7 +546,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         <AvancoSecao
-          titulo={<>Rede por<br />sub-bacia</>}
+          titulo="Rede / SB"
           linhas={redeVisivel}
           unidade="m"
           formatar={fmtM}
@@ -554,7 +566,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
 
         <AvancoSecao
-          titulo={<>Linha de Recalque<br />por sub-bacia</>}
+          titulo="L. Recalque / SB"
           linhas={lrVisivel}
           unidade="m"
           formatar={fmtM}

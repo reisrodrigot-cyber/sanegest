@@ -1463,7 +1463,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
               {subBaciaTab === 'rede' && (
                 <>
-                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground mb-1">
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground mb-1 flex-wrap">
                     <span className="flex items-center gap-1">
                       <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_EXEC }} />
                       Executado — Rede
@@ -1477,38 +1477,76 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       Pendente
                     </span>
                   </div>
+                  {(() => {
+                    // Tooltip com os quatro valores, sempre visíveis (0,00 m quando vazio).
+                    const fmt2 = (n: number) => `${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
+                    const SubBaciaTooltip = ({ active, payload }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const b = payload[0].payload;
+                      return (
+                        <div style={{ ...darkTooltipStyle, padding: '8px 10px' }}>
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>Sub-bacia: {b.trecho}</div>
+                          <div className="tabular-nums">Executado — Rede: {fmt2(b.executadoRede)}</div>
+                          <div className="tabular-nums">Pendente — Rede: {fmt2(b.pendenteRede)}</div>
+                          <div className="tabular-nums" style={{ marginTop: 4 }}>Executado — Linha de Recalque: {fmt2(b.executadoLR)}</div>
+                          <div className="tabular-nums">Pendente — Linha de Recalque: {fmt2(b.pendenteLR)}</div>
+                        </div>
+                      );
+                    };
+                    // Escala horizontal comum: rótulos internos só quando o segmento tem espaço.
+                    const maxBar = filteredRede.reduce(
+                      (m, b) => Math.max(m, b.executadoRede + b.pendenteRede, b.executadoLR + b.pendenteLR),
+                      0,
+                    );
+                    const labelThreshold = maxBar * 0.1;
+                    const segLabel = (v: number) => (Number(v) >= labelThreshold ? fmtM(Number(v)) : '');
+                    return null && <SubBaciaTooltip /> as any;
+                  })()}
                   {filteredRede.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-6">Sem dados.</p>
                   ) : isMobileLayout ? (
                     <ul className="overflow-y-auto flex-1 min-h-0 flex flex-col gap-2 pr-0.5">
                       {filteredRede.map((b) => {
-                        const base = b.totalBase > 0 ? b.totalBase : b.executado;
-                        const pctExec = base > 0 ? Math.min(100, (b.executado / base) * 100) : 0;
-                        const pctLR = base > 0 ? Math.min(pctExec, (b.executadoLR / base) * 100) : 0;
-                        const pctRede = Math.max(pctExec - pctLR, 0);
+                        // Duas barras independentes, mesma escala horizontal dentro do card.
+                        const escala = Math.max(b.executadoRede + b.pendenteRede, b.executadoLR + b.pendenteLR, 0.0001);
+                        const wRedeExec = (b.executadoRede / escala) * 100;
+                        const wRedePend = (b.pendenteRede / escala) * 100;
+                        const wLRExec = (b.executadoLR / escala) * 100;
+                        const wLRPend = (b.pendenteLR / escala) * 100;
+                        const barra = (wExec: number, wPend: number, corExec: string) => (
+                          <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-secondary">
+                            <div style={{ width: `${wExec}%`, backgroundColor: corExec }} />
+                            <div style={{ width: `${wPend}%`, backgroundColor: RED_PEND }} />
+                          </div>
+                        );
                         return (
                           <li key={b.trecho} className="rounded-lg border border-border bg-secondary p-3">
                             <div className="flex items-start justify-between gap-3">
                               <span className="text-[13px] font-semibold text-foreground break-words">{b.trecho}</span>
                               <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: TEAL }}>{b.pct}%</span>
                             </div>
-                            <div className="mt-2 h-3 w-full rounded-full overflow-hidden flex bg-secondary">
-                              <div style={{ width: `${pctRede}%`, backgroundColor: GREEN_EXEC }} />
-                              <div style={{ width: `${pctLR}%`, backgroundColor: GREEN_LR }} />
-                              <div style={{ width: `${100 - pctExec}%`, backgroundColor: RED_PEND }} />
-                            </div>
-                            <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+                            <div className="mt-2 space-y-2">
                               <div>
-                                <div className="text-muted-foreground">Executado — Rede</div>
-                                <div className="tabular-nums font-medium" style={{ color: GREEN_EXEC }}>{fmtM(b.executadoRede)} m</div>
+                                <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-0.5">
+                                  <span>Rede</span>
+                                  <span className="tabular-nums">{b.pctRede}%</span>
+                                </div>
+                                {barra(wRedeExec, wRedePend, GREEN_EXEC)}
+                                <div className="mt-0.5 flex items-center justify-between text-[12px] tabular-nums">
+                                  <span style={{ color: GREEN_EXEC }}>{fmtM(b.executadoRede)} m</span>
+                                  <span style={{ color: RED_PEND }}>{fmtM(b.pendenteRede)} m</span>
+                                </div>
                               </div>
                               <div>
-                                <div className="text-muted-foreground">Executado — L. Recalque</div>
-                                <div className="tabular-nums font-medium" style={{ color: GREEN_LR }}>{fmtM(b.executadoLR)} m</div>
-                              </div>
-                              <div>
-                                <div className="text-muted-foreground">Pendente</div>
-                                <div className="tabular-nums font-medium" style={{ color: RED_PEND }}>{fmtM(b.pendente)} m</div>
+                                <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-0.5">
+                                  <span>Linha de Recalque</span>
+                                  <span className="tabular-nums">{b.temLR ? `${b.pctLR}%` : '—'}</span>
+                                </div>
+                                {barra(wLRExec, wLRPend, GREEN_LR)}
+                                <div className="mt-0.5 flex items-center justify-between text-[12px] tabular-nums">
+                                  <span style={{ color: GREEN_LR }}>{fmtM(b.executadoLR)} m</span>
+                                  <span style={{ color: RED_PEND }}>{fmtM(b.pendenteLR)} m</span>
+                                </div>
                               </div>
                             </div>
                           </li>
@@ -1525,29 +1563,44 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                             data={filteredRede}
                             layout="vertical"
                             margin={{ top: 4, right: 56, bottom: 4, left: 8 }}
-                            barCategoryGap={4}
-                            barSize={14}
+                            barCategoryGap={10}
+                            barGap={2}
+                            barSize={11}
                           >
                             <CartesianGrid stroke={DARK_GRID} strokeDasharray="0" horizontal={false} />
                             <XAxis type="number" tick={{ fontSize: 10, fill: DARK_AXIS }} stroke={DARK_GRID} />
                             <YAxis type="category" dataKey="trecho" tick={{ fontSize: 11, fill: DARK_AXIS }} stroke={DARK_GRID} width={120} />
                             <Tooltip
-                              contentStyle={darkTooltipStyle}
-                              labelStyle={{ color: '#fff' }}
-                              formatter={(v: number, n: string) => [
-                                `${fmtM(Number(v))} m`,
-                                n === 'executadoRede' ? 'Executado — Rede' : n === 'executadoLR' ? 'Executado — Linha de Recalque' : 'Pendente',
-                              ]}
+                              cursor={{ fill: 'hsl(213 30% 92% / 0.5)' }}
+                              content={({ active, payload }: any) => {
+                                if (!active || !payload?.length) return null;
+                                const b = payload[0].payload;
+                                const fmt2 = (n: number) => `${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
+                                return (
+                                  <div style={{ ...darkTooltipStyle, padding: '8px 10px' }}>
+                                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Sub-bacia: {b.trecho}</div>
+                                    <div className="tabular-nums">Executado — Rede: {fmt2(b.executadoRede)}</div>
+                                    <div className="tabular-nums">Pendente — Rede: {fmt2(b.pendenteRede)}</div>
+                                    <div className="tabular-nums" style={{ marginTop: 4 }}>Executado — Linha de Recalque: {fmt2(b.executadoLR)}</div>
+                                    <div className="tabular-nums">Pendente — Linha de Recalque: {fmt2(b.pendenteLR)}</div>
+                                  </div>
+                                );
+                              }}
                             />
-                            <Bar dataKey="executadoRede" stackId="a" fill={GREEN_EXEC} name="executadoRede" barSize={14}>
-                              <LabelList dataKey="executadoRede" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
+                            {/* Duas barras independentes por sub-bacia (stackIds distintos = lado a lado) */}
+                            <Bar dataKey="executadoRede" stackId="rede" fill={GREEN_EXEC} name="executadoRede">
+                              <LabelList dataKey="executadoRede" position="center" formatter={(v: number) => (Number(v) >= filteredRede.reduce((m, x) => Math.max(m, x.executadoRede + x.pendenteRede, x.executadoLR + x.pendenteLR), 0) * 0.1 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
                             </Bar>
-                            <Bar dataKey="executadoLR" stackId="a" fill={GREEN_LR} name="executadoLR" barSize={14}>
-                              <LabelList dataKey="executadoLR" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
+                            <Bar dataKey="pendenteRede" stackId="rede" fill={RED_PEND} name="pendenteRede">
+                              <LabelList dataKey="pendenteRede" position="center" formatter={(v: number) => (Number(v) >= filteredRede.reduce((m, x) => Math.max(m, x.executadoRede + x.pendenteRede, x.executadoLR + x.pendenteLR), 0) * 0.1 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
+                              <LabelList dataKey="pctRede" position="right" formatter={(v: number) => (v > 0 ? `${v}%` : '')} fill={TEAL} fontSize={11} offset={8} />
                             </Bar>
-                            <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente" barSize={14}>
-                              <LabelList dataKey="pendente" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
-                              <LabelList dataKey="pct" position="right" formatter={(v: number) => `${v}%`} fill="#4FB0EF" fontSize={11} offset={8} />
+                            <Bar dataKey="executadoLR" stackId="lr" fill={GREEN_LR} name="executadoLR">
+                              <LabelList dataKey="executadoLR" position="center" formatter={(v: number) => (Number(v) >= filteredRede.reduce((m, x) => Math.max(m, x.executadoRede + x.pendenteRede, x.executadoLR + x.pendenteLR), 0) * 0.1 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
+                            </Bar>
+                            <Bar dataKey="pendenteLR" stackId="lr" fill={RED_PEND} name="pendenteLR">
+                              <LabelList dataKey="pendenteLR" position="center" formatter={(v: number) => (Number(v) >= filteredRede.reduce((m, x) => Math.max(m, x.executadoRede + x.pendenteRede, x.executadoLR + x.pendenteLR), 0) * 0.1 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
+                              <LabelList dataKey="pctLR" position="right" formatter={(v: number) => (v > 0 ? `${v}%` : '')} fill={TEAL} fontSize={10} offset={8} />
                             </Bar>
                           </BarChart>
                         )}

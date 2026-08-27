@@ -247,14 +247,14 @@ const AvancoSecao = ({
                     <td className="py-1.5 pr-2 text-foreground">{l.exibicao}</td>
                     {mostrarContratual ? (
                       <>
-                        <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">{contratualTexto(l.chave)}</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums">{saldoOperacional ? formatar(l.saldo) : saldoContratualTexto(l.chave, l.realizado)}</td>
+                        <td className="py-1.5 px-1.5 text-right tabular-nums text-muted-foreground font-normal">{contratualTexto(l.chave)}</td>
+                        <td className="py-1.5 px-1.5 text-right tabular-nums">{saldoOperacional ? formatar(l.saldo) : saldoContratualTexto(l.chave, l.realizado)}</td>
                       </>
                     ) : (
-                      <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.saldo)}</td>
+                      <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(l.saldo)}</td>
                     )}
-                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.previsto)}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(l.realizado)}</td>
+                    <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(l.previsto)}</td>
+                    <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(l.realizado)}</td>
                     <td className="py-1.5 pl-2 text-right tabular-nums font-semibold">{fmtPct(l.pct)}</td>
                   </tr>
                 ))}
@@ -264,19 +264,19 @@ const AvancoSecao = ({
                   <td className="py-1.5 pr-2 text-foreground">Total</td>
                   {mostrarContratual ? (
                     <>
-                      <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">
+                      <td className="py-1.5 px-1.5 text-right tabular-nums text-muted-foreground font-normal">
                         {contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma)}
                       </td>
-                      <td className="py-1.5 px-2 text-right tabular-nums">
+                      <td className="py-1.5 px-1.5 text-right tabular-nums">
                         {saldoOperacional ? formatar(previsto - realizado) : (contratualTotalSoma == null ? '—' : formatarContratual(contratualTotalSoma - realizadoComContratual))}
                       </td>
 
                     </>
                   ) : (
-                    <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto - realizado)}</td>
+                    <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(previsto - realizado)}</td>
                   )}
-                  <td className="py-1.5 px-2 text-right tabular-nums">{formatar(previsto)}</td>
-                  <td className="py-1.5 px-2 text-right tabular-nums">{formatar(realizado)}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(previsto)}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums">{formatar(realizado)}</td>
                   <td className="py-1.5 pl-2 text-right tabular-nums">{fmtPct(pctTotal)}</td>
                 </tr>
               </tfoot>

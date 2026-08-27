@@ -552,8 +552,14 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // ------------------------------------------------------------
   const execRedePorSubBacia = useMemo(() => {
     const baciaPorOs = new Map<string, string>();
-    ordens.forEach((o) => baciaPorOs.set(o.id, o.bacia || ''));
+    const lrPorOs = new Map<string, boolean>();
+    ordens.forEach((o) => {
+      baciaPorOs.set(o.id, o.bacia || '');
+      lrPorOs.set(o.id, isLinhaRecalque(o.trecho));
+    });
     const map = new Map<string, number>();
+    // Parcela do executado que é Linha de Recalque (subconjunto de `map`).
+    const mapLR = new Map<string, number>();
     let linhas = 0;
     for (const row of relatorioRows) {
       const d = String(row.data_producao ?? '');
@@ -566,10 +572,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         (row.os_id ? String(baciaPorOs.get(row.os_id) ?? '').trim() : '') ||
         SEM_SUB_BACIA;
       map.set(bacia, (map.get(bacia) ?? 0) + metros);
+      const ehLR = (row.os_id ? lrPorOs.get(row.os_id) : undefined) ?? isLinhaRecalque(row.trecho);
+      if (ehLR) mapLR.set(bacia, (mapLR.get(bacia) ?? 0) + metros);
     }
     let total = 0;
     map.forEach((v) => { total += v; });
-    return { porBacia: map, total, linhas };
+    return { porBacia: map, porBaciaLR: mapLR, total, linhas };
   }, [relatorioRows, ordens, periodo.inicio, periodo.fim]);
 
   // ------------------------------------------------------------
@@ -858,10 +866,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // Previsto/pendente continuam vindo do plano (ordens.comprimento_previsto).
   const porTrecho = useMemo(() => {
     const round2 = (n: number) => Math.round(n * 100) / 100;
-    const map = new Map<string, { executado: number; pendente: number; total: number; ligQtd: number; ligComp: number }>();
+    const map = new Map<string, { executado: number; executadoLR: number; pendente: number; total: number; ligQtd: number; ligComp: number }>();
     const get = (bacia: string) => {
       let c = map.get(bacia);
-      if (!c) { c = { executado: 0, pendente: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
+      if (!c) { c = { executado: 0, executadoLR: 0, pendente: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
       return c;
     };
     ordens.forEach((o) => {
@@ -880,12 +888,18 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     execRedePorSubBacia.porBacia.forEach((metros, bacia) => {
       get(bacia).executado += metros;
     });
+    execRedePorSubBacia.porBaciaLR.forEach((metros, bacia) => {
+      get(bacia).executadoLR += metros;
+    });
     return Array.from(map.entries())
       .map(([bacia, v]) => {
         const base = v.executado + v.pendente;
         return {
           trecho: bacia,
           executado: round2(v.executado),
+          // Composição do executado: X = A (rede) + B (linha de recalque)
+          executadoLR: round2(v.executadoLR),
+          executadoRede: round2(Math.max(v.executado - v.executadoLR, 0)),
           pendente: round2(v.pendente),
           total: round2(v.total),
           totalBase: round2(base),

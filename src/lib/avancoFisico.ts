@@ -202,7 +202,10 @@ export interface LinhaAvanco {
   pct: number | null;
   /** Existe N.S. vigente com previsto > 0 nesta sub-bacia. */
   temPrevisto: boolean;
+  /** Somente Ramais: comprimento realizado das ligações (m). */
+  realizadoM?: number;
 }
+
 
 export interface AvancoConsolidado {
   rede: LinhaAvanco[];
@@ -268,7 +271,9 @@ export function consolidarAvanco(
         saldo: ramaisPrev - ramaisReal,
         pct: percentualSeguro(ramaisReal, ramaisPrev),
         temPrevisto: ramaisPrev > 0,
+        realizadoM: Math.round((real?.ligacoesM ?? 0) * 100) / 100,
       });
+
 
       if (lrPrev > 0 || lrReal > 0) {
         linhaRecalque.push({

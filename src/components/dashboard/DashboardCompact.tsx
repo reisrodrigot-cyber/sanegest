@@ -76,6 +76,11 @@ interface RelatorioRow {
 }
 
 const SEM_SUB_BACIA = 'Sem sub-bacia';
+/** Linha de Recalque: trecho exatamente "LINHA DE RECALQUE" (sem acento/caixa). */
+const isLinhaRecalque = (t: string | null | undefined): boolean =>
+  String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/\s+/g, ' ').trim() === 'LINHA DE RECALQUE';
+
 // Formatação canônica de metros (pt-BR, no máximo 2 casas).
 const fmtM = (n: number) =>
   n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -482,7 +487,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           media: diasRede > 0 ? Math.round((v.rede / diasRede) * 100) / 100 : null,
         };
       })
-      .sort((a, b) => b.total - a.total);
+      // Ordenação por rede executada — métricas nunca são somadas entre si.
+      .sort((a, b) => b.rede - a.rede);
   }, [relatorioRows, periodo.inicio, periodo.fim]);
 
 
@@ -552,8 +558,14 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // ------------------------------------------------------------
   const execRedePorSubBacia = useMemo(() => {
     const baciaPorOs = new Map<string, string>();
-    ordens.forEach((o) => baciaPorOs.set(o.id, o.bacia || ''));
+    const lrPorOs = new Map<string, boolean>();
+    ordens.forEach((o) => {
+      baciaPorOs.set(o.id, o.bacia || '');
+      lrPorOs.set(o.id, isLinhaRecalque(o.trecho));
+    });
     const map = new Map<string, number>();
+    // Parcela do executado que é Linha de Recalque (subconjunto de `map`).
+    const mapLR = new Map<string, number>();
     let linhas = 0;
     for (const row of relatorioRows) {
       const d = String(row.data_producao ?? '');
@@ -566,10 +578,12 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
         (row.os_id ? String(baciaPorOs.get(row.os_id) ?? '').trim() : '') ||
         SEM_SUB_BACIA;
       map.set(bacia, (map.get(bacia) ?? 0) + metros);
+      const ehLR = (row.os_id ? lrPorOs.get(row.os_id) : undefined) ?? isLinhaRecalque(row.trecho);
+      if (ehLR) mapLR.set(bacia, (mapLR.get(bacia) ?? 0) + metros);
     }
     let total = 0;
     map.forEach((v) => { total += v; });
-    return { porBacia: map, total, linhas };
+    return { porBacia: map, porBaciaLR: mapLR, total, linhas };
   }, [relatorioRows, ordens, periodo.inicio, periodo.fim]);
 
   // ------------------------------------------------------------
@@ -858,10 +872,10 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // Previsto/pendente continuam vindo do plano (ordens.comprimento_previsto).
   const porTrecho = useMemo(() => {
     const round2 = (n: number) => Math.round(n * 100) / 100;
-    const map = new Map<string, { executado: number; pendente: number; total: number; ligQtd: number; ligComp: number }>();
+    const map = new Map<string, { executado: number; executadoLR: number; pendente: number; total: number; ligQtd: number; ligComp: number }>();
     const get = (bacia: string) => {
       let c = map.get(bacia);
-      if (!c) { c = { executado: 0, pendente: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
+      if (!c) { c = { executado: 0, executadoLR: 0, pendente: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
       return c;
     };
     ordens.forEach((o) => {
@@ -880,12 +894,18 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     execRedePorSubBacia.porBacia.forEach((metros, bacia) => {
       get(bacia).executado += metros;
     });
+    execRedePorSubBacia.porBaciaLR.forEach((metros, bacia) => {
+      get(bacia).executadoLR += metros;
+    });
     return Array.from(map.entries())
       .map(([bacia, v]) => {
         const base = v.executado + v.pendente;
         return {
           trecho: bacia,
           executado: round2(v.executado),
+          // Composição do executado: X = A (rede) + B (linha de recalque)
+          executadoLR: round2(v.executadoLR),
+          executadoRede: round2(Math.max(v.executado - v.executadoLR, 0)),
           pendente: round2(v.pendente),
           total: round2(v.total),
           totalBase: round2(base),
@@ -919,6 +939,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const TEAL = '#185FA5';
   const RED_PEND = '#e63946';
   const GREEN_EXEC = '#2dc653';
+  // Linha de Recalque: verde da mesma família, visualmente distinto.
+  const GREEN_LR = '#12833a';
 
   const darkCardStyle: React.CSSProperties = {
     backgroundColor: DARK_BG,
@@ -1268,7 +1290,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Rede (m)</th>
                     <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Lig. (m)</th>
                     <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Lig. (un)</th>
-                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Total (m)</th>
                     <th
                       className="pb-1 pl-2 font-medium text-right"
                       title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
@@ -1280,11 +1301,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 </thead>
                 <tbody>
                   {loadingEncarregado ? (
-                    <tr><td colSpan={6} className="text-center text-muted-foreground py-3">
+                    <tr><td colSpan={5} className="text-center text-muted-foreground py-3">
                       <span className="inline-flex items-center gap-1.5"><Loader2 className="animate-spin" size={12} /> Carregando…</span>
                     </td></tr>
                   ) : porEncarregado.length === 0 ? (
-                    <tr><td colSpan={6} className="text-center text-muted-foreground py-3">Sem produção lançada no período</td></tr>
+                    <tr><td colSpan={5} className="text-center text-muted-foreground py-3">Sem produção lançada no período</td></tr>
                   ) : porEncarregado.map((e) => (
                     <tr key={e.nome} className="border-b border-border/40">
                       <td className="py-1 pr-2 text-foreground">{e.nome}</td>
@@ -1295,9 +1316,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                         {e.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
                       <td className="py-1 px-2 text-right tabular-nums text-muted-foreground whitespace-nowrap">{e.ligUn}</td>
-                      <td className="py-1 px-2 text-right font-semibold tabular-nums whitespace-nowrap">
-                        {e.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
-                      </td>
                       <td
                         className="py-1 pl-2 text-right tabular-nums text-foreground whitespace-nowrap"
                         title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
@@ -1321,12 +1339,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   <span className="text-muted-foreground">Ligações</span>
                   <span className="font-semibold text-foreground tabular-nums">
                     {totaisEnc.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m · {totaisEnc.ligUn} un
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total produção</span>
-                  <span className="font-semibold text-foreground tabular-nums">
-                    {totaisEnc.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -1394,6 +1406,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           const filteredRede = filtered.filter((b) => b.total > 0 || b.executado > 0);
           // Total geral do gráfico = soma exata dos verdes exibidos
           const totalExecRede = Math.round(filteredRede.reduce((s, b) => s + b.executado, 0) * 100) / 100;
+          const totalExecRedeSo = Math.round(filteredRede.reduce((s, b) => s + b.executadoRede, 0) * 100) / 100;
+          const totalExecLR = Math.round(filteredRede.reduce((s, b) => s + b.executadoLR, 0) * 100) / 100;
           const totalPrevRede = Math.round(filteredRede.reduce((s, b) => s + b.totalBase, 0) * 100) / 100;
           const temSemSubBacia = filteredRede.some((b) => b.semSubBacia && b.executado > 0);
           // Aba Ligações só sub-bacias com alguma ligação executada
@@ -1436,7 +1450,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   <div className="flex items-center gap-3 text-[11px] text-muted-foreground mb-1">
                     <span className="flex items-center gap-1">
                       <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_EXEC }} />
-                      Executado
+                      Executado — Rede
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_LR }} />
+                      Executado — Linha de Recalque
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: RED_PEND }} />
@@ -1450,6 +1468,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       {filteredRede.map((b) => {
                         const base = b.totalBase > 0 ? b.totalBase : b.executado;
                         const pctExec = base > 0 ? Math.min(100, (b.executado / base) * 100) : 0;
+                        const pctLR = base > 0 ? Math.min(pctExec, (b.executadoLR / base) * 100) : 0;
+                        const pctRede = Math.max(pctExec - pctLR, 0);
                         return (
                           <li key={b.trecho} className="rounded-lg border border-border bg-secondary p-3">
                             <div className="flex items-start justify-between gap-3">
@@ -1457,13 +1477,18 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                               <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: TEAL }}>{b.pct}%</span>
                             </div>
                             <div className="mt-2 h-3 w-full rounded-full overflow-hidden flex bg-secondary">
-                              <div style={{ width: `${pctExec}%`, backgroundColor: GREEN_EXEC }} />
+                              <div style={{ width: `${pctRede}%`, backgroundColor: GREEN_EXEC }} />
+                              <div style={{ width: `${pctLR}%`, backgroundColor: GREEN_LR }} />
                               <div style={{ width: `${100 - pctExec}%`, backgroundColor: RED_PEND }} />
                             </div>
                             <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
                               <div>
-                                <div className="text-muted-foreground">Executado</div>
-                                <div className="tabular-nums font-medium" style={{ color: GREEN_EXEC }}>{fmtM(b.executado)} m</div>
+                                <div className="text-muted-foreground">Executado — Rede</div>
+                                <div className="tabular-nums font-medium" style={{ color: GREEN_EXEC }}>{fmtM(b.executadoRede)} m</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">Executado — L. Recalque</div>
+                                <div className="tabular-nums font-medium" style={{ color: GREEN_LR }}>{fmtM(b.executadoLR)} m</div>
                               </div>
                               <div>
                                 <div className="text-muted-foreground">Pendente</div>
@@ -1493,10 +1518,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                             <Tooltip
                               contentStyle={darkTooltipStyle}
                               labelStyle={{ color: '#fff' }}
-                              formatter={(v: number, n: string) => [`${fmtM(Number(v))} m`, n === 'executado' ? 'Executado' : 'Pendente']}
+                              formatter={(v: number, n: string) => [
+                                `${fmtM(Number(v))} m`,
+                                n === 'executadoRede' ? 'Executado — Rede' : n === 'executadoLR' ? 'Executado — Linha de Recalque' : 'Pendente',
+                              ]}
                             />
-                            <Bar dataKey="executado" stackId="a" fill={GREEN_EXEC} name="executado" barSize={14}>
-                              <LabelList dataKey="executado" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
+                            <Bar dataKey="executadoRede" stackId="a" fill={GREEN_EXEC} name="executadoRede" barSize={14}>
+                              <LabelList dataKey="executadoRede" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
+                            </Bar>
+                            <Bar dataKey="executadoLR" stackId="a" fill={GREEN_LR} name="executadoLR" barSize={14}>
+                              <LabelList dataKey="executadoLR" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
                             </Bar>
                             <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente" barSize={14}>
                               <LabelList dataKey="pendente" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
@@ -1517,13 +1548,20 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                           </span>
                         )}
                       </span>
-                      <span className="tabular-nums font-semibold" style={{ color: GREEN_EXEC }}>
-                        {fmtM(totalExecRede)} m
-                        {totalPrevRede > 0 && (
-                          <span className="ml-1 font-normal text-muted-foreground">
-                            / {fmtM(totalPrevRede)} m ({Math.round((totalExecRede / totalPrevRede) * 100)}%)
-                          </span>
-                        )}
+                      <span className="text-right">
+                        <span className="tabular-nums font-semibold" style={{ color: GREEN_EXEC }}>
+                          {fmtM(totalExecRede)} m
+                          {totalPrevRede > 0 && (
+                            <span className="ml-1 font-normal text-muted-foreground">
+                              / {fmtM(totalPrevRede)} m ({Math.round((totalExecRede / totalPrevRede) * 100)}%)
+                            </span>
+                          )}
+                        </span>
+                        <span className="block text-[10px] font-normal text-muted-foreground tabular-nums">
+                          Rede: <span style={{ color: GREEN_EXEC }}>{fmtM(totalExecRedeSo)} m</span>
+                          {' | '}
+                          Linha de Recalque: <span style={{ color: GREEN_LR }}>{fmtM(totalExecLR)} m</span>
+                        </span>
                       </span>
                     </div>
                   )}
@@ -1572,7 +1610,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               {subBaciaTab === 'resumo' && (
                 <>
                   <p className="text-[11px] text-muted-foreground mb-1">
-                    Total em metros = rede + comprimento das ligações. Não é avanço físico total (ligações não têm previsto confiável).
+                    Rede, ligações em unidades e extensão de ligações são métricas independentes e nunca são somadas entre si.
                   </p>
                   {filtered.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-6">Sem dados.</p>
@@ -1585,8 +1623,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                             <th className="py-1 px-2 font-medium text-right">Rede exec. (m)</th>
                             <th className="py-1 px-2 font-medium text-right">Avanço rede</th>
                             <th className="py-1 px-2 font-medium text-right">Lig. (un)</th>
-                            <th className="py-1 px-2 font-medium text-right">Lig. (m)</th>
-                            <th className="py-1 pl-2 font-medium text-right">Total (m)</th>
+                            <th className="py-1 pl-2 font-medium text-right">Lig. (m)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1598,11 +1635,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                                 {b.total > 0 ? `${b.pct}%` : '—'}
                               </td>
                               <td className="py-1 px-2 text-right tabular-nums">{b.ligQtd.toLocaleString('pt-BR')}</td>
-                              <td className="py-1 px-2 text-right tabular-nums">
+                              <td className="py-1 pl-2 text-right tabular-nums">
                                 {b.ligComp.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                              <td className="py-1 pl-2 text-right tabular-nums font-semibold">
-                                {(b.executado + b.ligComp).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                             </tr>
                           ))}

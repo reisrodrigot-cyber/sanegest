@@ -202,7 +202,10 @@ export interface LinhaAvanco {
   pct: number | null;
   /** Existe N.S. vigente com previsto > 0 nesta sub-bacia. */
   temPrevisto: boolean;
+  /** Somente Ramais: comprimento realizado das ligações (m). */
+  realizadoM?: number;
 }
+
 
 export interface AvancoConsolidado {
   rede: LinhaAvanco[];

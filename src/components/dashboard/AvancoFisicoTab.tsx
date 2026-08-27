@@ -386,15 +386,14 @@ const RamaisSecao = ({
           <div className="hidden md:block overflow-visible">
             <table className="w-full text-xs table-fixed">
               <colgroup>
-                <col style={{ width: '22%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '9%' }} />
+                <col style={{ width: '24%' }} />
                 <col style={{ width: '10%' }} />
-                <col style={{ width: '14%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '16%' }} />
               </colgroup>
               <thead className="sticky top-0 bg-card">
                 <tr className="text-left text-muted-foreground border-b border-border">
@@ -402,7 +401,6 @@ const RamaisSecao = ({
                   <th colSpan={3} className="pb-0 px-1 text-center font-medium leading-tight border-b border-border/50">UNIDADES</th>
                   <th colSpan={3} className="pb-0 px-1 text-center font-medium leading-tight border-b border-border/50">METROS</th>
                   <th rowSpan={2} className="pb-1 pl-1 text-right font-medium align-bottom leading-tight whitespace-nowrap">% Exec.</th>
-                  <th rowSpan={2} className="pb-1 pl-1 text-right font-medium align-bottom leading-tight"></th>
                 </tr>
                 <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="py-1 px-1 text-right font-normal leading-tight">Contr.</th>
@@ -427,7 +425,6 @@ const RamaisSecao = ({
                       <td className="py-1 px-1 text-right tabular-nums">{fmtM(l.realizadoM ?? 0)}</td>
                       <td className="py-1 px-1 text-right tabular-nums">{saldoM(cM, l.realizadoM ?? 0)}</td>
                       <td className="py-1 pl-1 text-right tabular-nums font-semibold">{fmtPct(pctLinha(cUn, l.realizado))}</td>
-                      <td className="py-1 pl-1 text-right"></td>
                     </tr>
                   );
                 })}
@@ -442,7 +439,6 @@ const RamaisSecao = ({
                   <td className="py-1 px-1 text-right tabular-nums">{fmtM(totalRealM)}</td>
                   <td className="py-1 px-1 text-right tabular-nums">{saldoM(totContratualM, totalRealM)}</td>
                   <td className="py-1 pl-1 text-right tabular-nums">{fmtPct(pctTotal)}</td>
-                  <td className="py-1 pl-1 text-right"></td>
                 </tr>
               </tfoot>
             </table>

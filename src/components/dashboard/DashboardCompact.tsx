@@ -872,23 +872,27 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // Previsto/pendente continuam vindo do plano (ordens.comprimento_previsto).
   const porTrecho = useMemo(() => {
     const round2 = (n: number) => Math.round(n * 100) / 100;
-    const map = new Map<string, { executado: number; executadoLR: number; pendente: number; total: number; ligQtd: number; ligComp: number }>();
+    const map = new Map<string, { executado: number; executadoLR: number; pendenteRede: number; pendenteLR: number; total: number; totalLR: number; ligQtd: number; ligComp: number }>();
     const get = (bacia: string) => {
       let c = map.get(bacia);
-      if (!c) { c = { executado: 0, executadoLR: 0, pendente: 0, total: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
+      if (!c) { c = { executado: 0, executadoLR: 0, pendenteRede: 0, pendenteLR: 0, total: 0, totalLR: 0, ligQtd: 0, ligComp: 0 }; map.set(bacia, c); }
       return c;
     };
     ordens.forEach((o) => {
       const bacia = o.bacia || SEM_SUB_BACIA;
       const c = get(bacia);
+      const lr = isLinhaRecalque(o.trecho);
       c.total += o.comprimento_previsto ?? 0;
+      if (lr) c.totalLR += o.comprimento_previsto ?? 0;
       c.ligQtd += qtdLigacoesPorOs.get(o.id) ?? 0;
       c.ligComp += ligCompExecutadoPorOs.get(o.id) ?? 0;
       // Pendência: apenas O.S. NÃO concluídas (pv_final_assentado ≠ true).
       // Concluídas contribuem só com o executado real — nunca geram saldo.
       if (redePorOs.concluido.has(o.id)) return;
       const execOs = redePorOs.exec.get(o.id) ?? 0;
-      c.pendente += Math.max((o.comprimento_previsto ?? 0) - execOs, 0);
+      const pendOs = Math.max((o.comprimento_previsto ?? 0) - execOs, 0);
+      // Separação visual Rede × Linha de Recalque (soma preserva o total).
+      if (lr) c.pendenteLR += pendOs; else c.pendenteRede += pendOs;
     });
     // Executado canônico — inclui sub-bacias sem previsto e "Sem sub-bacia".
     execRedePorSubBacia.porBacia.forEach((metros, bacia) => {
@@ -899,14 +903,26 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
     });
     return Array.from(map.entries())
       .map(([bacia, v]) => {
-        const base = v.executado + v.pendente;
+        const pendente = v.pendenteRede + v.pendenteLR;
+        const base = v.executado + pendente;
+        const executadoLR = round2(v.executadoLR);
+        const executadoRede = round2(Math.max(v.executado - v.executadoLR, 0));
+        const pendenteRede = round2(v.pendenteRede);
+        const pendenteLR = round2(v.pendenteLR);
+        const baseRede = executadoRede + pendenteRede;
+        const baseLR = executadoLR + pendenteLR;
         return {
           trecho: bacia,
           executado: round2(v.executado),
           // Composição do executado: X = A (rede) + B (linha de recalque)
-          executadoLR: round2(v.executadoLR),
-          executadoRede: round2(Math.max(v.executado - v.executadoLR, 0)),
-          pendente: round2(v.pendente),
+          executadoLR,
+          executadoRede,
+          pendente,
+          pendenteRede,
+          pendenteLR,
+          pctRede: baseRede > 0 ? Math.round((executadoRede / baseRede) * 100) : 0,
+          pctLR: baseLR > 0 ? Math.round((executadoLR / baseLR) * 100) : 0,
+          temLR: baseLR > 0,
           total: round2(v.total),
           totalBase: round2(base),
           pct: base > 0 ? Math.round((v.executado / base) * 100) : 0,

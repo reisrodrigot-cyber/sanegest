@@ -343,10 +343,8 @@ const RamaisSecao = ({
 
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-2.5 flex flex-col min-h-0">
-      <div className="flex items-start justify-center gap-1 mb-2 min-h-[2.4em]">
-        <h3 className="text-sm font-semibold text-foreground text-center leading-tight self-center">
-          Ramais por<br />sub-bacia
-        </h3>
+      <div className="flex items-center justify-center gap-1 mb-2">
+        <h3 className="text-sm font-semibold text-foreground text-center whitespace-nowrap">Ramais / SB</h3>
         {podeEditar && BotaoLapis}
       </div>
 

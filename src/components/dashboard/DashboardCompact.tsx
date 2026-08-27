@@ -938,6 +938,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const TEAL = '#185FA5';
   const RED_PEND = '#e63946';
   const GREEN_EXEC = '#2dc653';
+  // Linha de Recalque: verde da mesma família, visualmente distinto.
+  const GREEN_LR = '#12833a';
 
   const darkCardStyle: React.CSSProperties = {
     backgroundColor: DARK_BG,
@@ -1413,6 +1415,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           const filteredRede = filtered.filter((b) => b.total > 0 || b.executado > 0);
           // Total geral do gráfico = soma exata dos verdes exibidos
           const totalExecRede = Math.round(filteredRede.reduce((s, b) => s + b.executado, 0) * 100) / 100;
+          const totalExecRedeSo = Math.round(filteredRede.reduce((s, b) => s + b.executadoRede, 0) * 100) / 100;
+          const totalExecLR = Math.round(filteredRede.reduce((s, b) => s + b.executadoLR, 0) * 100) / 100;
           const totalPrevRede = Math.round(filteredRede.reduce((s, b) => s + b.totalBase, 0) * 100) / 100;
           const temSemSubBacia = filteredRede.some((b) => b.semSubBacia && b.executado > 0);
           // Aba Ligações só sub-bacias com alguma ligação executada
@@ -1455,7 +1459,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   <div className="flex items-center gap-3 text-[11px] text-muted-foreground mb-1">
                     <span className="flex items-center gap-1">
                       <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_EXEC }} />
-                      Executado
+                      Executado — Rede
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: GREEN_LR }} />
+                      Executado — Linha de Recalque
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: RED_PEND }} />
@@ -1469,6 +1477,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       {filteredRede.map((b) => {
                         const base = b.totalBase > 0 ? b.totalBase : b.executado;
                         const pctExec = base > 0 ? Math.min(100, (b.executado / base) * 100) : 0;
+                        const pctLR = base > 0 ? Math.min(pctExec, (b.executadoLR / base) * 100) : 0;
+                        const pctRede = Math.max(pctExec - pctLR, 0);
                         return (
                           <li key={b.trecho} className="rounded-lg border border-border bg-secondary p-3">
                             <div className="flex items-start justify-between gap-3">
@@ -1476,13 +1486,18 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                               <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: TEAL }}>{b.pct}%</span>
                             </div>
                             <div className="mt-2 h-3 w-full rounded-full overflow-hidden flex bg-secondary">
-                              <div style={{ width: `${pctExec}%`, backgroundColor: GREEN_EXEC }} />
+                              <div style={{ width: `${pctRede}%`, backgroundColor: GREEN_EXEC }} />
+                              <div style={{ width: `${pctLR}%`, backgroundColor: GREEN_LR }} />
                               <div style={{ width: `${100 - pctExec}%`, backgroundColor: RED_PEND }} />
                             </div>
                             <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
                               <div>
-                                <div className="text-muted-foreground">Executado</div>
-                                <div className="tabular-nums font-medium" style={{ color: GREEN_EXEC }}>{fmtM(b.executado)} m</div>
+                                <div className="text-muted-foreground">Executado — Rede</div>
+                                <div className="tabular-nums font-medium" style={{ color: GREEN_EXEC }}>{fmtM(b.executadoRede)} m</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">Executado — L. Recalque</div>
+                                <div className="tabular-nums font-medium" style={{ color: GREEN_LR }}>{fmtM(b.executadoLR)} m</div>
                               </div>
                               <div>
                                 <div className="text-muted-foreground">Pendente</div>
@@ -1512,10 +1527,16 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                             <Tooltip
                               contentStyle={darkTooltipStyle}
                               labelStyle={{ color: '#fff' }}
-                              formatter={(v: number, n: string) => [`${fmtM(Number(v))} m`, n === 'executado' ? 'Executado' : 'Pendente']}
+                              formatter={(v: number, n: string) => [
+                                `${fmtM(Number(v))} m`,
+                                n === 'executadoRede' ? 'Executado — Rede' : n === 'executadoLR' ? 'Executado — Linha de Recalque' : 'Pendente',
+                              ]}
                             />
-                            <Bar dataKey="executado" stackId="a" fill={GREEN_EXEC} name="executado" barSize={14}>
-                              <LabelList dataKey="executado" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
+                            <Bar dataKey="executadoRede" stackId="a" fill={GREEN_EXEC} name="executadoRede" barSize={14}>
+                              <LabelList dataKey="executadoRede" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
+                            </Bar>
+                            <Bar dataKey="executadoLR" stackId="a" fill={GREEN_LR} name="executadoLR" barSize={14}>
+                              <LabelList dataKey="executadoLR" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
                             </Bar>
                             <Bar dataKey="pendente" stackId="a" fill={RED_PEND} name="pendente" barSize={14}>
                               <LabelList dataKey="pendente" position="center" formatter={(v: number) => (v > 0 ? fmtM(Number(v)) : '')} fill="#fff" fontSize={10} />
@@ -1536,13 +1557,20 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                           </span>
                         )}
                       </span>
-                      <span className="tabular-nums font-semibold" style={{ color: GREEN_EXEC }}>
-                        {fmtM(totalExecRede)} m
-                        {totalPrevRede > 0 && (
-                          <span className="ml-1 font-normal text-muted-foreground">
-                            / {fmtM(totalPrevRede)} m ({Math.round((totalExecRede / totalPrevRede) * 100)}%)
-                          </span>
-                        )}
+                      <span className="text-right">
+                        <span className="tabular-nums font-semibold" style={{ color: GREEN_EXEC }}>
+                          {fmtM(totalExecRede)} m
+                          {totalPrevRede > 0 && (
+                            <span className="ml-1 font-normal text-muted-foreground">
+                              / {fmtM(totalPrevRede)} m ({Math.round((totalExecRede / totalPrevRede) * 100)}%)
+                            </span>
+                          )}
+                        </span>
+                        <span className="block text-[10px] font-normal text-muted-foreground tabular-nums">
+                          Rede: <span style={{ color: GREEN_EXEC }}>{fmtM(totalExecRedeSo)} m</span>
+                          {' | '}
+                          Linha de Recalque: <span style={{ color: GREEN_LR }}>{fmtM(totalExecLR)} m</span>
+                        </span>
                       </span>
                     </div>
                   )}
@@ -1591,7 +1619,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
               {subBaciaTab === 'resumo' && (
                 <>
                   <p className="text-[11px] text-muted-foreground mb-1">
-                    Total em metros = rede + comprimento das ligações. Não é avanço físico total (ligações não têm previsto confiável).
+                    Rede, ligações em unidades e extensão de ligações são métricas independentes e nunca são somadas entre si.
                   </p>
                   {filtered.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-6">Sem dados.</p>
@@ -1604,8 +1632,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                             <th className="py-1 px-2 font-medium text-right">Rede exec. (m)</th>
                             <th className="py-1 px-2 font-medium text-right">Avanço rede</th>
                             <th className="py-1 px-2 font-medium text-right">Lig. (un)</th>
-                            <th className="py-1 px-2 font-medium text-right">Lig. (m)</th>
-                            <th className="py-1 pl-2 font-medium text-right">Total (m)</th>
+                            <th className="py-1 pl-2 font-medium text-right">Lig. (m)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1617,11 +1644,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                                 {b.total > 0 ? `${b.pct}%` : '—'}
                               </td>
                               <td className="py-1 px-2 text-right tabular-nums">{b.ligQtd.toLocaleString('pt-BR')}</td>
-                              <td className="py-1 px-2 text-right tabular-nums">
+                              <td className="py-1 pl-2 text-right tabular-nums">
                                 {b.ligComp.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                              <td className="py-1 pl-2 text-right tabular-nums font-semibold">
-                                {(b.executado + b.ligComp).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                             </tr>
                           ))}

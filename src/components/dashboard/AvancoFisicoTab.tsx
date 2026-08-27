@@ -532,9 +532,9 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         <AvancoSecao
-          titulo="Rede por sub-bacia"
+          titulo={<>Rede por<br />sub-bacia</>}
           linhas={redeVisivel}
           unidade="m"
           formatar={fmtM}
@@ -554,7 +554,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
 
         <AvancoSecao
-          titulo="Linha de Recalque por sub-bacia"
+          titulo={<>Linha de Recalque<br />por sub-bacia</>}
           linhas={lrVisivel}
           unidade="m"
           formatar={fmtM}

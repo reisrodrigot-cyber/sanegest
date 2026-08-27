@@ -344,7 +344,7 @@ const RamaisSecao = ({
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm p-2.5 flex flex-col min-h-0">
       <div className="flex items-center justify-center gap-1 mb-2">
-        <h3 className="text-sm font-semibold text-foreground text-center whitespace-nowrap">Ramais / SB</h3>
+        <h3 className="text-sm font-semibold text-foreground text-center whitespace-nowrap">Ramais / Sub-bacia</h3>
         {podeEditar && BotaoLapis}
       </div>
 
@@ -546,7 +546,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         <AvancoSecao
-          titulo="Rede / SB"
+          titulo="Rede / Sub-bacia"
           linhas={redeVisivel}
           unidade="m"
           formatar={fmtM}
@@ -566,7 +566,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
 
         <AvancoSecao
-          titulo="L. Recalque / SB"
+          titulo="L. Recalque / Sub-bacia"
           linhas={lrVisivel}
           unidade="m"
           formatar={fmtM}

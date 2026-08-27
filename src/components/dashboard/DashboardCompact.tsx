@@ -1430,7 +1430,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           const filteredLig = filtered
             .filter((b) => b.ligQtd > 0 || b.ligComp > 0)
             .sort((a, b) => b.ligQtd - a.ligQtd);
-          const innerHeight = Math.max(160, filteredRede.length * 22 + 30);
+          const innerHeight = Math.max(160, filteredRede.length * 34 + 30);
           const mobileBaciaHeight = Math.max(200, Math.min(360, innerHeight));
           const ligBarHeight = Math.max(160, filteredLig.length * 22 + 30);
           const mobileLigHeight = Math.max(200, Math.min(360, ligBarHeight));

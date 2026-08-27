@@ -552,7 +552,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
         />
 
         <AvancoSecao
-          titulo={<>Linha de Recalque<br />por sub-bacia</>}
+          titulo="L. Recalque / SB"
           linhas={lrVisivel}
           unidade="m"
           formatar={fmtM}

@@ -286,6 +286,153 @@ const AvancoSecao = ({
 };
 
 
+/**
+ * Ramais por sub-bacia — não usa previsto operacional de ligações.
+ * Unidades e metros são contratuais manuais e independentes.
+ */
+const RamaisSecao = ({
+  linhas, contratualUn, contratualM, podeEditar, onEditar,
+}: {
+  linhas: LinhaAvanco[];
+  contratualUn: Map<string, number | null>;
+  contratualM: Map<string, number | null>;
+  podeEditar: boolean;
+  onEditar: () => void;
+}) => {
+  const somaContratual = (m: Map<string, number | null>) => {
+    const vals = linhas.map((l) => m.get(l.chave)).filter((v): v is number => v != null);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
+  };
+  const totalRealUn = linhas.reduce((s, l) => s + l.realizado, 0);
+  const totalRealM = linhas.reduce((s, l) => s + (l.realizadoM ?? 0), 0);
+  const totContratualUn = somaContratual(contratualUn);
+  const totContratualM = somaContratual(contratualM);
+  const pctTotal = totContratualUn && totContratualUn > 0
+    ? Math.round((totalRealUn / totContratualUn) * 1000) / 10
+    : null;
+
+  const saldoUn = (c: number | null | undefined, real: number) =>
+    c == null || c === 0 ? '—' : fmtUn(c - real);
+  const saldoM = (c: number | null | undefined, real: number) =>
+    c == null || c === 0 ? '—' : fmtM(c - real);
+  const pctLinha = (c: number | null | undefined, real: number) =>
+    c == null || c === 0 ? null : Math.round((real / c) * 1000) / 10;
+
+  const BotaoLapis = (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onEditar}
+            aria-label="Editar quantidades contratuais"
+            className="inline-flex items-center justify-center h-6 w-6 -my-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors align-middle"
+          >
+            <Pencil size={12} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Editar quantidades contratuais</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
+  const divisor = 'border-l border-border/50';
+
+  return (
+    <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col min-h-0">
+      <div className="flex items-center gap-1 mb-2">
+        <h3 className="text-sm font-semibold text-foreground">Ramais por sub-bacia</h3>
+        {podeEditar && BotaoLapis}
+      </div>
+
+      {linhas.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-4 text-center">Sem dados.</p>
+      ) : (
+        <>
+          {/* Mobile */}
+          <ul className="md:hidden flex flex-col gap-2">
+            {linhas.map((l) => {
+              const cUn = contratualUn.get(l.chave);
+              const cM = contratualM.get(l.chave);
+              const pct = pctLinha(cUn, l.realizado);
+              return (
+                <li key={l.chave} className="rounded-lg border border-border p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-sm font-semibold text-foreground break-words">{l.exibicao}</span>
+                    <span className="text-base font-bold text-foreground tabular-nums shrink-0">{fmtPct(pct)}</span>
+                  </div>
+                  <div className="mt-2"><BarraPct pct={pct} /></div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <dl className="space-y-0.5">
+                      <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Qnt. Contratual</dt><dd className="tabular-nums font-medium text-foreground">{cUn == null ? '—' : fmtUn(cUn)} un.</dd></div>
+                      <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Realizado</dt><dd className="tabular-nums font-medium text-foreground">{fmtUn(l.realizado)} un.</dd></div>
+                      <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Saldo</dt><dd className="tabular-nums font-medium text-foreground">{saldoUn(cUn, l.realizado)}</dd></div>
+                    </dl>
+                    <dl className={`space-y-0.5 pl-2 ${divisor}`}>
+                      <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Qnt. Contratual</dt><dd className="tabular-nums font-medium text-foreground">{cM == null ? '—' : fmtM(cM)} m</dd></div>
+                      <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Realizado</dt><dd className="tabular-nums font-medium text-foreground">{fmtM(l.realizadoM ?? 0)} m</dd></div>
+                      <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Saldo</dt><dd className="tabular-nums font-medium text-foreground">{saldoM(cM, l.realizadoM ?? 0)}</dd></div>
+                    </dl>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Desktop */}
+          <div className="hidden md:block overflow-auto max-h-[420px]">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-card">
+                <tr className="text-left text-muted-foreground border-b border-border">
+                  <th className="pb-1 pr-2 font-medium whitespace-nowrap">Sub-bacia</th>
+                  <th className="pb-1 px-2 text-right whitespace-nowrap font-normal">Qnt. Contratual (un.)</th>
+                  <th className="pb-1 px-2 text-right whitespace-nowrap font-medium">Realizado (un.)</th>
+                  <th className="pb-1 px-2 text-right whitespace-nowrap font-medium">Saldo (un.)</th>
+                  <th className={`pb-1 px-2 text-right whitespace-nowrap font-normal ${divisor}`}>Qnt. Contratual (m)</th>
+                  <th className="pb-1 px-2 text-right whitespace-nowrap font-medium">Realizado (m)</th>
+                  <th className="pb-1 px-2 text-right whitespace-nowrap font-medium">Saldo (m)</th>
+                  <th className="pb-1 pl-2 text-right whitespace-nowrap font-medium">% Executado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((l) => {
+                  const cUn = contratualUn.get(l.chave);
+                  const cM = contratualM.get(l.chave);
+                  return (
+                    <tr key={l.chave} className="border-b border-border/40">
+                      <td className="py-1.5 pr-2 text-foreground">{l.exibicao}</td>
+                      <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">{cUn == null ? '—' : fmtUn(cUn)}</td>
+                      <td className="py-1.5 px-2 text-right tabular-nums">{fmtUn(l.realizado)}</td>
+                      <td className="py-1.5 px-2 text-right tabular-nums">{saldoUn(cUn, l.realizado)}</td>
+                      <td className={`py-1.5 px-2 text-right tabular-nums text-muted-foreground ${divisor}`}>{cM == null ? '—' : fmtM(cM)}</td>
+                      <td className="py-1.5 px-2 text-right tabular-nums">{fmtM(l.realizadoM ?? 0)}</td>
+                      <td className="py-1.5 px-2 text-right tabular-nums">{saldoM(cM, l.realizadoM ?? 0)}</td>
+                      <td className="py-1.5 pl-2 text-right tabular-nums font-semibold">{fmtPct(pctLinha(cUn, l.realizado))}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-border font-semibold">
+                  <td className="py-1.5 pr-2 text-foreground">Total</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal">{totContratualUn == null ? '—' : fmtUn(totContratualUn)}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums">{fmtUn(totalRealUn)}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums">{saldoUn(totContratualUn, totalRealUn)}</td>
+                  <td className={`py-1.5 px-2 text-right tabular-nums text-muted-foreground font-normal ${divisor}`}>{totContratualM == null ? '—' : fmtM(totContratualM)}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums">{fmtM(totalRealM)}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums">{saldoM(totContratualM, totalRealM)}</td>
+                  <td className="py-1.5 pl-2 text-right tabular-nums">{fmtPct(pctTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+
 const normalizarSubBacia = (s: string) =>
   s.toLowerCase().replace(/[\s.\-_,]/g, '');
 

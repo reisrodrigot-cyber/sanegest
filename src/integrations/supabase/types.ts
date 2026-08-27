@@ -1451,6 +1451,7 @@ export type Database = {
           created_by: string | null
           id: string
           linha_recalque_prevista_metros: number
+          ramais_previstos_metros: number
           ramais_previstos_unidades: number
           rede_prevista_metros: number
           updated_at: string
@@ -1463,6 +1464,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           linha_recalque_prevista_metros?: number
+          ramais_previstos_metros?: number
           ramais_previstos_unidades?: number
           rede_prevista_metros?: number
           updated_at?: string
@@ -1475,6 +1477,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           linha_recalque_prevista_metros?: number
+          ramais_previstos_metros?: number
           ramais_previstos_unidades?: number
           rede_prevista_metros?: number
           updated_at?: string

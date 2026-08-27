@@ -137,8 +137,11 @@ const AvancoSecao = ({
   );
 
   return (
-    <div className="bg-card rounded-lg border border-border shadow-sm p-3 flex flex-col min-h-0">
-      <h3 className="text-sm font-semibold text-foreground mb-2">{titulo}</h3>
+    <div className="bg-card rounded-lg border border-border shadow-sm p-2.5 flex flex-col min-h-0">
+      <div className="flex items-start justify-center gap-1 mb-2 min-h-[2.4em]">
+        <h3 className="text-sm font-semibold text-foreground text-center leading-tight self-center">{titulo}</h3>
+        {podeEditar && BotaoLapis}
+      </div>
 
       {linhas.length === 0 ? (
         <p className="text-xs text-muted-foreground py-4 text-center">Sem dados.</p>

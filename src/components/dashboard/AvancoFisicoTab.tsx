@@ -83,7 +83,7 @@ const AvancoSecao = ({
   titulo, linhas, unidade, formatar, contratualPorChave, formatarContratual, podeEditar, onEditar,
   mostrarContratual = true, saldoOperacional = false,
 }: {
-  titulo: string;
+  titulo: React.ReactNode;
   linhas: LinhaAvanco[];
   unidade: string;
   formatar: (n: number) => string;

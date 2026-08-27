@@ -534,7 +534,7 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         <AvancoSecao
-          titulo={<>Rede por<br />sub-bacia</>}
+          titulo="Rede / SB"
           linhas={redeVisivel}
           unidade="m"
           formatar={fmtM}

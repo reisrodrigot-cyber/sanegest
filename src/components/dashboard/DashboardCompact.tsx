@@ -76,6 +76,11 @@ interface RelatorioRow {
 }
 
 const SEM_SUB_BACIA = 'Sem sub-bacia';
+/** Linha de Recalque: trecho exatamente "LINHA DE RECALQUE" (sem acento/caixa). */
+const isLinhaRecalque = (t: string | null | undefined): boolean =>
+  String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/\s+/g, ' ').trim() === 'LINHA DE RECALQUE';
+
 // Formatação canônica de metros (pt-BR, no máximo 2 casas).
 const fmtM = (n: number) =>
   n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

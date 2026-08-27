@@ -487,7 +487,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
           media: diasRede > 0 ? Math.round((v.rede / diasRede) * 100) / 100 : null,
         };
       })
-      .sort((a, b) => b.total - a.total);
+      // Ordenação por rede executada — métricas nunca são somadas entre si.
+      .sort((a, b) => b.rede - a.rede);
   }, [relatorioRows, periodo.inicio, periodo.fim]);
 
 
@@ -1289,7 +1290,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                     <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Rede (m)</th>
                     <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Lig. (m)</th>
                     <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Lig. (un)</th>
-                    <th className="pb-1 px-2 font-medium text-right whitespace-nowrap">Total (m)</th>
                     <th
                       className="pb-1 pl-2 font-medium text-right"
                       title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
@@ -1301,11 +1301,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                 </thead>
                 <tbody>
                   {loadingEncarregado ? (
-                    <tr><td colSpan={6} className="text-center text-muted-foreground py-3">
+                    <tr><td colSpan={5} className="text-center text-muted-foreground py-3">
                       <span className="inline-flex items-center gap-1.5"><Loader2 className="animate-spin" size={12} /> Carregando…</span>
                     </td></tr>
                   ) : porEncarregado.length === 0 ? (
-                    <tr><td colSpan={6} className="text-center text-muted-foreground py-3">Sem produção lançada no período</td></tr>
+                    <tr><td colSpan={5} className="text-center text-muted-foreground py-3">Sem produção lançada no período</td></tr>
                   ) : porEncarregado.map((e) => (
                     <tr key={e.nome} className="border-b border-border/40">
                       <td className="py-1 pr-2 text-foreground">{e.nome}</td>
@@ -1316,9 +1316,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                         {e.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
                       </td>
                       <td className="py-1 px-2 text-right tabular-nums text-muted-foreground whitespace-nowrap">{e.ligUn}</td>
-                      <td className="py-1 px-2 text-right font-semibold tabular-nums whitespace-nowrap">
-                        {e.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
-                      </td>
                       <td
                         className="py-1 pl-2 text-right tabular-nums text-foreground whitespace-nowrap"
                         title="Calculada somente com metros de rede executada e dias com produção de rede. Ligações não entram neste indicador."
@@ -1342,12 +1339,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                   <span className="text-muted-foreground">Ligações</span>
                   <span className="font-semibold text-foreground tabular-nums">
                     {totaisEnc.ligM.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m · {totaisEnc.ligUn} un
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total produção</span>
-                  <span className="font-semibold text-foreground tabular-nums">
-                    {totaisEnc.total.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
                   </span>
                 </div>
                 <div className="flex justify-between">

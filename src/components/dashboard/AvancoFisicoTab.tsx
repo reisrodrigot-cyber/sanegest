@@ -453,16 +453,26 @@ export const AvancoFisicoTab = ({ ordens }: Props) => {
     if (!subBaciasMap.has(l.chave)) subBaciasMap.set(l.chave, l.exibicao);
   });
   const subBacias = Array.from(subBaciasMap, ([chave, exibicao]) => ({ chave, exibicao }));
+  // Sub-bacias exclusivas de Linha de Recalque (ex.: Emissário) nunca aparecem
+  // em Rede/Ramais — sua metragem pertence apenas à Linha de Recalque.
+  const ramaisPorChave = new Map(avanco.ramais.map((l) => [l.chave, l]));
+  const somenteLR = (l: LinhaAvanco) => {
+    const r = ramaisPorChave.get(l.chave);
+    return l.previsto === 0 && l.realizado === 0 && (r?.previsto ?? 0) === 0 && (r?.realizado ?? 0) === 0 && (r?.realizadoM ?? 0) === 0;
+  };
+  const chavesSomenteLR = new Set(avanco.rede.filter(somenteLR).map((l) => l.chave));
   // Rede e Ramais: ocultar apenas as referências genéricas POV. SS-13 / POV. SS-14
-  const redeVisivel = avanco.rede.filter((l) => !ocultarGenerica(l.exibicao));
-  const ramaisVisivel = avanco.ramais.filter((l) => !ocultarGenerica(l.exibicao));
+  const redeVisivel = avanco.rede.filter((l) => !ocultarGenerica(l.exibicao) && !chavesSomenteLR.has(l.chave));
+  const ramaisVisivel = avanco.ramais.filter((l) => !ocultarGenerica(l.exibicao) && !chavesSomenteLR.has(l.chave));
   // Linha de Recalque: as genéricas SS-13 / SS-14 são válidas e devem aparecer
   const lrVisivel = avanco.linhaRecalque;
   const contratualRede = new Map(redeVisivel.map((l) => [l.chave, porChave.get(l.chave)?.redeM ?? null]));
-  const contratualRamais = new Map(ramaisVisivel.map((l) => [l.chave, porChave.get(l.chave)?.ramaisUn ?? null]));
+  const contratualRamaisUn = new Map<string, number | null>(ramaisVisivel.map((l) => [l.chave, porChave.get(l.chave)?.ramaisUn ?? null]));
+  const contratualRamaisM = new Map<string, number | null>(ramaisVisivel.map((l) => [l.chave, porChave.get(l.chave)?.ramaisM ?? null]));
   const contratualLR = new Map<string, number | null>(
     lrVisivel.map((l) => [l.chave, porChave.get(l.chave)?.lrM ?? null]),
   );
+
 
 
   if (avanco.loading) {

@@ -7,6 +7,7 @@ export interface QuantitativoContratual {
   exibicao: string;
   redeM: number | null;
   ramaisUn: number | null;
+  ramaisM: number | null;
   lrM: number | null;
 }
 
@@ -27,7 +28,7 @@ export function useQuantitativosContratuais() {
     (async () => {
       const { data } = await supabase
         .from('quantitativos_referencia')
-        .select('bacia_chave, bacia_exibicao, rede_prevista_metros, ramais_previstos_unidades, linha_recalque_prevista_metros');
+        .select('bacia_chave, bacia_exibicao, rede_prevista_metros, ramais_previstos_unidades, ramais_previstos_metros, linha_recalque_prevista_metros');
       if (cancelado) return;
       setRows(
         (data ?? []).map((r: any) => ({
@@ -35,6 +36,7 @@ export function useQuantitativosContratuais() {
           exibicao: r.bacia_exibicao ?? r.bacia_chave,
           redeM: Number(r.rede_prevista_metros) > 0 ? Number(r.rede_prevista_metros) : null,
           ramaisUn: Number(r.ramais_previstos_unidades) > 0 ? Number(r.ramais_previstos_unidades) : null,
+          ramaisM: Number(r.ramais_previstos_metros) > 0 ? Number(r.ramais_previstos_metros) : null,
           lrM: Number(r.linha_recalque_prevista_metros) > 0 ? Number(r.linha_recalque_prevista_metros) : null,
         })),
       );
@@ -51,12 +53,13 @@ export function useQuantitativosContratuais() {
   }, [rows]);
 
   const salvar = useCallback(
-    async (items: { chave: string; exibicao: string; redeM: number | null; ramaisUn: number | null; lrM: number | null }[]) => {
+    async (items: { chave: string; exibicao: string; redeM: number | null; ramaisUn: number | null; ramaisM: number | null; lrM: number | null }[]) => {
       const payload = items.map((i) => ({
         bacia_chave: i.chave,
         bacia_exibicao: i.exibicao,
         rede_prevista_metros: i.redeM ?? 0,
         ramais_previstos_unidades: i.ramaisUn ?? 0,
+        ramais_previstos_metros: i.ramaisM ?? 0,
         linha_recalque_prevista_metros: i.lrM ?? 0,
       }));
 

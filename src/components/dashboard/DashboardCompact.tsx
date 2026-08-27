@@ -1477,31 +1477,6 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
                       Pendente
                     </span>
                   </div>
-                  {(() => {
-                    // Tooltip com os quatro valores, sempre visíveis (0,00 m quando vazio).
-                    const fmt2 = (n: number) => `${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
-                    const SubBaciaTooltip = ({ active, payload }: any) => {
-                      if (!active || !payload?.length) return null;
-                      const b = payload[0].payload;
-                      return (
-                        <div style={{ ...darkTooltipStyle, padding: '8px 10px' }}>
-                          <div style={{ fontWeight: 600, marginBottom: 4 }}>Sub-bacia: {b.trecho}</div>
-                          <div className="tabular-nums">Executado — Rede: {fmt2(b.executadoRede)}</div>
-                          <div className="tabular-nums">Pendente — Rede: {fmt2(b.pendenteRede)}</div>
-                          <div className="tabular-nums" style={{ marginTop: 4 }}>Executado — Linha de Recalque: {fmt2(b.executadoLR)}</div>
-                          <div className="tabular-nums">Pendente — Linha de Recalque: {fmt2(b.pendenteLR)}</div>
-                        </div>
-                      );
-                    };
-                    // Escala horizontal comum: rótulos internos só quando o segmento tem espaço.
-                    const maxBar = filteredRede.reduce(
-                      (m, b) => Math.max(m, b.executadoRede + b.pendenteRede, b.executadoLR + b.pendenteLR),
-                      0,
-                    );
-                    const labelThreshold = maxBar * 0.1;
-                    const segLabel = (v: number) => (Number(v) >= labelThreshold ? fmtM(Number(v)) : '');
-                    return null && <SubBaciaTooltip /> as any;
-                  })()}
                   {filteredRede.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-6">Sem dados.</p>
                   ) : isMobileLayout ? (

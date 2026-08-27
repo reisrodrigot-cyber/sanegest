@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Loader2, TrendingUp, Pencil } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuantitativosContratuais } from '@/hooks/useQuantitativosContratuais';

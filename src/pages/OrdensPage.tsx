@@ -15,6 +15,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LiberarLoteModal } from '@/components/LiberarLoteModal';
 import { DesatribuirModal } from '@/components/DesatribuirModal';
+import { LiberarPavimentacaoModal } from '@/components/pavimentacao/LiberarPavimentacaoModal';
+import { useLiberacoesPav, useConclusoesPav } from '@/hooks/usePavimentacao';
+import { permissions } from '@/lib/permissions';
 import {
   Select,
   SelectContent,
@@ -65,6 +68,22 @@ const OrdensPage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<'liberadas' | 'nao-liberadas' | 'executadas'>('liberadas');
+  const [pavModal, setPavModal] = useState<{ modo: 'liberar' | 'revogar'; alvo: typeof ordens } | null>(null);
+  const { data: pavLiberacoes } = useLiberacoesPav();
+  const { data: pavConclusoes } = useConclusoesPav();
+  const canPav = permissions.canLiberarPavimentacao(role);
+
+  const PavBadge = ({ osId }: { osId: string }) => {
+    const lib = pavLiberacoes?.get(osId);
+    const conc = pavConclusoes?.get(osId);
+    if (conc?.concluido) {
+      return <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-700">Pav. finalizada</span>;
+    }
+    if (lib?.liberado) {
+      return <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-sky-500/15 text-sky-700">Pav. liberada</span>;
+    }
+    return null;
+  };
 
   // Aggregated produção (sum comprimento_dia) per OS
   const [producaoByOs, setProducaoByOs] = useState<Record<string, number>>({});

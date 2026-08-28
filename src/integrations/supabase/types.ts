@@ -1178,6 +1178,99 @@ export type Database = {
         }
         Relationships: []
       }
+      os_liberacao_pavimentacao: {
+        Row: {
+          created_at: string
+          liberado: boolean
+          liberado_em: string | null
+          liberado_para_user_id: string | null
+          motivo: string | null
+          os_id: string
+          revogado_em: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          liberado?: boolean
+          liberado_em?: string | null
+          liberado_para_user_id?: string | null
+          motivo?: string | null
+          os_id: string
+          revogado_em?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          liberado?: boolean
+          liberado_em?: string | null
+          liberado_para_user_id?: string | null
+          motivo?: string | null
+          os_id?: string
+          revogado_em?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_liberacao_pavimentacao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: true
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_liberacao_pavimentacao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: true
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
+        ]
+      }
+      os_pavimentacao_conclusao: {
+        Row: {
+          concluido: boolean
+          concluido_em: string | null
+          concluido_por: string | null
+          created_at: string
+          motivo_reabertura: string | null
+          os_id: string
+          updated_at: string
+        }
+        Insert: {
+          concluido?: boolean
+          concluido_em?: string | null
+          concluido_por?: string | null
+          created_at?: string
+          motivo_reabertura?: string | null
+          os_id: string
+          updated_at?: string
+        }
+        Update: {
+          concluido?: boolean
+          concluido_em?: string | null
+          concluido_por?: string | null
+          created_at?: string
+          motivo_reabertura?: string | null
+          os_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_pavimentacao_conclusao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: true
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_pavimentacao_conclusao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: true
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
+        ]
+      }
       os_pavimento_update_log: {
         Row: {
           atualizados: number
@@ -1485,6 +1578,75 @@ export type Database = {
         }
         Relationships: []
       }
+      registros_pavimentacao: {
+        Row: {
+          area_m2: number | null
+          comprimento_m: number
+          created_at: string
+          data_registro: string
+          data_retroativa_confirmada: boolean
+          excluido: boolean
+          excluido_em: string | null
+          excluido_por: string | null
+          id: string
+          largura_m: number
+          observacao: string | null
+          os_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area_m2?: number | null
+          comprimento_m?: number
+          created_at?: string
+          data_registro: string
+          data_retroativa_confirmada?: boolean
+          excluido?: boolean
+          excluido_em?: string | null
+          excluido_por?: string | null
+          id?: string
+          largura_m?: number
+          observacao?: string | null
+          os_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area_m2?: number | null
+          comprimento_m?: number
+          created_at?: string
+          data_registro?: string
+          data_retroativa_confirmada?: boolean
+          excluido?: boolean
+          excluido_em?: string | null
+          excluido_por?: string | null
+          id?: string
+          largura_m?: number
+          observacao?: string | null
+          os_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_pavimentacao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_pavimentacao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
+        ]
+      }
       registros_producao: {
         Row: {
           ajustado_em: string | null
@@ -1703,6 +1865,42 @@ export type Database = {
       }
     }
     Views: {
+      relatorio_pavimentacao_diaria: {
+        Row: {
+          area_m2: number | null
+          area_prevista_m2: number | null
+          area_realizada_m2: number | null
+          comprimento_m: number | null
+          data_registro: string | null
+          id: string | null
+          largura_m: number | null
+          observacao: string | null
+          os_id: string | null
+          pavimentacao_finalizada: boolean | null
+          percentual_executado: number | null
+          responsavel_nome: string | null
+          responsavel_user_id: string | null
+          saldo_m2: number | null
+          sub_bacia: string | null
+          trecho: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_pavimentacao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_pavimentacao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
+        ]
+      }
       relatorio_producao_diaria: {
         Row: {
           autor_nome: string | null
@@ -1796,6 +1994,7 @@ export type Database = {
           responsavel: string
         }[]
       }
+      finalizar_pavimentacao: { Args: { _os_id: string }; Returns: Json }
       get_mapa_publico: { Args: { _ss: string }; Returns: Json }
       has_role: {
         Args: {
@@ -1804,16 +2003,51 @@ export type Database = {
         }
         Returns: boolean
       }
+      liberar_pavimentacao: {
+        Args: { _encarregado_user_id: string; _motivo?: string; _os_id: string }
+        Returns: Json
+      }
+      pav_area_prevista: {
+        Args: { _comprimento: number; _largura: number; _pav: string }
+        Returns: number
+      }
+      pav_elegivel: { Args: { _pav: string }; Returns: boolean }
+      pav_normalizar: { Args: { _t: string }; Returns: string }
+      pavimentacao_minhas_ns: {
+        Args: { _user_id?: string }
+        Returns: {
+          area_prevista_m2: number
+          area_realizada_m2: number
+          comprimento_previsto: number
+          concluido: boolean
+          liberado: boolean
+          os_id: string
+          pav_previsto: string
+          pv_jusante: string
+          pv_montante: string
+          sub_bacia: string
+          trecho: string
+        }[]
+      }
       pode_gerenciar_mapa_base: { Args: { _user_id: string }; Returns: boolean }
+      pode_gerir_pavimentacao: { Args: { _user_id: string }; Returns: boolean }
       pode_ver_mapa_base_preview: {
         Args: { _user_id: string }
         Returns: boolean
+      }
+      reabrir_pavimentacao: {
+        Args: { _motivo?: string; _os_id: string }
+        Returns: Json
       }
       recompute_os_real_from_registros: {
         Args: { _os_id: string }
         Returns: undefined
       }
       recompute_os_status: { Args: { _os_id: string }; Returns: undefined }
+      revogar_liberacao_pavimentacao: {
+        Args: { _motivo?: string; _os_id: string }
+        Returns: Json
+      }
       set_os_pav_previsto_lote: { Args: { _itens: Json }; Returns: Json }
     }
     Enums: {

@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS, UserRole } from '@/types/sanegest';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ClipboardList, HardHat, Package, Map, MapPin, BarChart3, LogOut, Menu, X, Users, UserCircle
+  LayoutDashboard, ClipboardList, HardHat, Package, Map, MapPin, BarChart3, LogOut, Menu, X, Users, UserCircle, Layers
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ViewAsSelector } from './ViewAsSelector';
@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['admin', 'gerencia', 'sala_tecnica', 'encarregado', 'topografo'] },
   { label: 'Ordens de Serviço', path: '/ordens', icon: <ClipboardList size={20} />, roles: ['admin', 'gerencia', 'sala_tecnica'] },
   { label: 'Produção', path: '/producao', icon: <HardHat size={20} />, roles: ['admin', 'encarregado'] },
+  { label: 'Pavimentação', path: '/pavimentacao', icon: <Layers size={20} />, roles: ['admin', 'sala_tecnica', 'encarregado_pavimentacao'] },
   { label: 'Entrega de Materiais', path: '/materiais', icon: <Package size={20} />, roles: ['admin', 'almoxarifado'] },
   { label: 'Topografia', path: '/topografia', icon: <Map size={20} />, roles: ['admin', 'topografo'] },
   { label: 'Bases geográficas', path: '/mapa/bases', icon: <MapPin size={20} />, roles: ['admin', 'sala_tecnica'] },
@@ -57,10 +58,11 @@ export const AppSidebar = () => {
 
   // Explicit role → allowed paths mapping
   const ROLE_MENU: Record<UserRole, string[]> = {
-    admin: ['/dashboard', '/ordens', '/producao', '/materiais', '/topografia', '/mapa/bases', '/usuarios'],
-    sala_tecnica: ['/dashboard', '/ordens', '/mapa/bases', '/mapa/editor'],
+    admin: ['/dashboard', '/ordens', '/producao', '/pavimentacao', '/materiais', '/topografia', '/mapa/bases', '/usuarios'],
+    sala_tecnica: ['/dashboard', '/ordens', '/pavimentacao', '/mapa/bases', '/mapa/editor'],
 
     encarregado: ['/dashboard', '/producao'],
+    encarregado_pavimentacao: ['/pavimentacao'],
     almoxarifado: ['/materiais'],
     topografo: ['/dashboard', '/topografia'],
     gerencia: ['/dashboard'],

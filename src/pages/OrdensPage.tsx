@@ -400,8 +400,9 @@ const OrdensPage = () => {
                   </td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.liberado_para || '—'}</td>
                   <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-right sm:text-left">
-                    <div className="flex items-center gap-2 justify-end sm:justify-start">
+                    <div className="flex items-center gap-2 justify-end sm:justify-start flex-wrap">
                       <StatusBadge status={statusEfetivo(os)} size="sm" shortLabel />
+                      <PavBadge osId={os.id} />
                     </div>
                   </td>
                   <td className="px-1 sm:px-2 py-3 align-middle">

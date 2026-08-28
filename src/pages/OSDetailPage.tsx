@@ -4,6 +4,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck, Trash2, MapPin } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { OSHistoricoSection } from '@/components/OSHistoricoSection';
+import { PavimentacaoCardOS } from '@/components/pavimentacao/PavimentacaoCardOS';
 import { LigacoesComprimentos } from '@/components/LigacoesComprimentos';
 import { RegistrosProducaoOS } from '@/components/os/RegistrosProducaoOS';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1068,6 +1069,13 @@ const OSDetailPage = () => {
 
       {/* Registros de Produção — fonte única da produção executada */}
       <RegistrosProducaoOS osId={os.id} />
+
+      {/* Pavimentação — liberação independente da Rede */}
+      <PavimentacaoCardOS
+        os={{ id: os.id, trecho: os.trecho, bacia: os.bacia, pav_previsto: os.pav_previsto, comprimento_previsto: os.comprimento_previsto, largura_vala: os.largura_vala }}
+      />
+
+
 
 
       {/* Histórico — visível para Sala Técnica e Admin */}

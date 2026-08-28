@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const VIEW_AS_ROLES: UserRole[] = ['sala_tecnica', 'encarregado', 'almoxarifado', 'topografo', 'gerencia'];
+const VIEW_AS_ROLES: UserRole[] = ['sala_tecnica', 'encarregado', 'encarregado_pavimentacao', 'almoxarifado', 'topografo', 'gerencia'];
 
 interface RoleUser {
   user_id: string;

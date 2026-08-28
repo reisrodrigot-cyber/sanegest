@@ -14,6 +14,7 @@ import OSDetailPage from "./pages/OSDetailPage";
 import ImportarPage from "./pages/ImportarPage";
 import ImportHistoricoPage from "./pages/ImportHistoricoPage";
 import ProducaoPage from "./pages/ProducaoPage";
+import PavimentacaoPage from "./pages/PavimentacaoPage";
 import MateriaisPage from "./pages/MateriaisPage";
 import TopografiaPage from "./pages/TopografiaPage";
 import MeuPerfilPage from "./pages/MeuPerfilPage";
@@ -37,6 +38,7 @@ const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/ordens/planilhao': ['admin', 'sala_tecnica'],
   '/ordens': ['admin', 'gerencia', 'sala_tecnica'],
   '/producao': ['admin', 'encarregado'],
+  '/pavimentacao': ['admin', 'sala_tecnica', 'encarregado_pavimentacao'],
   '/materiais': ['admin', 'almoxarifado'],
   '/topografia': ['admin', 'topografo'],
   '/mapa/bases': ['admin', 'sala_tecnica'],
@@ -44,13 +46,14 @@ const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/mapa': ['admin', 'sala_tecnica', 'gerencia', 'encarregado', 'topografo', 'almoxarifado'],
   '/usuarios': ['admin'],
 
-  '/perfil': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo'],
+  '/perfil': ['admin', 'gerencia', 'sala_tecnica', 'almoxarifado', 'encarregado', 'topografo', 'encarregado_pavimentacao'],
 };
 
 /** Home page por perfil — onde o usuário deve cair ao logar ou ao tentar acessar rota sem permissão */
 const homeForRole = (role?: UserRole | null): string => {
   if (!role) return '/dashboard';
   if (role === 'almoxarifado') return '/materiais';
+  if (role === 'encarregado_pavimentacao') return '/pavimentacao';
   return '/dashboard';
 };
 
@@ -115,6 +118,7 @@ const AppRoutes = () => {
       <Route path="/importar" element={<ProtectedRoute><ImportarPage /></ProtectedRoute>} />
       <Route path="/importar/historico" element={<ProtectedRoute><ImportHistoricoPage /></ProtectedRoute>} />
       <Route path="/producao" element={<ProtectedRoute><ProducaoPage /></ProtectedRoute>} />
+      <Route path="/pavimentacao" element={<ProtectedRoute><PavimentacaoPage /></ProtectedRoute>} />
       <Route path="/materiais" element={<ProtectedRoute><MateriaisPage /></ProtectedRoute>} />
       <Route path="/topografia" element={<ProtectedRoute><TopografiaPage /></ProtectedRoute>} />
       <Route path="/mapa/bases" element={<ProtectedRoute><MapaBasesPage /></ProtectedRoute>} />

@@ -6,7 +6,7 @@ import { statusLabel, vinculoDisplayStatus, toDisplayStatus, type OSDisplayStatu
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PlanilhaoConsulta } from '@/components/ordens/PlanilhaoConsulta';
-import { Search, Plus, Loader2, FileSpreadsheet, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X, Layers } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LiberarLoteModal } from '@/components/LiberarLoteModal';
 import { DesatribuirModal } from '@/components/DesatribuirModal';
+import { LiberarPavimentacaoModal } from '@/components/pavimentacao/LiberarPavimentacaoModal';
+import { useLiberacoesPav, useConclusoesPav } from '@/hooks/usePavimentacao';
+import { permissions } from '@/lib/permissions';
 import {
   Select,
   SelectContent,
@@ -65,6 +68,22 @@ const OrdensPage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<'liberadas' | 'nao-liberadas' | 'executadas'>('liberadas');
+  const [pavModal, setPavModal] = useState<{ modo: 'liberar' | 'revogar'; alvo: typeof ordens } | null>(null);
+  const { data: pavLiberacoes } = useLiberacoesPav();
+  const { data: pavConclusoes } = useConclusoesPav();
+  const canPav = permissions.canLiberarPavimentacao(role);
+
+  const PavBadge = ({ osId }: { osId: string }) => {
+    const lib = pavLiberacoes?.get(osId);
+    const conc = pavConclusoes?.get(osId);
+    if (conc?.concluido) {
+      return <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-700">Pav. finalizada</span>;
+    }
+    if (lib?.liberado) {
+      return <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-sky-500/15 text-sky-700">Pav. liberada</span>;
+    }
+    return null;
+  };
 
   // Aggregated produção (sum comprimento_dia) per OS
   const [producaoByOs, setProducaoByOs] = useState<Record<string, number>>({});
@@ -400,8 +419,9 @@ const OrdensPage = () => {
                   </td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">{os.liberado_para || '—'}</td>
                   <td className="px-2 py-3 sm:px-4 whitespace-nowrap text-right sm:text-left">
-                    <div className="flex items-center gap-2 justify-end sm:justify-start">
+                    <div className="flex items-center gap-2 justify-end sm:justify-start flex-wrap">
                       <StatusBadge status={statusEfetivo(os)} size="sm" shortLabel />
+                      <PavBadge osId={os.id} />
                     </div>
                   </td>
                   <td className="px-1 sm:px-2 py-3 align-middle">
@@ -638,6 +658,24 @@ const OrdensPage = () => {
               <UserMinus size={14} /> Desatribuir
             </button>
           )}
+          {canPav && (
+            <>
+              <button
+                onClick={() => setPavModal({ modo: 'liberar', alvo: selectedOS })}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-primary/40 text-primary text-sm font-medium hover:bg-primary/10"
+                title="Liberar Pavimentação"
+              >
+                <Layers size={14} /> Liberar Pavimentação
+              </button>
+              <button
+                onClick={() => setPavModal({ modo: 'revogar', alvo: selectedOS })}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-muted-foreground text-sm font-medium hover:bg-muted"
+                title="Retirar liberação de Pavimentação"
+              >
+                <Layers size={14} /> Retirar Pav.
+              </button>
+            </>
+          )}
           {canDelete && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
@@ -670,6 +708,15 @@ const OrdensPage = () => {
         selectedOS={desatribuirOS}
         onDone={() => { setSelected(new Set()); refetch(); }}
       />
+
+      <LiberarPavimentacaoModal
+        open={!!pavModal}
+        modo={pavModal?.modo ?? 'liberar'}
+        selectedOS={(pavModal?.alvo ?? []).map(o => ({ id: o.id, trecho: o.trecho, bacia: o.bacia, pav_previsto: o.pav_previsto }))}
+        onClose={() => setPavModal(null)}
+        onDone={() => setSelected(new Set())}
+      />
+
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

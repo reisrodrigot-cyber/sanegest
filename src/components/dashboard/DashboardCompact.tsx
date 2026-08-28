@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { AvancoFisicoTab } from '@/components/dashboard/AvancoFisicoTab';
+import { PavimentacaoTab } from '@/components/dashboard/PavimentacaoTab';
 import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -232,7 +233,7 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   // Leaflet container initializes inside a flex parent whose height isn't
   // resolved on the first paint, leaving the map stuck with 0×0 panes
   // (drag/zoom locked, no markers).
-  const [dashTab, setDashTab] = useState<'mapa' | 'avanco' | 'producao' | 'monitoramento'>('mapa');
+  const [dashTab, setDashTab] = useState<'mapa' | 'avanco' | 'producao' | 'pavimentacao' | 'monitoramento'>('mapa');
   const [isMobileLayout, setIsMobileLayout] = useState<boolean | null>(null);
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 1023px)');
@@ -1125,7 +1126,8 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
   const DASH_TABS = [
     { id: 'mapa' as const, label: 'Mapa Geral' },
     { id: 'avanco' as const, label: 'Avanço Físico' },
-    { id: 'producao' as const, label: 'Produção e Produtividade' },
+    { id: 'producao' as const, label: 'Produção de Rede e Ligações' },
+    { id: 'pavimentacao' as const, label: 'Produção de Pavimentação' },
     { id: 'monitoramento' as const, label: 'Monitoramento' },
   ];
 
@@ -1176,6 +1178,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
 
       {/* Aba: Avanço físico */}
       {dashTab === 'avanco' && <AvancoFisicoTab ordens={ordens} />}
+
+      {/* Aba: Produção de Pavimentação — usa exclusivamente a view de pavimentação */}
+      {dashTab === 'pavimentacao' && <PavimentacaoTab />}
+
+
 
       {/* Aba: Produção e produtividade */}
       <div className={dashTab === 'producao' ? 'flex flex-col gap-3' : 'hidden'}>

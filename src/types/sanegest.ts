@@ -1,6 +1,6 @@
 export type OSStatus = 'CINZA' | 'VERMELHO' | 'LARANJA' | 'AMARELO' | 'VERDE';
 
-export type UserRole = 'admin' | 'gerencia' | 'sala_tecnica' | 'almoxarifado' | 'encarregado' | 'topografo';
+export type UserRole = 'admin' | 'gerencia' | 'sala_tecnica' | 'almoxarifado' | 'encarregado' | 'topografo' | 'encarregado_pavimentacao';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrador',
@@ -9,6 +9,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   almoxarifado: 'Almoxarifado',
   encarregado: 'Encarregado',
   topografo: 'Topógrafo',
+  encarregado_pavimentacao: 'Encarregado de Pavimentação',
 };
 
 export interface Estaca {

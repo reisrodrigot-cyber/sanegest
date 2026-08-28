@@ -658,6 +658,24 @@ const OrdensPage = () => {
               <UserMinus size={14} /> Desatribuir
             </button>
           )}
+          {canPav && (
+            <>
+              <button
+                onClick={() => setPavModal({ modo: 'liberar', alvo: selectedOS })}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-primary/40 text-primary text-sm font-medium hover:bg-primary/10"
+                title="Liberar Pavimentação"
+              >
+                <Layers size={14} /> Liberar Pavimentação
+              </button>
+              <button
+                onClick={() => setPavModal({ modo: 'revogar', alvo: selectedOS })}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-muted-foreground text-sm font-medium hover:bg-muted"
+                title="Retirar liberação de Pavimentação"
+              >
+                <Layers size={14} /> Retirar Pav.
+              </button>
+            </>
+          )}
           {canDelete && (
             <button
               onClick={() => setShowDeleteConfirm(true)}

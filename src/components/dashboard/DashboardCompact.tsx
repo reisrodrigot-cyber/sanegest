@@ -1178,6 +1178,11 @@ export const DashboardCompact = ({ ordens, divergenciasCount }: Props) => {
       {/* Aba: Avanço físico */}
       {dashTab === 'avanco' && <AvancoFisicoTab ordens={ordens} />}
 
+      {/* Aba: Produção de Pavimentação — usa exclusivamente a view de pavimentação */}
+      {dashTab === 'pavimentacao' && <PavimentacaoTab />}
+
+
+
       {/* Aba: Produção e produtividade */}
       <div className={dashTab === 'producao' ? 'flex flex-col gap-3' : 'hidden'}>
 

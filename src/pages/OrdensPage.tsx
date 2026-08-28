@@ -6,7 +6,7 @@ import { statusLabel, vinculoDisplayStatus, toDisplayStatus, type OSDisplayStatu
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PlanilhaoConsulta } from '@/components/ordens/PlanilhaoConsulta';
-import { Search, Plus, Loader2, FileSpreadsheet, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X } from 'lucide-react';
+import { Search, Plus, Loader2, FileSpreadsheet, Download, MapPin, Map as MapIcon, UserPlus, UserMinus, X, Layers } from 'lucide-react';
 import { downloadPlanilhao } from '@/lib/planilhaoExport';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
@@ -708,6 +708,15 @@ const OrdensPage = () => {
         selectedOS={desatribuirOS}
         onDone={() => { setSelected(new Set()); refetch(); }}
       />
+
+      <LiberarPavimentacaoModal
+        open={!!pavModal}
+        modo={pavModal?.modo ?? 'liberar'}
+        selectedOS={(pavModal?.alvo ?? []).map(o => ({ id: o.id, trecho: o.trecho, bacia: o.bacia, pav_previsto: o.pav_previsto }))}
+        onClose={() => setPavModal(null)}
+        onDone={() => setSelected(new Set())}
+      />
+
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

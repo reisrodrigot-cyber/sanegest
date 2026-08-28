@@ -1824,6 +1824,7 @@ export type Database = {
         | "encarregado"
         | "topografo"
         | "admin"
+        | "encarregado_pavimentacao"
       mapa_base_status:
         | "processando"
         | "preview"
@@ -1977,6 +1978,7 @@ export const Constants = {
         "encarregado",
         "topografo",
         "admin",
+        "encarregado_pavimentacao",
       ],
       mapa_base_status: [
         "processando",

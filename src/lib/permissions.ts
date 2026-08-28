@@ -61,4 +61,14 @@ export const permissions = {
   isAdmin(role: UserRole | undefined): boolean {
     return role === 'admin';
   },
+
+  /** Pode lançar produção de pavimentação */
+  canEditPavimentacao(role: UserRole | undefined): boolean {
+    return role === 'admin' || role === 'sala_tecnica' || role === 'encarregado_pavimentacao';
+  },
+
+  /** Pode liberar/retirar liberação de pavimentação */
+  canLiberarPavimentacao(role: UserRole | undefined): boolean {
+    return role === 'admin' || role === 'sala_tecnica';
+  },
 };

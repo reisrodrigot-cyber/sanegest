@@ -1069,6 +1069,13 @@ const OSDetailPage = () => {
       {/* Registros de Produção — fonte única da produção executada */}
       <RegistrosProducaoOS osId={os.id} />
 
+      {/* Pavimentação — liberação independente da Rede */}
+      <PavimentacaoCardOS
+        os={{ id: os.id, trecho: os.trecho, bacia: os.bacia, pav_previsto: os.pav_previsto, comprimento_previsto: os.comprimento_previsto, largura_vala: os.largura_vala }}
+      />
+
+
+
 
       {/* Histórico — visível para Sala Técnica e Admin */}
       {isSalaTecnica && (

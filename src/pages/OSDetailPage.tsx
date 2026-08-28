@@ -4,6 +4,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { ArrowLeft, Loader2, Send, CheckCircle, Pencil, Save, X, AlertTriangle, UserCheck, Trash2, MapPin } from 'lucide-react';
 import { useOrdemServico } from '@/hooks/useOrdensServico';
 import { OSHistoricoSection } from '@/components/OSHistoricoSection';
+import { PavimentacaoCardOS } from '@/components/pavimentacao/PavimentacaoCardOS';
 import { LigacoesComprimentos } from '@/components/LigacoesComprimentos';
 import { RegistrosProducaoOS } from '@/components/os/RegistrosProducaoOS';
 import { useAuth } from '@/contexts/AuthContext';

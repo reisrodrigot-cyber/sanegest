@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { MapaInterativo } from '@/components/mapa/MapaInterativo';
 import { AvancoFisicoTab } from '@/components/dashboard/AvancoFisicoTab';
+import { PavimentacaoTab } from '@/components/dashboard/PavimentacaoTab';
 import { aplicarRealValidadoEmRegistros, type OSRealInput } from '@/lib/realEfetivo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';

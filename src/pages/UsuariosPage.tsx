@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserRole, ROLE_LABELS } from '@/types/sanegest';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
-import { Loader2, Shield, Users, Trash2 } from 'lucide-react';
+import { Loader2, Shield, Users, Trash2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
 
@@ -23,6 +23,37 @@ const UsuariosPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportHandoff = async () => {
+    setExporting(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const accessToken = sess.session?.access_token;
+      if (!accessToken) { toast.error('Sessão expirada. Entre novamente.'); return; }
+      const url = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/export-handoff-sanegest`;
+      const res = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!res.ok) {
+        const msg = await res.text();
+        toast.error('Falha na exportação: ' + msg.slice(0, 200));
+        return;
+      }
+      const disp = res.headers.get('Content-Disposition') || '';
+      const name = /filename="([^"]+)"/.exec(disp)?.[1] || 'sanegest_dados_referencia.zip';
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast.success('Pacote de entrega gerado.');
+    } catch (e) {
+      toast.error('Erro ao exportar: ' + (e instanceof Error ? e.message : 'desconhecido'));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const [apelidoDraft, setApelidoDraft] = useState<Record<string, string>>({});
   const [savingApelido, setSavingApelido] = useState<string | null>(null);
@@ -144,12 +175,21 @@ const UsuariosPage = () => {
 
   return (
     <AppLayout>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         <Users size={24} className="text-primary" />
         <div>
           <h1 className="text-2xl font-bold text-foreground">Gestão de Usuários</h1>
           <p className="text-sm text-muted-foreground">Atribua ou altere perfis dos usuários cadastrados</p>
         </div>
+        <button
+          onClick={handleExportHandoff}
+          disabled={exporting}
+          title="Exportação temporária de referência para recriação corporativa"
+          className="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
+        >
+          {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          Baixar dados técnicos para entrega
+        </button>
       </div>
 
       {loading ? (

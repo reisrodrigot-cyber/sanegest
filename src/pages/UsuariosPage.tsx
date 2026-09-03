@@ -144,12 +144,21 @@ const UsuariosPage = () => {
 
   return (
     <AppLayout>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         <Users size={24} className="text-primary" />
         <div>
           <h1 className="text-2xl font-bold text-foreground">Gestão de Usuários</h1>
           <p className="text-sm text-muted-foreground">Atribua ou altere perfis dos usuários cadastrados</p>
         </div>
+        <button
+          onClick={handleExportHandoff}
+          disabled={exporting}
+          title="Exportação temporária de referência para recriação corporativa"
+          className="ml-auto inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
+        >
+          {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          Baixar dados técnicos para entrega
+        </button>
       </div>
 
       {loading ? (

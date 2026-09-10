@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { useConclusoesPav, useLiberacoesPav } from '@/hooks/usePavimentacao';
-import { areaPrevistaPav, fmtM2, pavElegivel } from '@/lib/pavimentacao';
+import { areaPrevistaPav, fmtM2, pavElegivelOS, origemElegibilidadePav, MSG_PAV_INELEGIVEL } from '@/lib/pavimentacao';
 import { Button } from '@/components/ui/button';
 import { Layers } from 'lucide-react';
 import { LiberarPavimentacaoModal } from './LiberarPavimentacaoModal';
@@ -12,6 +12,7 @@ interface OSLite {
   trecho: string;
   bacia: string;
   pav_previsto: string | null;
+  pav_real?: string | null;
   comprimento_previsto: number | null;
   largura_vala: number | null;
 }

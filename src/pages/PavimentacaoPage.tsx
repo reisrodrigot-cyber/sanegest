@@ -124,6 +124,19 @@ const PavimentacaoPage = () => {
         <DetalheTrecho
           ns={aberta}
           userId={userId}
+          modoGestor={modoGestor}
+          responsavelId={
+            modoGestor
+              ? liberacoes?.get(aberta.os_id)?.liberado_para_user_id ?? null
+              : userId
+          }
+          responsavelNome={
+            modoGestor
+              ? encarregados.find(
+                  (e) => e.user_id === liberacoes?.get(aberta.os_id)?.liberado_para_user_id,
+                )?.nome ?? null
+              : null
+          }
           onClose={() => setOpenOsId(null)}
           onSaved={() => { refetch(); setRefreshKey((k) => k + 1); }}
         />

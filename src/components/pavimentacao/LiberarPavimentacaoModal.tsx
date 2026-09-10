@@ -33,8 +33,8 @@ export const LiberarPavimentacaoModal = ({ open, onClose, selectedOS, modo, onDo
   const [motivo, setMotivo] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const elegiveis = useMemo(() => selectedOS.filter((o) => pavElegivel(o.pav_previsto)), [selectedOS]);
-  const inelegiveis = useMemo(() => selectedOS.filter((o) => !pavElegivel(o.pav_previsto)), [selectedOS]);
+  const elegiveis = useMemo(() => selectedOS.filter((o) => pavElegivelOS(o.pav_previsto, o.pav_real)), [selectedOS]);
+  const inelegiveis = useMemo(() => selectedOS.filter((o) => !pavElegivelOS(o.pav_previsto, o.pav_real)), [selectedOS]);
 
   const alvo = modo === 'liberar' ? elegiveis : selectedOS;
 
@@ -106,7 +106,7 @@ export const LiberarPavimentacaoModal = ({ open, onClose, selectedOS, modo, onDo
             <div className="flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2">
               <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700 dark:text-amber-400">
-                {inelegiveis.length} N.S. ignorada(s): pavimento previsto sem Asfalto ou Paralelepípedo.
+                {inelegiveis.length} N.S. ignorada(s): sem Asfalto ou Paralelepípedo no pavimento previsto ou executado.
               </p>
             </div>
           )}

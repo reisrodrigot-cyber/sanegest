@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { fmtM2, formatBR, hojeMaceio } from '@/lib/pavimentacao';
 import { MeusRegistrosPavimentacao } from '@/components/pavimentacao/MeusRegistrosPavimentacao';
+import { permissions } from '@/lib/permissions';
+import { useEncarregadosPav, useLiberacoesPav } from '@/hooks/usePavimentacao';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -28,20 +30,28 @@ interface NSPav {
 }
 
 const PavimentacaoPage = () => {
-  const { actingUserId, effectiveUser } = useAuth();
+  const { actingUserId, effectiveUser, effectiveRole, user } = useAuth();
   const userId = actingUserId ?? effectiveUser?.id ?? '';
+  const role = effectiveRole || user?.role;
+  /** Sala Técnica / Admin lançam em nome do encarregado liberado da N.S. */
+  const modoGestor = permissions.canLiberarPavimentacao(role);
   const [tab, setTab] = useState<'lancar' | 'historico'>('lancar');
   const [openOsId, setOpenOsId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const { data: liberacoes } = useLiberacoesPav();
+  const { data: encarregados = [] } = useEncarregadosPav();
+
   const { data: lista = [], isLoading, refetch } = useQuery({
-    queryKey: ['pav-minhas-ns', userId],
+    queryKey: ['pav-minhas-ns', userId, modoGestor],
     queryFn: async (): Promise<NSPav[]> => {
-      const { data, error } = await supabase.rpc('pavimentacao_minhas_ns', { _user_id: userId });
+      const { data, error } = await supabase.rpc('pavimentacao_minhas_ns', {
+        _user_id: modoGestor ? null : userId,
+      });
       if (error) throw error;
       return (data ?? []) as unknown as NSPav[];
     },
-    enabled: !!userId,
+    enabled: modoGestor || !!userId,
   });
 
   const aberta = useMemo(() => lista.find((n) => n.os_id === openOsId) ?? null, [lista, openOsId]);

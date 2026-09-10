@@ -1592,6 +1592,7 @@ export type Database = {
           largura_m: number
           observacao: string | null
           os_id: string
+          responsavel_user_id: string
           status: string
           updated_at: string
           user_id: string
@@ -1609,6 +1610,7 @@ export type Database = {
           largura_m?: number
           observacao?: string | null
           os_id: string
+          responsavel_user_id: string
           status?: string
           updated_at?: string
           user_id: string
@@ -1626,6 +1628,7 @@ export type Database = {
           largura_m?: number
           observacao?: string | null
           os_id?: string
+          responsavel_user_id?: string
           status?: string
           updated_at?: string
           user_id?: string
@@ -1870,6 +1873,7 @@ export type Database = {
           area_m2: number | null
           area_prevista_m2: number | null
           area_realizada_m2: number | null
+          autor_user_id: string | null
           comprimento_m: number | null
           data_registro: string | null
           id: string | null

@@ -13,6 +13,7 @@ interface RegistroPav {
   id: string;
   os_id: string;
   user_id: string;
+  responsavel_user_id: string | null;
   data_registro: string;
   comprimento_m: number;
   largura_m: number;
@@ -34,14 +35,16 @@ export const MeusRegistrosPavimentacao = ({ refreshKey = 0 }: { refreshKey?: num
   const userId = actingUserId ?? effectiveUser?.id ?? '';
 
   const { data: registros = [], isLoading, refetch } = useQuery({
-    queryKey: ['pav-registros', userId, refreshKey],
+    queryKey: ['pav-registros', userId, podeGerirTudo, refreshKey],
     queryFn: async (): Promise<RegistroPav[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('registros_pavimentacao')
-        .select('id, os_id, user_id, data_registro, comprimento_m, largura_m, area_m2, observacao, created_at, ordens_servico(trecho, bacia)')
-        .eq('user_id', userId)
+        .select('id, os_id, user_id, responsavel_user_id, data_registro, comprimento_m, largura_m, area_m2, observacao, created_at, ordens_servico(trecho, bacia)')
         .eq('excluido', false)
-        .eq('status', 'ativo')
+        .eq('status', 'ativo');
+      // Encarregado vê tudo em que é responsável, inclusive lançado pela Sala Técnica.
+      if (!podeGerirTudo) q = q.eq('responsavel_user_id', userId);
+      const { data, error } = await q
         .order('data_registro', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -156,7 +159,8 @@ export const MeusRegistrosPavimentacao = ({ refreshKey = 0 }: { refreshKey?: num
           {itens.map((r) => {
             const retroativo = r.data_registro !== r.created_at.slice(0, 10);
             const editando = editId === r.id;
-            const podeEditar = podeGerirTudo || r.user_id === userId;
+            const lancadoPorTerceiro = !!r.responsavel_user_id && r.responsavel_user_id !== r.user_id;
+            const podeEditar = podeGerirTudo || r.user_id === userId || r.responsavel_user_id === userId;
             return (
               <div key={r.id} className="rounded-lg border border-border bg-card p-2.5 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
@@ -176,11 +180,18 @@ export const MeusRegistrosPavimentacao = ({ refreshKey = 0 }: { refreshKey?: num
                   )}
                 </div>
 
-                {retroativo && (
-                  <div className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                    <CalendarClock size={11} /> REGISTRO RETROATIVO
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1">
+                  {retroativo && (
+                    <div className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                      <CalendarClock size={11} /> REGISTRO RETROATIVO
+                    </div>
+                  )}
+                  {lancadoPorTerceiro && (
+                    <div className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-400">
+                      LANÇADO PELA SALA TÉCNICA
+                    </div>
+                  )}
+                </div>
 
                 {editando ? (
                   <div className="space-y-2 pt-1">

@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { fmtM2, formatBR, hojeMaceio } from '@/lib/pavimentacao';
 import { MeusRegistrosPavimentacao } from '@/components/pavimentacao/MeusRegistrosPavimentacao';
+import { permissions } from '@/lib/permissions';
+import { useEncarregadosPav, useLiberacoesPav } from '@/hooks/usePavimentacao';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -28,20 +30,28 @@ interface NSPav {
 }
 
 const PavimentacaoPage = () => {
-  const { actingUserId, effectiveUser } = useAuth();
+  const { actingUserId, effectiveUser, effectiveRole, user } = useAuth();
   const userId = actingUserId ?? effectiveUser?.id ?? '';
+  const role = effectiveRole || user?.role;
+  /** Sala Técnica / Admin lançam em nome do encarregado liberado da N.S. */
+  const modoGestor = permissions.canLiberarPavimentacao(role);
   const [tab, setTab] = useState<'lancar' | 'historico'>('lancar');
   const [openOsId, setOpenOsId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const { data: liberacoes } = useLiberacoesPav();
+  const { data: encarregados = [] } = useEncarregadosPav();
+
   const { data: lista = [], isLoading, refetch } = useQuery({
-    queryKey: ['pav-minhas-ns', userId],
+    queryKey: ['pav-minhas-ns', userId, modoGestor],
     queryFn: async (): Promise<NSPav[]> => {
-      const { data, error } = await supabase.rpc('pavimentacao_minhas_ns', { _user_id: userId });
+      const { data, error } = await supabase.rpc('pavimentacao_minhas_ns', {
+        _user_id: modoGestor ? null : userId,
+      });
       if (error) throw error;
       return (data ?? []) as unknown as NSPav[];
     },
-    enabled: !!userId,
+    enabled: modoGestor || !!userId,
   });
 
   const aberta = useMemo(() => lista.find((n) => n.os_id === openOsId) ?? null, [lista, openOsId]);
@@ -114,6 +124,19 @@ const PavimentacaoPage = () => {
         <DetalheTrecho
           ns={aberta}
           userId={userId}
+          modoGestor={modoGestor}
+          responsavelId={
+            modoGestor
+              ? liberacoes?.get(aberta.os_id)?.liberado_para_user_id ?? null
+              : userId
+          }
+          responsavelNome={
+            modoGestor
+              ? encarregados.find(
+                  (e) => e.user_id === liberacoes?.get(aberta.os_id)?.liberado_para_user_id,
+                )?.nome ?? null
+              : null
+          }
           onClose={() => setOpenOsId(null)}
           onSaved={() => { refetch(); setRefreshKey((k) => k + 1); }}
         />
@@ -123,8 +146,16 @@ const PavimentacaoPage = () => {
 };
 
 const DetalheTrecho = ({
-  ns, userId, onClose, onSaved,
-}: { ns: NSPav; userId: string; onClose: () => void; onSaved: () => void }) => {
+  ns, userId, modoGestor, responsavelId, responsavelNome, onClose, onSaved,
+}: {
+  ns: NSPav;
+  userId: string;
+  modoGestor: boolean;
+  responsavelId: string | null;
+  responsavelNome: string | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) => {
   const [data, setData] = useState(hojeMaceio());
   const [comprimento, setComprimento] = useState('');
   const [largura, setLargura] = useState('');
@@ -135,19 +166,20 @@ const DetalheTrecho = ({
   const area = (parseFloat(comprimento) || 0) * (parseFloat(largura) || 0);
   const retroativo = data !== hojeMaceio();
 
+  /** Possível duplicidade: qualquer lançamento do mesmo dia na mesma N.S. (encarregado ou Sala Técnica). */
   const { data: doDia = [] } = useQuery({
-    queryKey: ['pav-registros-dia', ns.os_id, userId, data],
+    queryKey: ['pav-registros-dia', ns.os_id, data],
     queryFn: async () => {
       const { data: rows } = await supabase
         .from('registros_pavimentacao')
         .select('id')
         .eq('os_id', ns.os_id)
-        .eq('user_id', userId)
         .eq('data_registro', data)
-        .eq('excluido', false);
+        .eq('excluido', false)
+        .eq('status', 'ativo');
       return rows ?? [];
     },
-    enabled: !!userId && !!data,
+    enabled: !!data,
   });
 
   const validar = () => {
@@ -156,6 +188,10 @@ const DetalheTrecho = ({
     if (c <= 0 || l <= 0) { toast.error('Informe comprimento e largura executados.'); return false; }
     if (!data) { toast.error('Informe a data da produção.'); return false; }
     if (data > hojeMaceio()) { toast.error('A data da produção não pode ser futura.'); return false; }
+    if (!responsavelId) {
+      toast.error('Esta N.S. não possui encarregado de pavimentação liberado.');
+      return false;
+    }
     return true;
   };
 
@@ -164,6 +200,7 @@ const DetalheTrecho = ({
     const { error } = await supabase.from('registros_pavimentacao').insert({
       os_id: ns.os_id,
       user_id: userId,
+      responsavel_user_id: responsavelId,
       data_registro: data,
       comprimento_m: parseFloat(comprimento) || 0,
       largura_m: parseFloat(largura) || 0,
@@ -228,12 +265,31 @@ const DetalheTrecho = ({
         {/* Formulário */}
         <div className="space-y-2">
           <div>
+            <label className="text-[11px] uppercase font-semibold text-muted-foreground">
+              Encarregado responsável
+            </label>
+            <Input
+              readOnly
+              value={
+                modoGestor
+                  ? responsavelNome ?? 'Sem encarregado liberado para esta N.S.'
+                  : 'Você'
+              }
+              className="h-10 text-sm bg-muted font-semibold"
+            />
+            {modoGestor && (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                A produção será creditada ao encarregado liberado desta N.S. Você fica registrado como autor do lançamento.
+              </p>
+            )}
+          </div>
+          <div>
             <label className="text-[11px] uppercase font-semibold text-muted-foreground">Data da produção</label>
             <Input type="date" value={data} max={hojeMaceio()} onChange={(e) => setData(e.target.value)} className="h-10 text-sm" />
           </div>
           {doDia.length > 0 && (
             <p className="text-[11px] text-amber-700 dark:text-amber-400">
-              Você já registrou produção neste trecho em {formatBR(data)}. É possível registrar novamente.
+              Já existe produção registrada neste trecho em {formatBR(data)} — verifique possível duplicidade. É possível registrar mesmo assim.
             </p>
           )}
           <div className="grid grid-cols-2 gap-2">

@@ -13,6 +13,7 @@ interface RegistroPav {
   id: string;
   os_id: string;
   user_id: string;
+  responsavel_user_id: string | null;
   data_registro: string;
   comprimento_m: number;
   largura_m: number;
@@ -158,7 +159,8 @@ export const MeusRegistrosPavimentacao = ({ refreshKey = 0 }: { refreshKey?: num
           {itens.map((r) => {
             const retroativo = r.data_registro !== r.created_at.slice(0, 10);
             const editando = editId === r.id;
-            const podeEditar = podeGerirTudo || r.user_id === userId;
+            const lancadoPorTerceiro = !!r.responsavel_user_id && r.responsavel_user_id !== r.user_id;
+            const podeEditar = podeGerirTudo || r.user_id === userId || r.responsavel_user_id === userId;
             return (
               <div key={r.id} className="rounded-lg border border-border bg-card p-2.5 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">

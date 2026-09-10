@@ -166,19 +166,20 @@ const DetalheTrecho = ({
   const area = (parseFloat(comprimento) || 0) * (parseFloat(largura) || 0);
   const retroativo = data !== hojeMaceio();
 
+  /** Possível duplicidade: qualquer lançamento do mesmo dia na mesma N.S. (encarregado ou Sala Técnica). */
   const { data: doDia = [] } = useQuery({
-    queryKey: ['pav-registros-dia', ns.os_id, userId, data],
+    queryKey: ['pav-registros-dia', ns.os_id, data],
     queryFn: async () => {
       const { data: rows } = await supabase
         .from('registros_pavimentacao')
         .select('id')
         .eq('os_id', ns.os_id)
-        .eq('user_id', userId)
         .eq('data_registro', data)
-        .eq('excluido', false);
+        .eq('excluido', false)
+        .eq('status', 'ativo');
       return rows ?? [];
     },
-    enabled: !!userId && !!data,
+    enabled: !!data,
   });
 
   const validar = () => {

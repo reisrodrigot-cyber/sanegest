@@ -15,7 +15,7 @@ interface UserRow {
   role: UserRole | null;
 }
 
-const ALL_ROLES: UserRole[] = ['admin', 'sala_tecnica', 'encarregado', 'almoxarifado', 'topografo', 'gerencia'];
+const ALL_ROLES: UserRole[] = ['admin', 'sala_tecnica', 'encarregado', 'encarregado_pavimentacao', 'almoxarifado', 'topografo', 'gerencia'];
 
 const UsuariosPage = () => {
   const { user } = useAuth();

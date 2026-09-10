@@ -34,14 +34,16 @@ export const MeusRegistrosPavimentacao = ({ refreshKey = 0 }: { refreshKey?: num
   const userId = actingUserId ?? effectiveUser?.id ?? '';
 
   const { data: registros = [], isLoading, refetch } = useQuery({
-    queryKey: ['pav-registros', userId, refreshKey],
+    queryKey: ['pav-registros', userId, podeGerirTudo, refreshKey],
     queryFn: async (): Promise<RegistroPav[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('registros_pavimentacao')
-        .select('id, os_id, user_id, data_registro, comprimento_m, largura_m, area_m2, observacao, created_at, ordens_servico(trecho, bacia)')
-        .eq('user_id', userId)
+        .select('id, os_id, user_id, responsavel_user_id, data_registro, comprimento_m, largura_m, area_m2, observacao, created_at, ordens_servico(trecho, bacia)')
         .eq('excluido', false)
-        .eq('status', 'ativo')
+        .eq('status', 'ativo');
+      // Encarregado vê tudo em que é responsável, inclusive lançado pela Sala Técnica.
+      if (!podeGerirTudo) q = q.eq('responsavel_user_id', userId);
+      const { data, error } = await q
         .order('data_registro', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;

@@ -712,7 +712,7 @@ const OrdensPage = () => {
       <LiberarPavimentacaoModal
         open={!!pavModal}
         modo={pavModal?.modo ?? 'liberar'}
-        selectedOS={(pavModal?.alvo ?? []).map(o => ({ id: o.id, trecho: o.trecho, bacia: o.bacia, pav_previsto: o.pav_previsto }))}
+        selectedOS={(pavModal?.alvo ?? []).map(o => ({ id: o.id, trecho: o.trecho, bacia: o.bacia, pav_previsto: o.pav_previsto, pav_real: o.pav_real ?? null }))}
         onClose={() => setPavModal(null)}
         onDone={() => setSelected(new Set())}
       />

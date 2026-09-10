@@ -1072,7 +1072,7 @@ const OSDetailPage = () => {
 
       {/* Pavimentação — liberação independente da Rede */}
       <PavimentacaoCardOS
-        os={{ id: os.id, trecho: os.trecho, bacia: os.bacia, pav_previsto: os.pav_previsto, comprimento_previsto: os.comprimento_previsto, largura_vala: os.largura_vala }}
+        os={{ id: os.id, trecho: os.trecho, bacia: os.bacia, pav_previsto: os.pav_previsto, pav_real: os.pav_real, comprimento_previsto: os.comprimento_previsto, largura_vala: os.largura_vala }}
       />
 
 

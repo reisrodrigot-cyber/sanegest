@@ -2016,6 +2016,10 @@ export type Database = {
         Returns: number
       }
       pav_elegivel: { Args: { _pav: string }; Returns: boolean }
+      pav_elegivel_os: {
+        Args: { _previsto: string; _real: string }
+        Returns: boolean
+      }
       pav_normalizar: { Args: { _t: string }; Returns: string }
       pavimentacao_minhas_ns: {
         Args: { _user_id?: string }

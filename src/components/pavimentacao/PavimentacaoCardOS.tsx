@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { permissions } from '@/lib/permissions';
 import { useConclusoesPav, useLiberacoesPav } from '@/hooks/usePavimentacao';
-import { areaPrevistaPav, fmtM2, pavElegivel } from '@/lib/pavimentacao';
+import { areaPrevistaPav, fmtM2, pavElegivelOS, origemElegibilidadePav, MSG_PAV_INELEGIVEL } from '@/lib/pavimentacao';
 import { Button } from '@/components/ui/button';
 import { Layers } from 'lucide-react';
 import { LiberarPavimentacaoModal } from './LiberarPavimentacaoModal';
@@ -12,6 +12,7 @@ interface OSLite {
   trecho: string;
   bacia: string;
   pav_previsto: string | null;
+  pav_real?: string | null;
   comprimento_previsto: number | null;
   largura_vala: number | null;
 }
@@ -26,8 +27,10 @@ export const PavimentacaoCardOS = ({ os }: { os: OSLite }) => {
 
   const lib = liberacoes?.get(os.id);
   const conc = conclusoes?.get(os.id);
-  const elegivel = pavElegivel(os.pav_previsto);
-  const areaPrevista = areaPrevistaPav(os.comprimento_previsto, os.largura_vala, os.pav_previsto);
+  const elegivel = pavElegivelOS(os.pav_previsto, os.pav_real);
+  const origem = origemElegibilidadePav(os.pav_previsto, os.pav_real);
+  const pavBase = origem === 'executado' ? os.pav_real : os.pav_previsto;
+  const areaPrevista = areaPrevistaPav(os.comprimento_previsto, os.largura_vala, pavBase);
 
   return (
     <div className="mt-6 bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
@@ -48,12 +51,22 @@ export const PavimentacaoCardOS = ({ os }: { os: OSLite }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
         <Item label="Pavimento previsto" value={os.pav_previsto ?? '—'} />
+        <Item label="Pavimento executado" value={os.pav_real ?? '—'} />
         <Item label="Elegível" value={elegivel ? 'Sim' : 'Não'} />
         <Item label="Área prevista" value={areaPrevista == null ? 'sem previsão' : `${fmtM2(areaPrevista)} m²`} />
         <Item label="Liberada em" value={lib?.liberado && lib.liberado_em ? new Date(lib.liberado_em).toLocaleDateString('pt-BR') : '—'} />
       </div>
+
+      {elegivel && origem && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          {origem === 'previsto'
+            ? 'Elegível pelo previsto: Asfalto/Paralelepípedo'
+            : 'Elegível pelo executado: Asfalto/Paralelepípedo'}
+        </p>
+      )}
+
 
       {canPav && (
         <div className="flex flex-wrap gap-2 mt-4">
@@ -67,7 +80,7 @@ export const PavimentacaoCardOS = ({ os }: { os: OSLite }) => {
           )}
           {!elegivel && (
             <p className="text-[11px] text-muted-foreground self-center">
-              Pavimento previsto sem Asfalto ou Paralelepípedo — não pode ser liberado.
+              {MSG_PAV_INELEGIVEL}
             </p>
           )}
         </div>
@@ -76,7 +89,7 @@ export const PavimentacaoCardOS = ({ os }: { os: OSLite }) => {
       <LiberarPavimentacaoModal
         open={!!modal}
         modo={modal ?? 'liberar'}
-        selectedOS={[{ id: os.id, trecho: os.trecho, bacia: os.bacia, pav_previsto: os.pav_previsto }]}
+        selectedOS={[{ id: os.id, trecho: os.trecho, bacia: os.bacia, pav_previsto: os.pav_previsto, pav_real: os.pav_real ?? null }]}
         onClose={() => setModal(null)}
       />
     </div>

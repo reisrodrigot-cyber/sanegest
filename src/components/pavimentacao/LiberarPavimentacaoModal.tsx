@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { pavElegivel } from '@/lib/pavimentacao';
+import { pavElegivelOS } from '@/lib/pavimentacao';
 import { useEncarregadosPav, useInvalidatePav } from '@/hooks/usePavimentacao';
 
 interface OSLite {
@@ -14,6 +14,7 @@ interface OSLite {
   trecho: string;
   bacia: string;
   pav_previsto: string | null;
+  pav_real?: string | null;
 }
 
 interface Props {

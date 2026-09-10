@@ -80,7 +80,7 @@ export const PavimentacaoCardOS = ({ os }: { os: OSLite }) => {
           )}
           {!elegivel && (
             <p className="text-[11px] text-muted-foreground self-center">
-              Pavimento previsto sem Asfalto ou Paralelepípedo — não pode ser liberado.
+              {MSG_PAV_INELEGIVEL}
             </p>
           )}
         </div>
@@ -89,7 +89,7 @@ export const PavimentacaoCardOS = ({ os }: { os: OSLite }) => {
       <LiberarPavimentacaoModal
         open={!!modal}
         modo={modal ?? 'liberar'}
-        selectedOS={[{ id: os.id, trecho: os.trecho, bacia: os.bacia, pav_previsto: os.pav_previsto }]}
+        selectedOS={[{ id: os.id, trecho: os.trecho, bacia: os.bacia, pav_previsto: os.pav_previsto, pav_real: os.pav_real ?? null }]}
         onClose={() => setModal(null)}
       />
     </div>

@@ -17,6 +17,25 @@ export const pavElegivel = (pav: string | null | undefined): boolean => {
   return n.includes('paralelepipedo') || n.includes('asfalto');
 };
 
+/**
+ * Elegibilidade da N.S.: basta que o pavimento PREVISTO ou o EXECUTADO
+ * seja Asfalto ou Paralelepípedo. Não altera nenhum valor salvo.
+ */
+export const pavElegivelOS = (
+  pavPrevisto: string | null | undefined,
+  pavReal: string | null | undefined,
+): boolean => pavElegivel(pavPrevisto) || pavElegivel(pavReal);
+
+/** Origem da elegibilidade, para exibição. */
+export const origemElegibilidadePav = (
+  pavPrevisto: string | null | undefined,
+  pavReal: string | null | undefined,
+): 'previsto' | 'executado' | null =>
+  pavElegivel(pavPrevisto) ? 'previsto' : pavElegivel(pavReal) ? 'executado' : null;
+
+export const MSG_PAV_INELEGIVEL =
+  'Sem Asfalto ou Paralelepípedo no pavimento previsto ou executado — não pode ser liberado.';
+
 /** Quantidade de tipos de pavimento informados (separados por "/"). */
 export const qtdTiposPav = (pav: string | null | undefined): number => {
   const n = normalizarPav(pav);

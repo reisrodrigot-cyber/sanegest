@@ -265,12 +265,31 @@ const DetalheTrecho = ({
         {/* Formulário */}
         <div className="space-y-2">
           <div>
+            <label className="text-[11px] uppercase font-semibold text-muted-foreground">
+              Encarregado responsável
+            </label>
+            <Input
+              readOnly
+              value={
+                modoGestor
+                  ? responsavelNome ?? 'Sem encarregado liberado para esta N.S.'
+                  : 'Você'
+              }
+              className="h-10 text-sm bg-muted font-semibold"
+            />
+            {modoGestor && (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                A produção será creditada ao encarregado liberado desta N.S. Você fica registrado como autor do lançamento.
+              </p>
+            )}
+          </div>
+          <div>
             <label className="text-[11px] uppercase font-semibold text-muted-foreground">Data da produção</label>
             <Input type="date" value={data} max={hojeMaceio()} onChange={(e) => setData(e.target.value)} className="h-10 text-sm" />
           </div>
           {doDia.length > 0 && (
             <p className="text-[11px] text-amber-700 dark:text-amber-400">
-              Você já registrou produção neste trecho em {formatBR(data)}. É possível registrar novamente.
+              Já existe produção registrada neste trecho em {formatBR(data)} — verifique possível duplicidade. É possível registrar mesmo assim.
             </p>
           )}
           <div className="grid grid-cols-2 gap-2">

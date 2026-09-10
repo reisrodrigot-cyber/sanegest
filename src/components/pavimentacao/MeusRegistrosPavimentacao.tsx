@@ -180,11 +180,18 @@ export const MeusRegistrosPavimentacao = ({ refreshKey = 0 }: { refreshKey?: num
                   )}
                 </div>
 
-                {retroativo && (
-                  <div className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                    <CalendarClock size={11} /> REGISTRO RETROATIVO
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1">
+                  {retroativo && (
+                    <div className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                      <CalendarClock size={11} /> REGISTRO RETROATIVO
+                    </div>
+                  )}
+                  {lancadoPorTerceiro && (
+                    <div className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-400">
+                      LANÇADO PELA SALA TÉCNICA
+                    </div>
+                  )}
+                </div>
 
                 {editando ? (
                   <div className="space-y-2 pt-1">

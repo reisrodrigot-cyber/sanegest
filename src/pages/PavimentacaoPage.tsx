@@ -146,8 +146,16 @@ const PavimentacaoPage = () => {
 };
 
 const DetalheTrecho = ({
-  ns, userId, onClose, onSaved,
-}: { ns: NSPav; userId: string; onClose: () => void; onSaved: () => void }) => {
+  ns, userId, modoGestor, responsavelId, responsavelNome, onClose, onSaved,
+}: {
+  ns: NSPav;
+  userId: string;
+  modoGestor: boolean;
+  responsavelId: string | null;
+  responsavelNome: string | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) => {
   const [data, setData] = useState(hojeMaceio());
   const [comprimento, setComprimento] = useState('');
   const [largura, setLargura] = useState('');

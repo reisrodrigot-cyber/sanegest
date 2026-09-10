@@ -188,6 +188,10 @@ const DetalheTrecho = ({
     if (c <= 0 || l <= 0) { toast.error('Informe comprimento e largura executados.'); return false; }
     if (!data) { toast.error('Informe a data da produção.'); return false; }
     if (data > hojeMaceio()) { toast.error('A data da produção não pode ser futura.'); return false; }
+    if (!responsavelId) {
+      toast.error('Esta N.S. não possui encarregado de pavimentação liberado.');
+      return false;
+    }
     return true;
   };
 
@@ -196,6 +200,7 @@ const DetalheTrecho = ({
     const { error } = await supabase.from('registros_pavimentacao').insert({
       os_id: ns.os_id,
       user_id: userId,
+      responsavel_user_id: responsavelId,
       data_registro: data,
       comprimento_m: parseFloat(comprimento) || 0,
       largura_m: parseFloat(largura) || 0,

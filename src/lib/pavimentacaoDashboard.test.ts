@@ -11,6 +11,7 @@ describe('painel de produção de pavimentação', () => {
   it('normaliza os tipos e prioriza o pavimento executado', () => {
     expect(tipoPavimentoOperacional('  PARALELEPÍPEDO ', 'Asfalto')).toEqual(['Paralelepípedo']);
     expect(tipoPavimentoOperacional('', 'ASFALTO')).toEqual(['Asfalto']);
+    expect(tipoPavimentoOperacional('Solo Natural', 'Paralelepipedo')).toEqual(['Paralelepípedo']);
   });
 
   it('soma cada lançamento uma única vez por tipo', () => {

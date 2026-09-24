@@ -19,7 +19,10 @@ export const tipoPavimentoOperacional = (
   pavReal: string | null | undefined,
   pavPrevisto: string | null | undefined,
 ): Array<'Asfalto' | 'Paralelepípedo'> => {
-  const valor = normalizarPav(pavReal) || normalizarPav(pavPrevisto);
+  const real = normalizarPav(pavReal);
+  const previsto = normalizarPav(pavPrevisto);
+  const realElegivel = real.includes('asfalto') || real.includes('paralelepipedo');
+  const valor = realElegivel ? real : previsto;
   const tipos: Array<'Asfalto' | 'Paralelepípedo'> = [];
   if (valor.includes('asfalto')) tipos.push('Asfalto');
   if (valor.includes('paralelepipedo')) tipos.push('Paralelepípedo');

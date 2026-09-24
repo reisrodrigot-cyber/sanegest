@@ -281,9 +281,9 @@ export function RegistrosProducaoOS({ osId }: Props) {
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: ajustando.id,
       usuario_id: actingUserId ?? user.id,
-      acao: 'ajuste',
-      valor_anterior: { ...valor_anterior, ligacoes: anterioresLig },
-      valor_novo: { ...valor_novo, ligacoes_comprimentos: ligComprimentos },
+      acao: 'edicao',
+      valor_anterior: { tipo_evento: 'ajuste', ...valor_anterior, ligacoes: anterioresLig },
+      valor_novo: { tipo_evento: 'ajuste', ...valor_novo, ligacoes_comprimentos: ligComprimentos },
     });
     setSavingAj(false);
     setAjustando(null);
@@ -314,9 +314,9 @@ export function RegistrosProducaoOS({ osId }: Props) {
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: r.id,
       usuario_id: actingUserId ?? user.id,
-      acao: 'remocao_ajuste',
-      valor_anterior,
-      valor_novo,
+      acao: 'edicao',
+      valor_anterior: { tipo_evento: 'remocao_ajuste', ...valor_anterior },
+      valor_novo: { tipo_evento: 'remocao_ajuste', ...valor_novo },
     });
     setReload((k) => k + 1);
     toast.success('Ajuste removido — voltou ao valor informado');
@@ -340,9 +340,9 @@ export function RegistrosProducaoOS({ osId }: Props) {
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: cancelando.id,
       usuario_id: actingUserId ?? user.id,
-      acao: 'cancelamento',
-      valor_anterior: { status: cancelando.status },
-      valor_novo,
+      acao: 'edicao',
+      valor_anterior: { tipo_evento: 'cancelamento', status: cancelando.status },
+      valor_novo: { tipo_evento: 'cancelamento', ...valor_novo },
     });
     setSavingCanc(false);
     setCancelando(null);
@@ -370,9 +370,9 @@ export function RegistrosProducaoOS({ osId }: Props) {
     await supabase.from('registros_producao_auditoria').insert({
       registro_producao_id: r.id,
       usuario_id: actingUserId ?? user.id,
-      acao: 'restauracao',
-      valor_anterior: { status: r.status, excluido: r.excluido },
-      valor_novo,
+      acao: 'edicao',
+      valor_anterior: { tipo_evento: 'restauracao', status: r.status, excluido: r.excluido },
+      valor_novo: { tipo_evento: 'restauracao', ...valor_novo },
     });
     setReload((k) => k + 1);
     toast.success('Registro restaurado');

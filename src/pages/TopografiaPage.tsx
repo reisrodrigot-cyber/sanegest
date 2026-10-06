@@ -324,6 +324,11 @@ const OSEstacaPanel = ({ os, onConclude, onChange, allowEditAll, asBuiltConcluid
     return () => { supabase.removeChannel(channel); };
   }, [os.id, fetchPoints, fetchLigacoesStatus]);
 
+  // Atualiza contadores da página quando pontos mudam
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(() => { if (!loading) onChangeRef.current?.(); }, [points.length, loading]);
+
   // Separa em montante / intermediários / jusante
   const montante = points.find((p) => p.nome_estaca === PV_MONTANTE_TAG) ?? null;
   const jusante = points.find((p) => p.nome_estaca === PV_JUSANTE_TAG) ?? null;

@@ -13,7 +13,7 @@ export const StatusBadge = ({
 }) => {
   const c = getStatusMeta(status);
   const sizeClasses = size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1';
-  const SHORT: Partial<Record<string, string>> = { VERMELHO: 'Sem execução' };
+  const SHORT: Partial<Record<string, string>> = { VERMELHO: 'Sem execução', AZUL: 'As Built' };
   const label = (shortLabel && SHORT[c.key]) || c.label;
   return (
     <span

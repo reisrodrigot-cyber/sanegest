@@ -14,6 +14,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';
 import { LigacoesPanel } from '@/components/topografia/LigacoesPanel';
 import { OSDetalhesTrecho } from '@/components/OSDetalhesTrecho';
+import { osIdsComPvAssentado, isPendenteTopografia, podeConcluirAsBuilt, statusVisualTopografia, type RegistroPvRow } from '@/lib/topografiaFluxo';
 
 interface AsBuiltPoint {
   id: string;
@@ -237,7 +238,7 @@ const PVCard = ({
   );
 };
 
-const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: () => void; allowEditAll?: boolean }) => {
+const OSEstacaPanel = ({ os, onConclude, onChange, allowEditAll, asBuiltConcluido }: { os: any; onConclude: () => void; onChange?: () => void; allowEditAll?: boolean; asBuiltConcluido?: boolean }) => {
   const { user, actingUserId } = useAuth();
   const [points, setPoints] = useState<AsBuiltPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -322,6 +323,11 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [os.id, fetchPoints, fetchLigacoesStatus]);
+
+  // Atualiza contadores da página quando pontos mudam
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(() => { if (!loading) onChangeRef.current?.(); }, [points.length, loading]);
 
   // Separa em montante / intermediários / jusante
   const montante = points.find((p) => p.nome_estaca === PV_MONTANTE_TAG) ?? null;
@@ -511,19 +517,29 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     ...(jusante ? [jusante] : []),
   ].filter((p) => p.latitude != null && p.longitude != null);
 
-  const podeConcluir = !!montante && !!jusante && ligacoesPendentes === 0;
+  const podeConcluir = podeConcluirAsBuilt({
+    montanteComCoord: montante?.latitude != null && montante?.longitude != null,
+    jusanteComCoord: jusante?.latitude != null && jusante?.longitude != null,
+    ligacoesPendentes,
+  });
 
   const handleConclude = async () => {
     if (!podeConcluir) return;
     setConcluding(true);
-    const { error } = await supabase.from('ordens_servico').update({ status: 'VERDE' }).eq('id', os.id);
+    // Não altera o status técnico da N.S. (VERDE = PV assentado, etapa anterior).
+    const { error } = await supabase.from('os_asbuilt_conclusao').upsert({
+      os_id: os.id,
+      concluido: true,
+      concluido_por: actingUserId ?? user?.id ?? null,
+      concluido_em: new Date().toISOString(),
+    }, { onConflict: 'os_id' });
     setConcluding(false);
-    if (error) { toast.error('Erro ao concluir OS.'); return; }
-    toast.success('OS concluída — status Verde!');
+    if (error) { toast.error('Erro ao concluir As Built: ' + error.message); return; }
+    toast.success('As Built concluído!');
     onConclude();
   };
 
-  const isConcluded = os.status === 'VERDE';
+  const isConcluded = !!asBuiltConcluido;
   const canEdit = allowEditAll || !isConcluded;
 
   // (PVCard movido para fora do componente — ver abaixo)
@@ -661,14 +677,14 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 encOpts={encOpts}
               />
 
-              {!isConcluded && !allowEditAll && podeConcluir && (
-                <Button onClick={handleConclude} disabled={concluding} variant="default" className="w-full bg-status-green hover:bg-status-green/90 text-white">
+              {!isConcluded && podeConcluir && (
+                <Button onClick={handleConclude} disabled={concluding} variant="default" className="w-full bg-status-blue hover:bg-status-blue/90 text-white">
                   {concluding ? <Loader2 className="animate-spin mr-2" size={14} /> : <CheckCircle2 size={14} className="mr-1" />}
-                  Concluir NS (→ Verde)
+                  Concluir As Built
                 </Button>
               )}
 
-              {!isConcluded && !allowEditAll && !podeConcluir && (montante || jusante || intermediarios.length > 0) && (
+              {!isConcluded && !podeConcluir && (
                 <div className="text-sm bg-status-yellow/10 border border-status-yellow/30 rounded-lg px-3 py-2 space-y-1">
                   <p className="font-medium text-foreground">⏳ Pendências para concluir esta NS:</p>
                   <ul className="list-disc list-inside text-muted-foreground">
@@ -679,14 +695,14 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                     )}
                   </ul>
                   <p className="text-xs text-muted-foreground pt-1">
-                    Apenas a Sala Técnica pode concluir manualmente uma NS com pendências.
+                    Os pontos já salvos ficam guardados; complete o restante para concluir o As Built.
                   </p>
                 </div>
               )}
 
-              {isConcluded && !allowEditAll && (
-                <p className="text-sm text-status-green font-medium flex items-center gap-1">
-                  <CheckCircle2 size={14} /> NS concluída
+              {isConcluded && (
+                <p className="text-sm text-status-blue font-medium flex items-center gap-1">
+                  <CheckCircle2 size={14} /> As Built concluído
                 </p>
               )}
             </>
@@ -713,26 +729,50 @@ const TopografiaPage = () => {
   const { ordens, loading, refetch } = useOrdensServico();
   const [registeredOsIds, setRegisteredOsIds] = useState<Set<string>>(new Set());
   const [loadingRegistered, setLoadingRegistered] = useState(true);
+  const [pvAssentado, setPvAssentado] = useState<Set<string>>(new Set());
+  const [asBuiltConcluido, setAsBuiltConcluido] = useState<Set<string>>(new Set());
+  const [loadingFluxo, setLoadingFluxo] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRegistered = async () => {
-      if (!effectiveUser) return;
-      const { data } = await supabase
-        .from('topografia_asbuilt')
-        .select('os_id')
-        .eq('registrado_por', effectiveUser.id);
-      const ids = new Set((data ?? []).map(d => d.os_id));
-      setRegisteredOsIds(ids);
-      setLoadingRegistered(false);
-    };
-    fetchRegistered();
+  const fetchRegistered = useCallback(async () => {
+    if (!effectiveUser) return;
+    const { data } = await supabase
+      .from('topografia_asbuilt')
+      .select('os_id')
+      .eq('registrado_por', effectiveUser.id);
+    setRegisteredOsIds(new Set((data ?? []).map(d => d.os_id)));
+    setLoadingRegistered(false);
   }, [effectiveUser]);
 
-  const pendentes = ordens.filter(os => os.status === 'AMARELO');
+  const fetchFluxo = useCallback(async () => {
+    const rows: RegistroPvRow[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase
+        .from('registros_producao')
+        .select('os_id, pv_final_assentado, excluido, status')
+        .eq('pv_final_assentado', true)
+        .range(from, from + 999);
+      rows.push(...((data ?? []) as RegistroPvRow[]));
+      if (!data || data.length < 1000) break;
+    }
+    setPvAssentado(osIdsComPvAssentado(rows));
+    const { data: concl } = await supabase
+      .from('os_asbuilt_conclusao')
+      .select('os_id, concluido')
+      .eq('concluido', true);
+    setAsBuiltConcluido(new Set((concl ?? []).map((c) => c.os_id)));
+    setLoadingFluxo(false);
+  }, []);
+
+  useEffect(() => { fetchRegistered(); }, [fetchRegistered]);
+  useEffect(() => { fetchFluxo(); }, [fetchFluxo]);
+
+  const refreshAll = () => { fetchRegistered(); fetchFluxo(); };
+
+  const pendentes = ordens.filter(os => isPendenteTopografia(os as any, pvAssentado, asBuiltConcluido));
   const registradas = ordens.filter(os => registeredOsIds.has(os.id));
 
-  if (loading) {
+  if (loading || loadingFluxo) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-20">
@@ -759,7 +799,7 @@ const TopografiaPage = () => {
               </p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <StatusBadge status={os.status} size="sm" />
+              <StatusBadge status={statusVisualTopografia(os.id, os.status, pvAssentado, asBuiltConcluido)} size="sm" shortLabel />
               <button
                 onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
                 className="text-sm text-primary hover:underline whitespace-nowrap"
@@ -768,7 +808,15 @@ const TopografiaPage = () => {
               </button>
             </div>
           </div>
-          {expandedId === os.id && <OSEstacaPanel os={os} onConclude={() => refetch()} allowEditAll={allowEditAll} />}
+          {expandedId === os.id && (
+            <OSEstacaPanel
+              os={os}
+              asBuiltConcluido={asBuiltConcluido.has(os.id)}
+              onConclude={() => { refetch(); refreshAll(); }}
+              onChange={fetchRegistered}
+              allowEditAll={allowEditAll}
+            />
+          )}
         </div>
       ))}
       {list.length === 0 && (

@@ -14,6 +14,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';
 import { LigacoesPanel } from '@/components/topografia/LigacoesPanel';
 import { OSDetalhesTrecho } from '@/components/OSDetalhesTrecho';
+import { osIdsComPvAssentado, isPendenteTopografia, podeConcluirAsBuilt, statusVisualTopografia, type RegistroPvRow } from '@/lib/topografiaFluxo';
 
 interface AsBuiltPoint {
   id: string;
@@ -237,7 +238,7 @@ const PVCard = ({
   );
 };
 
-const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: () => void; allowEditAll?: boolean }) => {
+const OSEstacaPanel = ({ os, onConclude, onChange, allowEditAll, asBuiltConcluido }: { os: any; onConclude: () => void; onChange?: () => void; allowEditAll?: boolean; asBuiltConcluido?: boolean }) => {
   const { user, actingUserId } = useAuth();
   const [points, setPoints] = useState<AsBuiltPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -511,19 +512,29 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
     ...(jusante ? [jusante] : []),
   ].filter((p) => p.latitude != null && p.longitude != null);
 
-  const podeConcluir = !!montante && !!jusante && ligacoesPendentes === 0;
+  const podeConcluir = podeConcluirAsBuilt({
+    montanteComCoord: montante?.latitude != null && montante?.longitude != null,
+    jusanteComCoord: jusante?.latitude != null && jusante?.longitude != null,
+    ligacoesPendentes,
+  });
 
   const handleConclude = async () => {
     if (!podeConcluir) return;
     setConcluding(true);
-    const { error } = await supabase.from('ordens_servico').update({ status: 'VERDE' }).eq('id', os.id);
+    // Não altera o status técnico da N.S. (VERDE = PV assentado, etapa anterior).
+    const { error } = await supabase.from('os_asbuilt_conclusao').upsert({
+      os_id: os.id,
+      concluido: true,
+      concluido_por: actingUserId ?? user?.id ?? null,
+      concluido_em: new Date().toISOString(),
+    }, { onConflict: 'os_id' });
     setConcluding(false);
-    if (error) { toast.error('Erro ao concluir OS.'); return; }
-    toast.success('OS concluída — status Verde!');
+    if (error) { toast.error('Erro ao concluir As Built: ' + error.message); return; }
+    toast.success('As Built concluído!');
     onConclude();
   };
 
-  const isConcluded = os.status === 'VERDE';
+  const isConcluded = !!asBuiltConcluido;
   const canEdit = allowEditAll || !isConcluded;
 
   // (PVCard movido para fora do componente — ver abaixo)
@@ -661,14 +672,14 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                 encOpts={encOpts}
               />
 
-              {!isConcluded && !allowEditAll && podeConcluir && (
-                <Button onClick={handleConclude} disabled={concluding} variant="default" className="w-full bg-status-green hover:bg-status-green/90 text-white">
+              {!isConcluded && podeConcluir && (
+                <Button onClick={handleConclude} disabled={concluding} variant="default" className="w-full bg-status-blue hover:bg-status-blue/90 text-white">
                   {concluding ? <Loader2 className="animate-spin mr-2" size={14} /> : <CheckCircle2 size={14} className="mr-1" />}
-                  Concluir NS (→ Verde)
+                  Concluir As Built
                 </Button>
               )}
 
-              {!isConcluded && !allowEditAll && !podeConcluir && (montante || jusante || intermediarios.length > 0) && (
+              {!isConcluded && !podeConcluir && (
                 <div className="text-sm bg-status-yellow/10 border border-status-yellow/30 rounded-lg px-3 py-2 space-y-1">
                   <p className="font-medium text-foreground">⏳ Pendências para concluir esta NS:</p>
                   <ul className="list-disc list-inside text-muted-foreground">
@@ -679,14 +690,14 @@ const OSEstacaPanel = ({ os, onConclude, allowEditAll }: { os: any; onConclude: 
                     )}
                   </ul>
                   <p className="text-xs text-muted-foreground pt-1">
-                    Apenas a Sala Técnica pode concluir manualmente uma NS com pendências.
+                    Os pontos já salvos ficam guardados; complete o restante para concluir o As Built.
                   </p>
                 </div>
               )}
 
-              {isConcluded && !allowEditAll && (
-                <p className="text-sm text-status-green font-medium flex items-center gap-1">
-                  <CheckCircle2 size={14} /> NS concluída
+              {isConcluded && (
+                <p className="text-sm text-status-blue font-medium flex items-center gap-1">
+                  <CheckCircle2 size={14} /> As Built concluído
                 </p>
               )}
             </>

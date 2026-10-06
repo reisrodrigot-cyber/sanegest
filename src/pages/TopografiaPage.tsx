@@ -713,26 +713,50 @@ const TopografiaPage = () => {
   const { ordens, loading, refetch } = useOrdensServico();
   const [registeredOsIds, setRegisteredOsIds] = useState<Set<string>>(new Set());
   const [loadingRegistered, setLoadingRegistered] = useState(true);
+  const [pvAssentado, setPvAssentado] = useState<Set<string>>(new Set());
+  const [asBuiltConcluido, setAsBuiltConcluido] = useState<Set<string>>(new Set());
+  const [loadingFluxo, setLoadingFluxo] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRegistered = async () => {
-      if (!effectiveUser) return;
-      const { data } = await supabase
-        .from('topografia_asbuilt')
-        .select('os_id')
-        .eq('registrado_por', effectiveUser.id);
-      const ids = new Set((data ?? []).map(d => d.os_id));
-      setRegisteredOsIds(ids);
-      setLoadingRegistered(false);
-    };
-    fetchRegistered();
+  const fetchRegistered = useCallback(async () => {
+    if (!effectiveUser) return;
+    const { data } = await supabase
+      .from('topografia_asbuilt')
+      .select('os_id')
+      .eq('registrado_por', effectiveUser.id);
+    setRegisteredOsIds(new Set((data ?? []).map(d => d.os_id)));
+    setLoadingRegistered(false);
   }, [effectiveUser]);
 
-  const pendentes = ordens.filter(os => os.status === 'AMARELO');
+  const fetchFluxo = useCallback(async () => {
+    const rows: RegistroPvRow[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase
+        .from('registros_producao')
+        .select('os_id, pv_final_assentado, excluido, status')
+        .eq('pv_final_assentado', true)
+        .range(from, from + 999);
+      rows.push(...((data ?? []) as RegistroPvRow[]));
+      if (!data || data.length < 1000) break;
+    }
+    setPvAssentado(osIdsComPvAssentado(rows));
+    const { data: concl } = await supabase
+      .from('os_asbuilt_conclusao')
+      .select('os_id, concluido')
+      .eq('concluido', true);
+    setAsBuiltConcluido(new Set((concl ?? []).map((c) => c.os_id)));
+    setLoadingFluxo(false);
+  }, []);
+
+  useEffect(() => { fetchRegistered(); }, [fetchRegistered]);
+  useEffect(() => { fetchFluxo(); }, [fetchFluxo]);
+
+  const refreshAll = () => { fetchRegistered(); fetchFluxo(); };
+
+  const pendentes = ordens.filter(os => isPendenteTopografia(os as any, pvAssentado, asBuiltConcluido));
   const registradas = ordens.filter(os => registeredOsIds.has(os.id));
 
-  if (loading) {
+  if (loading || loadingFluxo) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-20">
@@ -759,7 +783,7 @@ const TopografiaPage = () => {
               </p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <StatusBadge status={os.status} size="sm" />
+              <StatusBadge status={statusVisualTopografia(os.id, os.status, pvAssentado, asBuiltConcluido)} size="sm" shortLabel />
               <button
                 onClick={() => setExpandedId(expandedId === os.id ? null : os.id)}
                 className="text-sm text-primary hover:underline whitespace-nowrap"
@@ -768,7 +792,15 @@ const TopografiaPage = () => {
               </button>
             </div>
           </div>
-          {expandedId === os.id && <OSEstacaPanel os={os} onConclude={() => refetch()} allowEditAll={allowEditAll} />}
+          {expandedId === os.id && (
+            <OSEstacaPanel
+              os={os}
+              asBuiltConcluido={asBuiltConcluido.has(os.id)}
+              onConclude={() => { refetch(); refreshAll(); }}
+              onChange={fetchRegistered}
+              allowEditAll={allowEditAll}
+            />
+          )}
         </div>
       ))}
       {list.length === 0 && (

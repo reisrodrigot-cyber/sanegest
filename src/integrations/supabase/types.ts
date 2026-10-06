@@ -1178,6 +1178,48 @@ export type Database = {
         }
         Relationships: []
       }
+      os_asbuilt_conclusao: {
+        Row: {
+          concluido: boolean
+          concluido_em: string
+          concluido_por: string | null
+          created_at: string
+          os_id: string
+          updated_at: string
+        }
+        Insert: {
+          concluido?: boolean
+          concluido_em?: string
+          concluido_por?: string | null
+          created_at?: string
+          os_id: string
+          updated_at?: string
+        }
+        Update: {
+          concluido?: boolean
+          concluido_em?: string
+          concluido_por?: string | null
+          created_at?: string
+          os_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_asbuilt_conclusao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: true
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_asbuilt_conclusao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: true
+            referencedRelation: "relatorio_producao_diaria"
+            referencedColumns: ["os_id"]
+          },
+        ]
+      }
       os_liberacao_pavimentacao: {
         Row: {
           created_at: string

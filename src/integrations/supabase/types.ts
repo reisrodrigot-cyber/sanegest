@@ -2050,7 +2050,11 @@ export type Database = {
         Returns: boolean
       }
       liberar_pavimentacao: {
-        Args: { _encarregado_user_id: string; _motivo?: string; _os_id: string }
+        Args: {
+          _encarregado_user_id?: string
+          _motivo?: string
+          _os_id: string
+        }
         Returns: Json
       }
       pav_area_prevista: {

@@ -15,6 +15,13 @@
       "when": 1791318768929,
       "tag": "0001_create_os_asbuilt_conclusao",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791371685810,
+      "tag": "0002_shared_pavimentacao_release",
+      "breakpoints": true
     }
   ]
 }

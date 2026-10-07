@@ -2,12 +2,11 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { pavElegivelOS } from '@/lib/pavimentacao';
-import { useEncarregadosPav, useInvalidatePav } from '@/hooks/usePavimentacao';
+import { useInvalidatePav } from '@/hooks/usePavimentacao';
 
 interface OSLite {
   id: string;
@@ -27,9 +26,7 @@ interface Props {
 }
 
 export const LiberarPavimentacaoModal = ({ open, onClose, selectedOS, modo, onDone }: Props) => {
-  const { data: encarregados = [] } = useEncarregadosPav();
   const invalidate = useInvalidatePav();
-  const [userId, setUserId] = useState('');
   const [motivo, setMotivo] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -39,10 +36,6 @@ export const LiberarPavimentacaoModal = ({ open, onClose, selectedOS, modo, onDo
   const alvo = modo === 'liberar' ? elegiveis : selectedOS;
 
   const handleConfirm = async () => {
-    if (modo === 'liberar' && !userId) {
-      toast.error('Selecione o Encarregado de Pavimentação.');
-      return;
-    }
     if (alvo.length === 0) {
       toast.error('Nenhuma N.S. elegível selecionada.');
       return;
@@ -55,7 +48,6 @@ export const LiberarPavimentacaoModal = ({ open, onClose, selectedOS, modo, onDo
         modo === 'liberar'
           ? await supabase.rpc('liberar_pavimentacao', {
               _os_id: os.id,
-              _encarregado_user_id: userId,
               _motivo: motivo || null,
             })
           : await supabase.rpc('revogar_liberacao_pavimentacao', {
@@ -69,7 +61,6 @@ export const LiberarPavimentacaoModal = ({ open, onClose, selectedOS, modo, onDo
     if (ok > 0) toast.success(`${ok} N.S. ${modo === 'liberar' ? 'liberada(s)' : 'com liberação retirada'} para Pavimentação.`);
     if (erro > 0) toast.error(`${erro} N.S. não puderam ser processadas.`);
     setMotivo('');
-    setUserId('');
     onDone?.();
     onClose();
   };
@@ -83,8 +74,8 @@ export const LiberarPavimentacaoModal = ({ open, onClose, selectedOS, modo, onDo
           </DialogTitle>
           <DialogDescription>
             {modo === 'liberar'
-              ? 'A liberação de Pavimentação é independente da liberação de Rede e não altera produção, PV final ou status técnico.'
-              : 'A N.S. deixará de aparecer para o Encarregado de Pavimentação. Registros já lançados são preservados.'}
+              ? 'Liberar esta N.S. para todos os Encarregados de Pavimentação.'
+              : 'Retirar esta N.S. de todos os Encarregados de Pavimentação. Registros já lançados são preservados.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -108,28 +99,6 @@ export const LiberarPavimentacaoModal = ({ open, onClose, selectedOS, modo, onDo
               <p className="text-xs text-amber-700 dark:text-amber-400">
                 {inelegiveis.length} N.S. ignorada(s): sem Asfalto ou Paralelepípedo no pavimento previsto ou executado.
               </p>
-            </div>
-          )}
-
-          {modo === 'liberar' && (
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Encarregado de Pavimentação</label>
-              <Select value={userId} onValueChange={setUserId}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Selecione…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {encarregados.length === 0 ? (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
-                      Nenhum usuário com este perfil
-                    </div>
-                  ) : (
-                    encarregados.map((e) => (
-                      <SelectItem key={e.user_id} value={e.user_id}>{e.nome}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
             </div>
           )}
 

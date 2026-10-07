@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Abrir liberações de pavimentação a todos os encarregados, com controle exclusivo da Sala Técnica.
+- [ ] Validar autoria, histórico individual, totais compartilhados e bloqueio após revogação.
+
 - [x] Corrigir auditoria de pavimentação e validar o fluxo da Sala Técnica.
 - [x] Reestruturar a aba Produção de Pavimentação com indicadores operacionais.
 - [x] Adicionar gráficos diário, mensal e por tipo de pavimento.

@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { fmtM2, formatBR, hojeMaceio } from '@/lib/pavimentacao';
 import { MeusRegistrosPavimentacao } from '@/components/pavimentacao/MeusRegistrosPavimentacao';
 import { permissions } from '@/lib/permissions';
-import { useEncarregadosPav, useLiberacoesPav } from '@/hooks/usePavimentacao';
+import { useEncarregadosPav, useInvalidatePav } from '@/hooks/usePavimentacao';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -30,17 +31,16 @@ interface NSPav {
 }
 
 const PavimentacaoPage = () => {
-  const { actingUserId, effectiveUser, effectiveRole, user } = useAuth();
+  const { actingUserId, effectiveUser, effectiveRole, user, supabaseUser } = useAuth();
   const userId = actingUserId ?? effectiveUser?.id ?? '';
   const role = effectiveRole || user?.role;
-  /** Sala Técnica / Admin lançam em nome do encarregado liberado da N.S. */
-  const modoGestor = permissions.canLiberarPavimentacao(role);
+  const modoGestor = permissions.canEditOS(role);
   const [tab, setTab] = useState<'lancar' | 'historico'>('lancar');
   const [openOsId, setOpenOsId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const { data: liberacoes } = useLiberacoesPav();
   const { data: encarregados = [] } = useEncarregadosPav();
+  const invalidate = useInvalidatePav();
 
   const { data: lista = [], isLoading, refetch } = useQuery({
     queryKey: ['pav-minhas-ns', userId, modoGestor],
@@ -123,22 +123,13 @@ const PavimentacaoPage = () => {
       {aberta && (
         <DetalheTrecho
           ns={aberta}
-          userId={userId}
+          key={aberta.os_id}
+          userId={supabaseUser?.id ?? ''}
           modoGestor={modoGestor}
-          responsavelId={
-            modoGestor
-              ? liberacoes?.get(aberta.os_id)?.liberado_para_user_id ?? null
-              : userId
-          }
-          responsavelNome={
-            modoGestor
-              ? encarregados.find(
-                  (e) => e.user_id === liberacoes?.get(aberta.os_id)?.liberado_para_user_id,
-                )?.nome ?? null
-              : null
-          }
+          initialResponsavelId={modoGestor ? '' : userId}
+          encarregados={encarregados}
           onClose={() => setOpenOsId(null)}
-          onSaved={() => { refetch(); setRefreshKey((k) => k + 1); }}
+          onSaved={() => { invalidate(); refetch(); setRefreshKey((k) => k + 1); }}
         />
       )}
     </AppLayout>
@@ -146,17 +137,18 @@ const PavimentacaoPage = () => {
 };
 
 const DetalheTrecho = ({
-  ns, userId, modoGestor, responsavelId, responsavelNome, onClose, onSaved,
+  ns, userId, modoGestor, initialResponsavelId, encarregados, onClose, onSaved,
 }: {
   ns: NSPav;
   userId: string;
   modoGestor: boolean;
-  responsavelId: string | null;
-  responsavelNome: string | null;
+  initialResponsavelId: string;
+  encarregados: { user_id: string; nome: string }[];
   onClose: () => void;
   onSaved: () => void;
 }) => {
   const [data, setData] = useState(hojeMaceio());
+  const [responsavelId, setResponsavelId] = useState(initialResponsavelId);
   const [comprimento, setComprimento] = useState('');
   const [largura, setLargura] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -189,7 +181,7 @@ const DetalheTrecho = ({
     if (!data) { toast.error('Informe a data da produção.'); return false; }
     if (data > hojeMaceio()) { toast.error('A data da produção não pode ser futura.'); return false; }
     if (!responsavelId) {
-      toast.error('Esta N.S. não possui encarregado de pavimentação liberado.');
+      toast.error('Selecione o encarregado responsável pela produção.');
       return false;
     }
     return true;
@@ -268,20 +260,14 @@ const DetalheTrecho = ({
             <label className="text-[11px] uppercase font-semibold text-muted-foreground">
               Encarregado responsável
             </label>
-            <Input
-              readOnly
-              value={
-                modoGestor
-                  ? responsavelNome ?? 'Sem encarregado liberado para esta N.S.'
-                  : 'Você'
-              }
-              className="h-10 text-sm bg-muted font-semibold"
-            />
-            {modoGestor && (
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                A produção será creditada ao encarregado liberado desta N.S. Você fica registrado como autor do lançamento.
-              </p>
-            )}
+            {modoGestor ? (
+              <Select value={responsavelId} onValueChange={setResponsavelId}>
+                <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="Selecione o encarregado" /></SelectTrigger>
+                <SelectContent>
+                  {encarregados.map(e => <SelectItem key={e.user_id} value={e.user_id}>{e.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : <Input readOnly value="Você" className="h-10 text-sm bg-muted font-semibold" />}
           </div>
           <div>
             <label className="text-[11px] uppercase font-semibold text-muted-foreground">Data da produção</label>

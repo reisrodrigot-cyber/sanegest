@@ -69,6 +69,6 @@ export const permissions = {
 
   /** Pode liberar/retirar liberação de pavimentação */
   canLiberarPavimentacao(role: UserRole | undefined): boolean {
-    return role === 'admin' || role === 'sala_tecnica';
+    return role === 'sala_tecnica';
   },
 };

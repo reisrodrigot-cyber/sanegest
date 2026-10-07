@@ -24,8 +24,8 @@ interface RegistroPav {
 }
 
 export const MeusRegistrosPavimentacao = ({ refreshKey = 0 }: { refreshKey?: number }) => {
-  const { effectiveUser, actingUserId, user } = useAuth();
-  const podeGerirTudo = permissions.canEditOS(user?.role) || user?.role === 'admin';
+  const { effectiveUser, actingUserId, effectiveRole, user } = useAuth();
+  const podeGerirTudo = permissions.canEditOS(effectiveRole || user?.role);
   const [de, setDe] = useState('');
   const [ate, setAte] = useState('');
   const [editId, setEditId] = useState<string | null>(null);
@@ -42,8 +42,7 @@ export const MeusRegistrosPavimentacao = ({ refreshKey = 0 }: { refreshKey?: num
         .select('id, os_id, user_id, responsavel_user_id, data_registro, comprimento_m, largura_m, area_m2, observacao, created_at, ordens_servico(trecho, bacia)')
         .eq('excluido', false)
         .eq('status', 'ativo');
-      // Encarregado vê tudo em que é responsável, inclusive lançado pela Sala Técnica.
-      if (!podeGerirTudo) q = q.eq('responsavel_user_id', userId);
+      if (!podeGerirTudo) q = q.eq('user_id', userId);
       const { data, error } = await q
         .order('data_registro', { ascending: false })
         .order('created_at', { ascending: false });
@@ -160,7 +159,7 @@ export const MeusRegistrosPavimentacao = ({ refreshKey = 0 }: { refreshKey?: num
             const retroativo = r.data_registro !== r.created_at.slice(0, 10);
             const editando = editId === r.id;
             const lancadoPorTerceiro = !!r.responsavel_user_id && r.responsavel_user_id !== r.user_id;
-            const podeEditar = podeGerirTudo || r.user_id === userId || r.responsavel_user_id === userId;
+            const podeEditar = podeGerirTudo || r.user_id === userId;
             return (
               <div key={r.id} className="rounded-lg border border-border bg-card p-2.5 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
